@@ -4,7 +4,11 @@ mod PredictionMarket {
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
     use core::option::OptionTrait;
-    use openzeppelin::token::erc20::dual20::{DualCaseERC20, DualCaseERC20Trait};
+    use super::interfaces::{IERC20Dispatcher, IMarketValidatorDispatcher};
+    use super::lib::{
+        Market, Position, MarketOutcome, MarketStatus, MarketCreated, PositionTaken,
+        MarketResolved, WinningsClaimed, ValidatorSlashed, utils, constants
+    };
 
     #[storage]
     struct Storage {
@@ -12,54 +16,13 @@ mod PredictionMarket {
         market_count: u32,
         positions: LegacyMap<(u32, ContractAddress), Position>,
         market_outcomes: LegacyMap<u32, Option<MarketOutcome>>,
-        platform_fee: u256, // Fee in basis points (e.g., 100 = 1%)
+        platform_fee: u256,
         fee_collector: ContractAddress,
         stake_token: ContractAddress,
         market_validators: LegacyMap<ContractAddress, bool>,
         market_categories: LegacyMap<u32, felt252>,
         market_status: LegacyMap<u32, MarketStatus>,
     }
-
-    #[derive(Drop, Copy, Serde, starknet::Store)]
-    struct Market {
-        creator: ContractAddress,
-        title: felt252,
-        description: felt252,
-        category: felt252,
-        start_time: u64,
-        end_time: u64,
-        resolution_time: u64,
-        total_stake: u256,
-        outcomes: Array<felt252>,
-        stakes_per_outcome: Array<u256>,
-        min_stake: u256,
-        max_stake: u256,
-        validator: ContractAddress,
-    }
-
-    #[derive(Drop, Copy, Serde, starknet::Store)]
-    struct Position {
-        amount: u256,
-        outcome_index: u32,
-        claimed: bool,
-    }
-
-    #[derive(Drop, Copy, Serde, starknet::Store)]
-    enum MarketStatus {
-        Active,
-        Closed,
-        Resolved,
-        Disputed,
-        Cancelled
-    }
-
-    #[derive(Drop, Copy, Serde, starknet::Store)]
-    struct MarketOutcome {
-        winning_outcome: u32,
-        resolution_details: felt252,
-    }
-
-    // Events
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
@@ -72,40 +35,6 @@ mod PredictionMarket {
         ValidatorRemoved: ValidatorRemoved,
     }
 
-    // Event implementations...
-    #[derive(Drop, starknet::Event)]
-    struct MarketCreated {
-        market_id: u32,
-        creator: ContractAddress,
-        title: felt252,
-        start_time: u64,
-        end_time: u64,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct PositionTaken {
-        market_id: u32,
-        user: ContractAddress,
-        outcome_index: u32,
-        amount: u256,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct MarketResolved {
-        market_id: u32,
-        outcome: u32,
-        resolver: ContractAddress,
-        resolution_details: felt252,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct WinningsClaimed {
-        market_id: u32,
-        user: ContractAddress,
-        amount: u256,
-    }
-
-    // Constructor
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -118,7 +47,6 @@ mod PredictionMarket {
         self.platform_fee.write(platform_fee);
     }
 
-    // External functions
     #[external(v0)]
     fn create_market(
         ref self: ContractState,
@@ -134,105 +62,73 @@ mod PredictionMarket {
         let caller = get_caller_address();
         let current_time = get_block_timestamp();
 
-        // Validations
         assert(start_time > current_time, 'Invalid start time');
         assert(end_time > start_time, 'Invalid end time');
-        assert(outcomes.len() >= 2, 'Min 2 outcomes required');
+        assert(outcomes.len() >= constants::MIN_OUTCOMES, 'Min 2 outcomes required');
 
         let market_id = self.market_count.read() + 1;
-
-        // Initialize stakes array with zeros
         let mut stakes = ArrayTrait::new();
-        let mut i = 0;
-        loop {
-            if i >= outcomes.len() {
-                break;
-            }
-            stakes.append(0);
-            i += 1;
+        outcomes.len().times(|| stakes.append(0_u256));
+
+        let new_market = Market {
+            creator: caller,
+            title,
+            description,
+            category,
+            start_time,
+            end_time,
+            resolution_time: end_time + constants::RESOLUTION_WINDOW,
+            total_stake: 0_u256,
+            outcomes,
+            stakes_per_outcome: stakes,
+            min_stake,
+            max_stake,
+            validator: self.get_random_validator(),
         };
 
-        self
-            .markets
-            .write(
-                market_id,
-                Market {
-                    creator: caller,
-                    title: title,
-                    description: description,
-                    category: category,
-                    start_time: start_time,
-                    end_time: end_time,
-                    resolution_time: end_time + 86400, // 24 hours after end time
-                    total_stake: 0,
-                    outcomes: outcomes,
-                    stakes_per_outcome: stakes,
-                    min_stake: min_stake,
-                    max_stake: max_stake,
-                    validator: self.get_random_validator(),
-                }
-            );
-
+        self.markets.write(market_id, new_market);
         self.market_count.write(market_id);
         self.market_status.write(market_id, MarketStatus::Active);
 
-        self
-            .emit(
-                MarketCreated {
-                    market_id: market_id,
-                    creator: caller,
-                    title: title,
-                    start_time: start_time,
-                    end_time: end_time,
-                }
-            );
-
+        self.emit(MarketCreated { market_id, creator: caller, title, start_time, end_time });
         market_id
     }
 
     #[external(v0)]
-    fn take_position(ref self: ContractState, market_id: u32, outcome_index: u32, amount: u256) {
+    fn take_position(
+        ref self: ContractState,
+        market_id: u32,
+        outcome_index: u32,
+        amount: u256
+    ) {
         let caller = get_caller_address();
         let market = self.markets.read(market_id);
+        let status = self.market_status.read(market_id);
 
-        // Validations
-        assert(self.market_status.read(market_id) == MarketStatus::Active, 'Market not active');
-        assert(market.start_time <= get_block_timestamp(), 'Market not started');
-        assert(market.end_time > get_block_timestamp(), 'Market ended');
+        assert(status == MarketStatus::Active, 'Market not active');
+        assert(utils::is_market_active(market.start_time, market.end_time), 'Market inactive');
         assert(amount >= market.min_stake, 'Below min stake');
         assert(amount <= market.max_stake, 'Above max stake');
 
-        // Transfer tokens
-        let stake_token = DualCaseERC20 { contract_address: self.stake_token.read() };
-        stake_token.transfer_from(caller, starknet::get_contract_address(), amount);
+        let stake_token = IERC20Dispatcher { contract_address: self.stake_token.read() };
+        stake_token.transfer_from(caller, self.contract_address, amount);
 
-        // Update position
         let mut position = self.positions.read((market_id, caller));
         position.amount += amount;
         position.outcome_index = outcome_index;
         self.positions.write((market_id, caller), position);
 
-        // Update market stakes
         let mut market = self.markets.read(market_id);
         market.total_stake += amount;
         market.stakes_per_outcome[outcome_index] += amount;
         self.markets.write(market_id, market);
 
-        self
-            .emit(
-                PositionTaken {
-                    market_id: market_id,
-                    user: caller,
-                    outcome_index: outcome_index,
-                    amount: amount,
-                }
-            );
+        self.emit(PositionTaken { market_id, user: caller, outcome_index, amount });
     }
 
     #[external(v0)]
     fn claim_winnings(ref self: ContractState, market_id: u32) {
         let caller = get_caller_address();
-        let market = self.markets.read(market_id);
         let position = self.positions.read((market_id, caller));
         let outcome = self.market_outcomes.read(market_id);
 
@@ -240,70 +136,90 @@ mod PredictionMarket {
         assert(position.amount > 0, 'No position found');
         assert(!position.claimed, 'Already claimed');
 
+        let market = self.markets.read(market_id);
         let winning_outcome = outcome.unwrap().winning_outcome;
         let mut winnings = 0_u256;
 
         if position.outcome_index == winning_outcome {
-            // Calculate winnings based on share of winning pool
-            let winning_pool = market.stakes_per_outcome[winning_outcome];
             let total_stake = market.total_stake;
-            winnings = (position.amount * total_stake) / winning_pool;
+            let winning_pool = market.stakes_per_outcome[winning_outcome];
 
-            // Apply platform fee
-            let fee = (winnings * self.platform_fee.read()) / 10000;
+            winnings = (position.amount * total_stake) / winning_pool;
+            
+            let fee = utils::calculate_fee(winnings, self.platform_fee.read());
             winnings -= fee;
 
-            // Transfer winnings
-            let stake_token = DualCaseERC20 { contract_address: self.stake_token.read() };
+            let stake_token = IERC20Dispatcher { contract_address: self.stake_token.read() };
             stake_token.transfer(caller, winnings);
-
-            // Transfer fee to fee collector
             stake_token.transfer(self.fee_collector.read(), fee);
         }
 
-        // Mark position as claimed
+        
         let mut position = self.positions.read((market_id, caller));
         position.claimed = true;
         self.positions.write((market_id, caller), position);
 
-        self.emit(WinningsClaimed { market_id: market_id, user: caller, amount: winnings });
+        self.emit(WinningsClaimed { market_id, user: caller, amount: winnings });
     }
 
+    #[external(v0)]
+    fn resolve_market(
+        ref self: ContractState,
+        market_id: u32,
+        winning_outcome: u32,
+        resolution_details: felt252
+    ) {
+        let validator = self.markets.read(market_id).validator;
+        let market_validator = IMarketValidatorDispatcher { contract_address: validator };
+        
+        market_validator.resolve_market(market_id, winning_outcome, resolution_details);
+        self.market_status.write(market_id, MarketStatus::Resolved);
+    }
+
+    // Internal helper functions
+    fn get_random_validator(self: @ContractState) -> ContractAddress {
+
+        let mut i = 0;
+        loop {
+            if i >= self.validator_count.read() {
+                break self.fee_collector.read();
+            }
+            let validator = self.market_validators.read(ContractAddress::from(i));
+            if validator {
+                break ContractAddress::from(i);
+            }
+            i += 1;
+        }
+    }
+
+    // View functions (external but read-only)
     #[external(v0)]
     fn get_market_details(
-        self: @ContractState, market_id: u32
+        self: @ContractState,
+        market_id: u32
     ) -> (Market, MarketStatus, Option<MarketOutcome>) {
-        let market = self.markets.read(market_id);
-        let status = self.market_status.read(market_id);
-        let outcome = self.market_outcomes.read(market_id);
-        (market, status, outcome)
+        (
+            self.markets.read(market_id),
+            self.market_status.read(market_id),
+            self.market_outcomes.read(market_id)
+        )
     }
 
     #[external(v0)]
-    fn get_user_positions(self: @ContractState, user: ContractAddress, market_id: u32) -> Position {
+    fn get_user_position(
+        self: @ContractState,
+        user: ContractAddress,
+        market_id: u32
+    ) -> Position {
         self.positions.read((market_id, user))
     }
 
     #[external(v0)]
-    fn get_market_stats(self: @ContractState, market_id: u32) -> (u256, Array<u256>) {
+    fn get_market_stats(
+        self: @ContractState,
+        market_id: u32
+    ) -> (u256, Array<u256>) {
         let market = self.markets.read(market_id);
         (market.total_stake, market.stakes_per_outcome)
-    }
-
-    // Helper functions
-    fn get_random_validator(self: @ContractState) -> ContractAddress {
-        // For now, return the first active validator
-        // TODO: Implement proper random selection using VRF
-        let mut i = 0;
-        loop {
-            if i >= self.validator_count.read() {
-                break self.fee_collector.read(); // Fallback
-            }
-            let validator = self.market_validators.read(ContractAddress { value: i });
-            if validator {
-                break ContractAddress { value: i };
-            }
-            i += 1;
-        }
     }
 }

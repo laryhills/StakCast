@@ -1,9 +1,14 @@
-#[starknet::contract]
-mod MarketValidator {
-    use starknet::ContractAddress;
-    use starknet::get_caller_address;
-    use starknet::get_block_timestamp;
+use starknet::contract;
+use starknet::ContractAddress;
+use starknet::get_caller_address;
+use starknet::get_block_timestamp;
+use starknet::storage;
+use starknet::event;
+use starknet::assert;
+use starknet::transfer_from;
 
+#[contract]
+mod MarketValidator {
     #[storage]
     struct Storage {
         prediction_market: ContractAddress,
@@ -13,7 +18,7 @@ mod MarketValidator {
         resolution_timeout: u64,
     }
 
-    #[derive(Drop, Copy, Serde, starknet::Store)]
+    #[derive(Drop, Copy, Serde, storage::Store)]
     struct ValidatorInfo {
         stake: u256,
         markets_resolved: u32,
@@ -22,20 +27,20 @@ mod MarketValidator {
     }
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+
     enum Event {
-        ValidatorRegistered: ValidatorRegistered,
-        MarketResolved: MarketResolved,
-        ValidatorSlashed: ValidatorSlashed,
+        ValidatorRegistered(ValidatorRegistered),
+        MarketResolved(MarketResolved),
+        ValidatorSlashed(ValidatorSlashed),
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Drop, event::Event)]
     struct ValidatorRegistered {
         validator: ContractAddress,
         stake: u256,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Drop, event::Event)]
     struct MarketResolved {
         market_id: u32,
         outcome: u32,
@@ -43,7 +48,7 @@ mod MarketValidator {
         resolution_details: felt252,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Drop, event::Event)]
     struct ValidatorSlashed {
         validator: ContractAddress,
         amount: u256,
@@ -52,7 +57,7 @@ mod MarketValidator {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState,
+        ref self: Storage,
         prediction_market: ContractAddress,
         min_stake: u256,
         resolution_timeout: u64,
@@ -62,14 +67,12 @@ mod MarketValidator {
         self.resolution_timeout.write(resolution_timeout);
     }
 
-    #[external(v0)]
-    fn register_validator(ref self: ContractState, stake: u256) {
+    #[external]
+    fn register_validator(ref self: Storage, stake: u256) {
         let caller = get_caller_address();
         assert(stake >= self.min_stake.read(), 'Insufficient stake');
 
         // Transfer stake
-        // TODO: Implement stake transfer
-        let stake_token = self.prediction_market.read().get_stake_token();
         let transfer_result = transfer_from(caller, self.address, stake);
         assert(transfer_result, 'Stake transfer failed');
 
@@ -83,32 +86,26 @@ mod MarketValidator {
 
         self.validator_count.write(self.validator_count.read() + 1);
 
-        self.emit(ValidatorRegistered { validator: caller, stake: stake });
+        self.emit(ValidatorRegistered { validator: caller, stake });
     }
 
-
-    #[external(v0)]
+    #[external]
     fn resolve_market(
-        ref self: ContractState, market_id: u32, winning_outcome: u32, resolution_details: felt252
+        ref self: Storage,
+        market_id: u32,
+        winning_outcome: u32,
+        resolution_details: felt252,
     ) {
         let caller = get_caller_address();
-        let validator_info = self.validators.read(caller);
-        assert(validator_info.active, 'Not an active validator');
+        assert(self.is_active_validator(caller), 'Not an active validator');
 
-        // Get prediction market contract
-        let prediction_market = IPredictionMarketDispatcher {
-            contract_address: self.prediction_market.read()
-        };
-
-        // Verify validator is assigned to this market
-        let market = prediction_market.get_market_info(market_id);
+        let market = self.get_market_info(market_id);
         assert(market.validator == caller, 'Not assigned validator');
-
-        // Check resolution timeframe
         let current_time = get_block_timestamp();
         assert(current_time >= market.end_time, 'Market not ended');
         assert(
-            current_time <= market.end_time + self.resolution_timeout.read(), 'Resolution timeout'
+            current_time <= market.end_time + self.resolution_timeout.read(),
+            'Resolution timeout',
         );
 
         // Update validator stats
@@ -116,27 +113,27 @@ mod MarketValidator {
         validator.markets_resolved += 1;
         self.validators.write(caller, validator);
 
-        // Resolve market
-        prediction_market.resolve_market(market_id, winning_outcome, resolution_details);
-
-        self
-            .emit(
-                MarketResolved {
-                    market_id: market_id,
-                    outcome: winning_outcome,
-                    resolver: caller,
-                    resolution_details: resolution_details,
-                }
-            );
+        self.resolve_market_internal(market_id, winning_outcome, resolution_details);
     }
 
-    #[external(v0)]
-    fn slash_validator(
-        ref self: ContractState, validator: ContractAddress, amount: u256, reason: felt252
+    #[internal]
+    fn resolve_market_internal(
+        ref self: Storage,
+        market_id: u32,
+        winning_outcome: u32,
+        resolution_details: felt252,
     ) {
-        // Only prediction market contract can slash
-        assert(get_caller_address() == self.prediction_market.read(), 'Unauthorized');
+        self.emit(MarketResolved {
+            market_id,
+            outcome: winning_outcome,
+            resolver: get_caller_address(),
+            resolution_details,
+        });
+    }
 
+    #[external]
+    fn slash_validator(ref self: Storage, validator: ContractAddress, amount: u256, reason: felt252) {
+        assert(get_caller_address() == self.prediction_market.read(), 'Unauthorized');
         let mut validator_info = self.validators.read(validator);
         assert(validator_info.stake >= amount, 'Insufficient stake');
 
@@ -144,19 +141,18 @@ mod MarketValidator {
         if validator_info.stake < self.min_stake.read() {
             validator_info.active = false;
         }
-
         self.validators.write(validator, validator_info);
 
-        self.emit(ValidatorSlashed { validator: validator, amount: amount, reason: reason, });
+        self.emit(ValidatorSlashed { validator, amount, reason });
     }
 
-    #[external(v0)]
-    fn get_validator_info(self: @ContractState, validator: ContractAddress) -> ValidatorInfo {
+    #[external]
+    fn get_validator_info(self: @Storage, validator: ContractAddress) -> ValidatorInfo {
         self.validators.read(validator)
     }
 
-    #[external(v0)]
-    fn is_active_validator(self: @ContractState, validator: ContractAddress) -> bool {
+    #[external]
+    fn is_active_validator(self: @Storage, validator: ContractAddress) -> bool {
         self.validators.read(validator).active
     }
 }
