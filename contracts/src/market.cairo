@@ -1,14 +1,21 @@
-use starknet::contract;
-use starknet::ContractAddress;
-use starknet::get_caller_address;
-use starknet::get_block_timestamp;
-use starknet::storage;
-use starknet::event;
-use starknet::assert;
-use starknet::transfer_from;
-
-#[contract]
+#[starknet::contract]
 mod MarketValidator {
+    use starknet::ContractAddress;
+    use starknet::get_caller_address;
+    use starknet::get_block_timestamp;
+    use starknet::storage;
+    use starknet::event;
+    use starknet::assert;
+    use starknet::transfer_from;
+
+    // Import shared components from lib.cairo and interface.cairo
+    use super::interfaces::{ValidatorInfo, Market, MarketStatus, IPredictionMarketDispatcher, IERC20Dispatcher};
+    use super::lib::{
+        constants::{MIN_STAKE, RESOLUTION_TIMEOUT},
+        events::{ValidatorRegistered, MarketResolved, ValidatorSlashed},
+        utils::{is_market_active, calculate_fee},
+    };
+
     #[storage]
     struct Storage {
         prediction_market: ContractAddress,
@@ -18,41 +25,12 @@ mod MarketValidator {
         resolution_timeout: u64,
     }
 
-    #[derive(Drop, Copy, Serde, storage::Store)]
-    struct ValidatorInfo {
-        stake: u256,
-        markets_resolved: u32,
-        accuracy_score: u32,
-        active: bool,
-    }
-
     #[event]
-
+    #[derive(Drop, starknet::Event)]
     enum Event {
-        ValidatorRegistered(ValidatorRegistered),
-        MarketResolved(MarketResolved),
-        ValidatorSlashed(ValidatorSlashed),
-    }
-
-    #[derive(Drop, event::Event)]
-    struct ValidatorRegistered {
-        validator: ContractAddress,
-        stake: u256,
-    }
-
-    #[derive(Drop, event::Event)]
-    struct MarketResolved {
-        market_id: u32,
-        outcome: u32,
-        resolver: ContractAddress,
-        resolution_details: felt252,
-    }
-
-    #[derive(Drop, event::Event)]
-    struct ValidatorSlashed {
-        validator: ContractAddress,
-        amount: u256,
-        reason: felt252,
+        ValidatorRegistered: ValidatorRegistered,
+        MarketResolved: MarketResolved,
+        ValidatorSlashed: ValidatorSlashed,
     }
 
     #[constructor]
@@ -101,6 +79,7 @@ mod MarketValidator {
 
         let market = self.get_market_info(market_id);
         assert(market.validator == caller, 'Not assigned validator');
+
         let current_time = get_block_timestamp();
         assert(current_time >= market.end_time, 'Market not ended');
         assert(
