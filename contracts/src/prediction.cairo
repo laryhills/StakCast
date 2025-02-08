@@ -4,10 +4,13 @@ mod PredictionMarket {
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
     use core::option::OptionTrait;
-    use super::interfaces::{IERC20Dispatcher, IMarketValidatorDispatcher};
+
+    // Import shared components from lib.cairo and interface.cairo
+    use super::interfaces::{Market, Position, MarketOutcome, MarketStatus, IPredictionMarketDispatcher, IMarketValidatorDispatcher, IERC20Dispatcher};
     use super::lib::{
-        Market, Position, MarketOutcome, MarketStatus, MarketCreated, PositionTaken,
-        MarketResolved, WinningsClaimed, ValidatorSlashed, utils, constants
+        constants::{MIN_OUTCOMES, RESOLUTION_WINDOW, BASIS_POINTS},
+        events::{MarketCreated, PositionTaken, WinningsClaimed},
+        utils::{is_market_active, calculate_fee},
     };
 
     #[storage]
@@ -23,6 +26,7 @@ mod PredictionMarket {
         market_categories: LegacyMap<u32, felt252>,
         market_status: LegacyMap<u32, MarketStatus>,
     }
+
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
@@ -30,26 +34,23 @@ mod PredictionMarket {
         PositionTaken: PositionTaken,
         MarketResolved: MarketResolved,
         WinningsClaimed: WinningsClaimed,
-        MarketDisputed: MarketDisputed,
-        ValidatorAdded: ValidatorAdded,
-        ValidatorRemoved: ValidatorRemoved,
     }
 
     #[constructor]
     fn constructor(
-        ref self: ContractState,
+        ref self: Storage,
         stake_token_address: ContractAddress,
         fee_collector: ContractAddress,
-        platform_fee: u256
+        platform_fee: u256,
     ) {
         self.stake_token.write(stake_token_address);
         self.fee_collector.write(fee_collector);
         self.platform_fee.write(platform_fee);
     }
 
-    #[external(v0)]
+    #[external]
     fn create_market(
-        ref self: ContractState,
+        ref self: Storage,
         title: felt252,
         description: felt252,
         category: felt252,
@@ -64,7 +65,7 @@ mod PredictionMarket {
 
         assert(start_time > current_time, 'Invalid start time');
         assert(end_time > start_time, 'Invalid end time');
-        assert(outcomes.len() >= constants::MIN_OUTCOMES, 'Min 2 outcomes required');
+        assert(outcomes.len() >= MIN_OUTCOMES, 'Min 2 outcomes required');
 
         let market_id = self.market_count.read() + 1;
         let mut stakes = ArrayTrait::new();
@@ -77,7 +78,7 @@ mod PredictionMarket {
             category,
             start_time,
             end_time,
-            resolution_time: end_time + constants::RESOLUTION_WINDOW,
+            resolution_time: end_time + RESOLUTION_WINDOW,
             total_stake: 0_u256,
             outcomes,
             stakes_per_outcome: stakes,
@@ -90,28 +91,35 @@ mod PredictionMarket {
         self.market_count.write(market_id);
         self.market_status.write(market_id, MarketStatus::Active);
 
-        self.emit(MarketCreated { market_id, creator: caller, title, start_time, end_time });
+        self.emit(MarketCreated {
+            market_id,
+            creator: caller,
+            title,
+            start_time,
+            end_time,
+        });
+
         market_id
     }
 
-    #[external(v0)]
+    #[external]
     fn take_position(
-        ref self: ContractState,
+        ref self: Storage,
         market_id: u32,
         outcome_index: u32,
-        amount: u256
+        amount: u256,
     ) {
         let caller = get_caller_address();
         let market = self.markets.read(market_id);
         let status = self.market_status.read(market_id);
 
         assert(status == MarketStatus::Active, 'Market not active');
-        assert(utils::is_market_active(market.start_time, market.end_time), 'Market inactive');
+        assert(is_market_active(market.start_time, market.end_time), 'Market inactive');
         assert(amount >= market.min_stake, 'Below min stake');
         assert(amount <= market.max_stake, 'Above max stake');
 
         let stake_token = IERC20Dispatcher { contract_address: self.stake_token.read() };
-        stake_token.transfer_from(caller, self.contract_address, amount);
+        stake_token.transfer_from(caller, self.address, amount);
 
         let mut position = self.positions.read((market_id, caller));
         position.amount += amount;
@@ -123,11 +131,16 @@ mod PredictionMarket {
         market.stakes_per_outcome[outcome_index] += amount;
         self.markets.write(market_id, market);
 
-        self.emit(PositionTaken { market_id, user: caller, outcome_index, amount });
+        self.emit(PositionTaken {
+            market_id,
+            user: caller,
+            outcome_index,
+            amount,
+        });
     }
 
-    #[external(v0)]
-    fn claim_winnings(ref self: ContractState, market_id: u32) {
+    #[external]
+    fn claim_winnings(ref self: Storage, market_id: u32) {
         let caller = get_caller_address();
         let position = self.positions.read((market_id, caller));
         let outcome = self.market_outcomes.read(market_id);
@@ -143,10 +156,9 @@ mod PredictionMarket {
         if position.outcome_index == winning_outcome {
             let total_stake = market.total_stake;
             let winning_pool = market.stakes_per_outcome[winning_outcome];
-
             winnings = (position.amount * total_stake) / winning_pool;
-            
-            let fee = utils::calculate_fee(winnings, self.platform_fee.read());
+
+            let fee = calculate_fee(winnings, self.platform_fee.read());
             winnings -= fee;
 
             let stake_token = IERC20Dispatcher { contract_address: self.stake_token.read() };
@@ -154,31 +166,32 @@ mod PredictionMarket {
             stake_token.transfer(self.fee_collector.read(), fee);
         }
 
-        
         let mut position = self.positions.read((market_id, caller));
         position.claimed = true;
         self.positions.write((market_id, caller), position);
 
-        self.emit(WinningsClaimed { market_id, user: caller, amount: winnings });
+        self.emit(WinningsClaimed {
+            market_id,
+            user: caller,
+            amount: winnings,
+        });
     }
 
-    #[external(v0)]
+    #[external]
     fn resolve_market(
-        ref self: ContractState,
+        ref self: Storage,
         market_id: u32,
         winning_outcome: u32,
-        resolution_details: felt252
+        resolution_details: felt252,
     ) {
         let validator = self.markets.read(market_id).validator;
         let market_validator = IMarketValidatorDispatcher { contract_address: validator };
-        
         market_validator.resolve_market(market_id, winning_outcome, resolution_details);
         self.market_status.write(market_id, MarketStatus::Resolved);
     }
 
     // Internal helper functions
-    fn get_random_validator(self: @ContractState) -> ContractAddress {
-
+    fn get_random_validator(self: @Storage) -> ContractAddress {
         let mut i = 0;
         loop {
             if i >= self.validator_count.read() {
@@ -193,31 +206,31 @@ mod PredictionMarket {
     }
 
     // View functions (external but read-only)
-    #[external(v0)]
+    #[external]
     fn get_market_details(
-        self: @ContractState,
-        market_id: u32
+        self: @Storage,
+        market_id: u32,
     ) -> (Market, MarketStatus, Option<MarketOutcome>) {
         (
             self.markets.read(market_id),
             self.market_status.read(market_id),
-            self.market_outcomes.read(market_id)
+            self.market_outcomes.read(market_id),
         )
     }
 
-    #[external(v0)]
+    #[external]
     fn get_user_position(
-        self: @ContractState,
+        self: @Storage,
         user: ContractAddress,
-        market_id: u32
+        market_id: u32,
     ) -> Position {
         self.positions.read((market_id, user))
     }
 
-    #[external(v0)]
+    #[external]
     fn get_market_stats(
-        self: @ContractState,
-        market_id: u32
+        self: @Storage,
+        market_id: u32,
     ) -> (u256, Array<u256>) {
         let market = self.markets.read(market_id);
         (market.total_stake, market.stakes_per_outcome)

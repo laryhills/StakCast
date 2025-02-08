@@ -6,8 +6,13 @@ mod tests {
     use starknet::get_block_timestamp;
     use starknet::assert;
     use super::market::{MarketDispatcher, MarketDispatcherTrait};
-    use super::interfaces::IERC20Dispatcher;
-    use super::lib::{Market, MarketStatus, Position, MarketOutcome};
+    use super::prediction::{PredictionMarketDispatcher, PredictionMarketDispatcherTrait};
+    use super::interfaces::{IERC20Dispatcher, IMarketValidatorDispatcher};
+    use super::lib::{
+        types::{Market, MarketStatus, Position, MarketOutcome},
+        constants::{MIN_OUTCOMES, RESOLUTION_WINDOW},
+        utils::{is_market_active, calculate_fee},
+    };
 
     const STAKE_TOKEN_ADDRESS: ContractAddress = 0x12345;
     const FEE_COLLECTOR: ContractAddress = 0x67890;
@@ -15,7 +20,7 @@ mod tests {
 
     #[test]
     fn test_create_market() {
-        let market = MarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
+        let market = PredictionMarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
         set_caller_address(0x11111);
 
         let market_id = market.create_market(
@@ -39,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_take_position() {
-        let market = MarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
+        let market = PredictionMarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
         set_caller_address(0x11111);
 
         let market_id = market.create_market(
@@ -50,7 +55,7 @@ mod tests {
             2000, // end_time
             array!['Outcome 1', 'Outcome 2'],
             10, // min_stake
-            1000, // max_stake
+            1000, // max_stake,
         );
 
         set_caller_address(0x22222);
@@ -74,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_claim_winnings() {
-        let market = MarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
+        let market = PredictionMarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
         set_caller_address(0x11111);
 
         let market_id = market.create_market(
@@ -85,7 +90,7 @@ mod tests {
             2000, // end_time
             array!['Outcome 1', 'Outcome 2'],
             10, // min_stake
-            1000, // max_stake
+            1000, // max_stake,
         );
 
         set_caller_address(0x22222);
@@ -114,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_slash_validator() {
-        let market = MarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
+        let market = PredictionMarketDispatcher::deploy(STAKE_TOKEN_ADDRESS, FEE_COLLECTOR, PLATFORM_FEE);
         set_caller_address(0x11111);
 
         let market_id = market.create_market(
@@ -125,7 +130,7 @@ mod tests {
             2000, // end_time
             array!['Outcome 1', 'Outcome 2'],
             10, // min_stake
-            1000, // max_stake
+            1000, // max_stake,
         );
 
         set_caller_address(0x22222); // Validator
