@@ -19,7 +19,7 @@ mod MarketValidator {
     #[storage]
     struct Storage {
         prediction_market: ContractAddress,
-        validators: LegacyMap<ContractAddress, ValidatorInfo>,
+        validators: Map<ContractAddress, ValidatorInfo>,
         validator_count: u32,
         min_stake: u256,
         resolution_timeout: u64,
