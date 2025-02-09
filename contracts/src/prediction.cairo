@@ -15,16 +15,16 @@ mod PredictionMarket {
 
     #[storage]
     struct Storage {
-        markets: LegacyMap<u32, Market>,
+        markets: Map<u32, Market>,
         market_count: u32,
-        positions: LegacyMap<(u32, ContractAddress), Position>,
-        market_outcomes: LegacyMap<u32, Option<MarketOutcome>>,
+        positions: Map<(u32, ContractAddress), Position>,
+        market_outcomes: Map<u32, Option<MarketOutcome>>,
         platform_fee: u256,
         fee_collector: ContractAddress,
         stake_token: ContractAddress,
-        market_validators: LegacyMap<ContractAddress, bool>,
-        market_categories: LegacyMap<u32, felt252>,
-        market_status: LegacyMap<u32, MarketStatus>,
+        market_validators: Map<ContractAddress, bool>,
+        market_categories: Map<u32, felt252>,
+        market_status: Map<u32, MarketStatus>,
     }
 
     #[event]
@@ -120,7 +120,6 @@ mod PredictionMarket {
 
         let stake_token = IERC20Dispatcher { contract_address: self.stake_token.read() };
         stake_token.transfer_from(caller, self.address, amount);
-
         let mut position = self.positions.read((market_id, caller));
         position.amount += amount;
         position.outcome_index = outcome_index;
