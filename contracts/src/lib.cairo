@@ -1,10 +1,3 @@
-// Import data structures from interface.cairo
-use super::interfaces::{
-    ValidatorInfo, Market, Position, MarketOutcome, MarketStatus,
-    ValidatorRegistered, MarketResolved, ValidatorSlashed,
-    MarketCreated, PositionTaken, WinningsClaimed,
-};
-
 // Expose the `constants` module for shared constants
 pub mod constants {
     pub const MIN_OUTCOMES: u32 = 2;
@@ -66,6 +59,8 @@ pub mod events {
 
 // Expose the `utils` module for shared utility functions
 pub mod utils {
+    use super::constants;
+
     use starknet::get_block_timestamp;
 
     // Check if a market is active

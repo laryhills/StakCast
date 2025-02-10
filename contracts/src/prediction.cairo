@@ -12,7 +12,7 @@ mod PredictionMarket {
         events::{MarketCreated, PositionTaken, WinningsClaimed},
         utils::{is_market_active, calculate_fee},
     };
-
+    
     #[storage]
     struct Storage {
         markets: Map<u32, Market>,

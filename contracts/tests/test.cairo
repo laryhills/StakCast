@@ -5,15 +5,16 @@ mod tests {
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
     use starknet::assert;
-    use super::market::{MarketDispatcher, MarketDispatcherTrait};
-    use super::prediction::{PredictionMarketDispatcher, PredictionMarketDispatcherTrait};
-    use super::interfaces::{IERC20Dispatcher, IMarketValidatorDispatcher};
-    use super::lib::{
-        types::{Market, MarketStatus, Position, MarketOutcome},
-        constants::{MIN_OUTCOMES, RESOLUTION_WINDOW},
-        utils::{is_market_active, calculate_fee},
+    use super::super::src::{
+        market::{MarketDispatcher, MarketDispatcherTrait},
+        prediction::{PredictionMarketDispatcher, PredictionMarketDispatcherTrait},
+        interfaces::{IERC20Dispatcher, IMarketValidatorDispatcher},
+        lib::{
+            types::{Market, MarketStatus, Position, MarketOutcome},
+            constants::{MIN_OUTCOMES, RESOLUTION_WINDOW},
+            utils::{is_market_active, calculate_fee},
+        },
     };
-
     const STAKE_TOKEN_ADDRESS: ContractAddress = 0x12345;
     const FEE_COLLECTOR: ContractAddress = 0x67890;
     const PLATFORM_FEE: u256 = 100; // 1% fee

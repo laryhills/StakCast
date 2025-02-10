@@ -11,11 +11,11 @@ mod MarketValidator {
     // Import shared components from lib.cairo and interface.cairo
     use super::interfaces::{ValidatorInfo, Market, MarketStatus, IPredictionMarketDispatcher, IERC20Dispatcher};
     use super::lib::{
-        constants::{MIN_STAKE, RESOLUTION_TIMEOUT},
-        events::{ValidatorRegistered, MarketResolved, ValidatorSlashed},
-        utils::{is_market_active, calculate_fee},
+    constants::{MIN_STAKE, RESOLUTION_TIMEOUT},
+    events::{ValidatorRegistered, MarketResolved, ValidatorSlashed},
+    utils::{is_market_active, calculate_fee},
     };
-
+    
     #[storage]
     struct Storage {
         prediction_market: ContractAddress,
