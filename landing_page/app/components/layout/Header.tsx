@@ -16,9 +16,6 @@ const Header: React.FC = () => {
           <Link href="/"> Markets </Link>
           <Link href="/"> How It Works </Link>
           <Link href="/"> Leaderboard </Link>
-          <button className="px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400">
-            Coming Soon
-          </button>
         </div>
       </div>
     </header>
