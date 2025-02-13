@@ -10,6 +10,7 @@ mod PredictionMarket {
     use starknet::storage::{
         StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
     };
+
     #[storage]
     struct Storage {
         markets: Map<u32, Market>,
@@ -92,7 +93,7 @@ mod PredictionMarket {
 
     #[external(v0)]
     #[abi(embed_v0)]
-    impl PredictionMarketImpl of super::IPredictionMarket<ContractState> {
+    impl PredictionMarketImpl of sta::IPredictionMarket<ContractState> {
         fn create_market(
             ref self: ContractState,
             title: felt252,
@@ -292,25 +293,7 @@ mod PredictionMarket {
             });
         }
 
-        // Other interface functions
-        fn get_market_details(
-            self: @ContractState,
-            market_id: u32,
-        ) -> (Market, MarketStatus, Option<MarketOutcome>) {
-            (
-                self.markets.read(market_id),
-                self.market_status.read(market_id),
-                self.market_outcomes.read(market_id)
-            )
-        }
 
-        fn get_user_position(
-            self: @ContractState,
-            user: ContractAddress,
-            market_id: u32,
-        ) -> Position {
-            self.positions.read((market_id, user))
-        }
 
         fn get_market_stats(
             self: @ContractState,
