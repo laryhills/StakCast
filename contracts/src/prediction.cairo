@@ -4,18 +4,22 @@ mod PredictionMarket {
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
     use core::option::OptionTrait;
+    use starknet::Uint256;
     use openzeppelin::token::erc20::dual20::{DualCaseERC20, DualCaseERC20Trait};
+    use starknet::storage::{
+        StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
+    };
 
     // Import the IPredictionMarket and IERC20 interfaces
     use super::interface::{IPredictionMarket, IERC20};
 
     #[storage]
-    struct Storage {
+    struct Storage: StorageBase {
         markets: Map<u32, Market>,
         market_count: u32,
         positions: Map<(u32, ContractAddress), Position>,
         market_outcomes: Map<u32, Option<MarketOutcome>>,
-        platform_fee: u256, // Fee in basis points (e.g., 100 = 1%)
+        platform_fee: Uint256, // Fee in basis points (e.g., 100 = 1%)
         fee_collector: ContractAddress,
         stake_token: ContractAddress,
         market_validators: Map<ContractAddress, bool>,
@@ -32,17 +36,17 @@ mod PredictionMarket {
         start_time: u64,
         end_time: u64,
         resolution_time: u64,
-        total_stake: u256,
+        total_stake: Uint256,
         outcomes: Array<felt252>,
         stakes_per_outcome: Array<u256>,
-        min_stake: u256,
-        max_stake: u256,
+        min_stake: Uint256,
+        max_stake: Uint256,
         validator: ContractAddress,
     }
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
     struct Position {
-        amount: u256,
+        amount: Uint256,
         outcome_index: u32,
         claimed: bool,
     }
@@ -54,6 +58,8 @@ mod PredictionMarket {
         Resolved,
         Disputed,
         Cancelled,
+        #[default]
+        Default,
     }
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
@@ -73,7 +79,7 @@ mod PredictionMarket {
         MarketDisputed: MarketDisputed,
         ValidatorAdded: ValidatorAdded,
         ValidatorRemoved: ValidatorRemoved,
-    }
+    } 
 
     #[derive(Drop, starknet::Event)]
     struct MarketCreated {
@@ -113,7 +119,7 @@ mod PredictionMarket {
         ref self: ContractState,
         stake_token_address: ContractAddress,
         fee_collector: ContractAddress,
-        platform_fee: u256,
+        platform_fee: u256, // Changed Uint256 to u256 for consistency
     ) {
         self.stake_token.write(stake_token_address);
         self.fee_collector.write(fee_collector);
@@ -135,61 +141,55 @@ mod PredictionMarket {
             min_stake: u256,
             max_stake: u256,
         ) -> u32 {
-            let caller = get_caller_address();
-            let current_time = get_block_timestamp();
+            let caller: ContractAddress = get_caller_address();
+            let current_time: u64 = get_block_timestamp();
 
             // Validations
             assert(start_time > current_time, 'Invalid start time');
             assert(end_time > start_time, 'Invalid end time');
             assert(outcomes.len() >= 2, 'Min 2 outcomes required');
 
-            let market_id = self.market_count.read() + 1;
+            let market_id: u32 = self.market_count.read() + 1;
 
             // Initialize stakes array with zeros
-            let mut stakes = ArrayTrait::new();
-            let mut i = 0;
+            let mut stakes: Array<u256> = ArrayTrait::new();
+            let mut i: u32 = 0;
             loop {
                 if i >= outcomes.len() {
                     break;
                 }
                 stakes.append(0);
                 i += 1;
+            }
+
+            let market: Market = Market {
+                creator: caller,
+                title: title,
+                description: description,
+                category: category,
+                start_time: start_time,
+                end_time: end_time,
+                resolution_time: end_time + 86400, // 24 hours after end time
+                total_stake: 0,
+                outcomes: outcomes,
+                stakes_per_outcome: stakes,
+                min_stake: min_stake,
+                max_stake: max_stake,
+                validator: self.get_random_validator(),
             };
 
-            self
-                .markets
-                .write(
-                    market_id,
-                    Market {
-                        creator: caller,
-                        title: title,
-                        description: description,
-                        category: category,
-                        start_time: start_time,
-                        end_time: end_time,
-                        resolution_time: end_time + 86400, // 24 hours after end time
-                        total_stake: 0,
-                        outcomes: outcomes,
-                        stakes_per_outcome: stakes,
-                        min_stake: min_stake,
-                        max_stake: max_stake,
-                        validator: self.get_random_validator(),
-                    }
-                );
+            self.markets.write(market_id, market);
 
             self.market_count.write(market_id);
             self.market_status.write(market_id, MarketStatus::Active);
 
-            self
-                .emit(
-                    MarketCreated {
-                        market_id: market_id,
-                        creator: caller,
-                        title: title,
-                        start_time: start_time,
-                        end_time: end_time,
-                    }
-                );
+            self.emit(MarketCreated {
+                market_id: market_id,
+                creator: caller,
+                title: title,
+                start_time: start_time,
+                end_time: end_time,
+            });
 
             market_id
         }
@@ -248,7 +248,7 @@ mod PredictionMarket {
             assert(!position.claimed, 'Already claimed');
 
             let winning_outcome = outcome.unwrap().winning_outcome;
-            let mut winnings = 0_u256;
+            let mut winnings = Uint256::from(0);
 
             if position.outcome_index == winning_outcome {
                 // Calculate winnings based on share of winning pool

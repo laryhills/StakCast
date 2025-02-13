@@ -2,8 +2,7 @@ use starknet::ContractAddress;
 use starknet::get_caller_address;
 use starknet::testing::{set_contract_address, set_caller_address, set_block_timestamp};
 
-use contracts::src::interface::{IMarketValidator, IPredictionMarket};
-use contracts::src::market_validator::MarketValidator;
+use stakcast::interface::{IMarketValidator, IPredictionMarket};
 
 #[test]
 fn test_register_validator() {

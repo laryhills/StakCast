@@ -4,16 +4,19 @@ mod MarketValidator {
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
     use core::option::OptionTrait;
+    use starknet::storage::{
+        StoragePointerReadAccess, StoragePointerWriteAccess, Map,
+    };
 
     // Import the IMarketValidator and IERC20 interfaces
-    use super::interface::{IMarketValidator, IERC20};
+    use stakcast::interface::{IMarketValidator, IERC20, IERC20Dispatcher};
 
     #[storage]
     struct Storage {
         prediction_market: ContractAddress,
         validators: Map<ContractAddress, ValidatorInfo>,
         validator_count: u32,
-        min_stake: u256,
+        min_stake: core::integer::u256,
         resolution_timeout: u64,
     }
 
@@ -50,7 +53,7 @@ mod MarketValidator {
     #[derive(Drop, starknet::Event)]
     struct ValidatorSlashed {
         validator: ContractAddress,
-        amount: u256,
+        amount: core::integer::u256,
         reason: felt252,
     }
 
@@ -70,21 +73,28 @@ mod MarketValidator {
     #[external(v0)]
     #[abi (embed_v0)]
     impl MarketValidator of IMarketValidator<ContractState> {
-        fn register_validator(ref self: ContractState, stake: u256) {
+        fn register_validator(ref self: ContractState, stake: core::integer::u256) {
             let caller = get_caller_address();
             assert(stake >= self.min_stake.read(), 'Insufficient stake');
 
             // Transfer stake using the IERC20 interface
-            let stake_token = IERC20Dispatcher { contract_address: self.prediction_market.read().get_stake_token() };
-            let transfer_result = stake_token.transfer_from(caller, self.address, stake);
+            let mut stake_token = IERC20Dispatcher { contract_address: self.prediction_market.read().get_stake_token() };
+            let transfer_result = IERC20::transfer_from(ref stake_token, caller, self.contract_address(), stake);
             assert(transfer_result, 'Stake transfer failed');
 
             // Update validator info
-            let mut validator = self.validators.read(caller);
-            validator.stake += stake;
-            validator.markets_resolved = 0;
-            validator.accuracy_score = 100;
-            validator.active = true;
+            let mut validator = OptionTrait::unwrap_or(self.validators.get(caller), ValidatorInfo {
+                stake: 0,
+                markets_resolved: 0,
+                accuracy_score: 0,
+                active: false,
+            });
+            let updated_validator = ValidatorInfo {
+                stake: validator.stake + stake,
+                markets_resolved: 0,
+                accuracy_score: 100,
+                active: true,
+            };
             self.validators.write(caller, validator);
 
             self.validator_count.write(self.validator_count.read() + 1);
@@ -103,7 +113,7 @@ mod MarketValidator {
             assert(validator_info.active, 'Not an active validator');
 
             // Get prediction market contract
-            let prediction_market = IPredictionMarketDispatcher {
+            let mut prediction_market = IPredictionMarketDispatcher {
                 contract_address: self.prediction_market.read(),
             };
 
@@ -148,7 +158,7 @@ mod MarketValidator {
             assert(validator_info.stake >= amount, 'Insufficient stake');
 
             validator_info.stake -= amount;
-            if validator_info.stake < self.min_stake.read() {
+            if validator_info.stake < core::integer::u256_from_felt252(self.min_stake.read()) {
                 validator_info.active = false;
             }
             self.validators.write(validator, validator_info);
@@ -163,8 +173,20 @@ mod MarketValidator {
         fn get_validator_info(
             self: @ContractState,
             validator: ContractAddress,
-        ) -> ValidatorInfo {
-            self.validators.read(validator)
+        ) -> stakcast::interface::ValidatorInfo {
+            let info = self.validators.read(validator).unwrap_or(stakcast::interface::ValidatorInfo {
+                stake: 0,
+                markets_resolved: 0,
+                accuracy_score: 0,
+                active: false,
+            });
+
+            stakcast::interface::ValidatorInfo {
+                stake: info.stake,
+                markets_resolved: info.markets_resolved,
+                accuracy_score: info.accuracy_score,
+                active: info.active,
+            }
         }
 
         fn is_active_validator(
