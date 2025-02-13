@@ -1,10 +1,7 @@
 use starknet::ContractAddress;
-use starknet::get_caller_address;
-use starknet::get_block_timestamp;
-use core::option::OptionTrait;
 
 // Re-export data structures for external use
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct Market {
     creator: ContractAddress,
     title: felt252,
@@ -21,7 +18,7 @@ pub struct Market {
     validator: ContractAddress,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Copy, Serde, starknet::Store)]
 pub struct Position {
     amount: u256,
     outcome_index: u32,
@@ -29,6 +26,7 @@ pub struct Position {
 }
 
 #[derive(Drop, Copy, Serde, starknet::Store)]
+#[allow(starknet::store_no_default_variant)]
 pub enum MarketStatus {
     Active,
     Closed,
@@ -37,18 +35,26 @@ pub enum MarketStatus {
     Cancelled,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Copy, Serde, starknet::Store)]
 pub struct MarketOutcome {
     winning_outcome: u32,
     resolution_details: felt252,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct ValidatorInfo {
-    stake: u256,
-    markets_resolved: u32,
-    accuracy_score: u32,
-    active: bool,
+    pub stake: u256,
+    pub markets_resolved: u32,
+    pub accuracy_score: u32,
+    pub active: bool,
+}
+
+// Custom struct to replace the tuple (Market, MarketStatus, Option<MarketOutcome>)
+#[derive(Serde, starknet::Store)]
+pub struct MarketDetails {
+    pub market: Market,
+    pub status: MarketStatus,
+    pub outcome: Option<MarketOutcome>,
 }
 
 // Interface for Prediction Market operations
@@ -82,7 +88,7 @@ pub trait IPredictionMarket<TContractState> {
     fn get_market_details(
         self: @TContractState,
         market_id: u32,
-    ) -> (Market, MarketStatus, Option<MarketOutcome>);
+    ) -> MarketDetails;
 
     // Gets a user's position in a specific market
     fn get_user_position(
@@ -96,103 +102,4 @@ pub trait IPredictionMarket<TContractState> {
         self: @TContractState,
         market_id: u32,
     ) -> (u256, Array<u256>);
-}
-
-// Interface for Market Validator operations
-#[starknet::interface]
-pub trait IMarketValidator<TContractState> {
-    // Registers a new validator
-    fn register_validator(ref self: TContractState, stake: u256);
-
-    // Resolves a market
-    fn resolve_market(
-        ref self: TContractState,
-        market_id: u32,
-        winning_outcome: u32,
-        resolution_details: felt252,
-    );
-
-    // Slashes a validator for misbehavior
-    fn slash_validator(
-        ref self: TContractState,
-        validator: ContractAddress,
-        amount: u256,
-        reason: felt252,
-    );
-
-    // Gets information about a validator
-    fn get_validator_info(
-        self: @TContractState,
-        validator: ContractAddress,
-    ) -> ValidatorInfo;
-
-    // Checks if a validator is active
-    fn is_active_validator(
-        self: @TContractState,
-        validator: ContractAddress,
-    ) -> bool;
-}
-
-// Interface for ERC20 token operations
-#[starknet::interface]
-pub trait IERC20<TContractState> {
-    // Transfers tokens from the caller to another address
-    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256);
-
-    // Transfers tokens from one address to another on behalf of the caller
-    fn transfer_from(
-        ref self: TContractState,
-        sender: ContractAddress,
-        recipient: ContractAddress,
-        amount: u256,
-    );
-
-    // Gets the balance of an address
-    fn balance_of(self: @TContractState, owner: ContractAddress) -> u256;
-}
-
-// Events
-#[derive(Drop, starknet::Event)]
-pub struct MarketCreated {
-    pub market_id: u32,
-    pub creator: ContractAddress,
-    pub title: felt252,
-    pub start_time: u64,
-    pub end_time: u64,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct PositionTaken {
-    pub market_id: u32,
-    pub user: ContractAddress,
-    pub outcome_index: u32,
-    pub amount: u256,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct MarketResolved {
-    pub market_id: u32,
-    pub outcome: u32,
-    pub resolver: ContractAddress,
-    pub resolution_details: felt252,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct WinningsClaimed {
-    pub market_id: u32,
-    pub user: ContractAddress,
-    pub amount: u256,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct ValidatorRegistered {
-    pub validator: ContractAddress,
-    pub stake: u256,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct ValidatorSlashed {
-    pub validator: ContractAddress,
-    pub amount: u256,
-    pub reason: felt252,
 }
