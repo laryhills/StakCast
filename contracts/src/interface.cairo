@@ -1,6 +1,8 @@
 use starknet::ContractAddress;
+use core::array::ArrayTrait;
+use core::option::OptionTrait;
 
-// Re-export data structures for external use
+// Data Structures
 #[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct Market {
     creator: ContractAddress,
@@ -26,7 +28,6 @@ pub struct Position {
 }
 
 #[derive(Drop, Copy, Serde, starknet::Store)]
-#[allow(starknet::store_no_default_variant)]
 pub enum MarketStatus {
     Active,
     Closed,
@@ -49,18 +50,10 @@ pub struct ValidatorInfo {
     pub active: bool,
 }
 
-// Custom struct to replace the tuple (Market, MarketStatus, Option<MarketOutcome>)
-#[derive(Serde, starknet::Store)]
-pub struct MarketDetails {
-    pub market: Market,
-    pub status: MarketStatus,
-    pub outcome: Option<MarketOutcome>,
-}
-
-// Interface for Prediction Market operations
+// Interfaces
 #[starknet::interface]
 pub trait IPredictionMarket<TContractState> {
-    // Creates a new prediction market
+    // Market Operations
     fn create_market(
         ref self: TContractState,
         title: felt252,
@@ -73,7 +66,6 @@ pub trait IPredictionMarket<TContractState> {
         max_stake: u256,
     ) -> u32;
 
-    // Takes a position in a market
     fn take_position(
         ref self: TContractState,
         market_id: u32,
@@ -81,25 +73,112 @@ pub trait IPredictionMarket<TContractState> {
         amount: u256,
     );
 
-    // Claims winnings from a resolved market
     fn claim_winnings(ref self: TContractState, market_id: u32);
-
-    // Gets details of a specific market
+    
+    // Getters
     fn get_market_details(
         self: @TContractState,
         market_id: u32,
-    ) -> MarketDetails;
+    ) -> (Market, MarketStatus, Option<MarketOutcome>);
 
-    // Gets a user's position in a specific market
     fn get_user_position(
         self: @TContractState,
         user: ContractAddress,
         market_id: u32,
     ) -> Position;
 
-    // Gets statistics for a specific market
     fn get_market_stats(
         self: @TContractState,
         market_id: u32,
     ) -> (u256, Array<u256>);
+
+    // Administration
+    fn assign_validator(
+        ref self: TContractState,
+        market_id: u32,
+        validator: ContractAddress,
+    );
+
+    fn resolve_market(
+        ref self: TContractState,
+        market_id: u32,
+        winning_outcome: u32,
+        resolution_details: felt252,
+    );
+
+    fn dispute_market(
+        ref self: TContractState,
+        market_id: u32,
+        reason: felt252,
+    );
+
+    fn cancel_market(
+        ref self: TContractState,
+        market_id: u32,
+        reason: felt252,
+    );
+}
+
+#[starknet::interface]
+pub trait IMarketValidator<TContractState> {
+    // Validator Operations
+    fn register_validator(ref self: TContractState, stake: u256);
+    
+    fn resolve_market(
+        ref self: TContractState,
+        market_id: u32,
+        winning_outcome: u32,
+        resolution_details: felt252,
+    );
+
+    fn slash_validator(
+        ref self: TContractState,
+        validator: ContractAddress,
+        amount: u256,
+        reason: felt252,
+    );
+
+    // Getters
+    fn get_validator_info(
+        self: @TContractState,
+        validator: ContractAddress,
+    ) -> ValidatorInfo;
+
+    fn is_active_validator(
+        self: @TContractState,
+        validator: ContractAddress,
+    ) -> bool;
+
+    fn get_validators_array(
+        self: @TContractState,
+    ) -> Array<ContractAddress>;
+}
+
+#[starknet::interface]
+pub trait IERC20<TContractState> {
+    // Token Operations
+    fn transfer(
+        ref self: TContractState,
+        recipient: ContractAddress,
+        amount: u256,
+    ) -> bool;
+
+    fn transfer_from(
+        ref self: TContractState,
+        sender: ContractAddress,
+        recipient: ContractAddress,
+        amount: u256,
+    ) -> bool;
+
+    // Getters
+    fn balance_of(
+        self: @TContractState,
+        owner: ContractAddress,
+    ) -> u256;
+
+    fn allowance(
+        self: @TContractState,
+        owner: ContractAddress,
+        spender: ContractAddress,
+    ) -> u256;
 }
