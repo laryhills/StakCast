@@ -6,7 +6,7 @@ mod PredictionMarket {
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
     use openzeppelin::token::erc20::IERC20Dispatcher;
-    use super::{IMarketValidatorDispatcher, MarketStatus, Market, Position, MarketOutcome};
+    use stakcast::interface::{IMarketValidatorDispatcher, MarketStatus, Market, Position, MarketOutcome};
     use starknet::storage::{
         StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
     };

@@ -6,14 +6,14 @@ mod MarketValidator {
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
     use openzeppelin::token::erc20::IERC20Dispatcher;
-    use super::{IPredictionMarketDispatcher, ValidatorInfo};
+    use stakcast::interface::{IPredictionMarketDispatcher, ValidatorInfo as InterfaceValidatorInfo};
     use starknet::storage::{
         StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
     };
     #[storage]
     struct Storage {
         prediction_market: ContractAddress,
-        validators: Map<ContractAddress, ValidatorInfo>,
+        validators: Map<ContractAddress, LocalValidatorInfo>,
         validators_array: Array<ContractAddress>,
         min_stake: u256,
         resolution_timeout: u64,
@@ -21,7 +21,7 @@ mod MarketValidator {
     }
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
-    struct ValidatorInfo {
+    struct LocalValidatorInfo {
         stake: u256,
         markets_resolved: u32,
         accuracy_score: u32,
@@ -80,7 +80,7 @@ mod MarketValidator {
 
     #[external(v0)]
     #[abi(embed_v0)]
-    impl MarketValidatorImpl of super::IMarketValidator<ContractState> {
+    impl MarketValidatorImpl of stakcast::interfaceIMarketValidator<ContractState> {
         fn register_validator(ref self: ContractState, stake: u256) {
             let caller = get_caller_address();
             
@@ -109,7 +109,7 @@ mod MarketValidator {
                 self.validators_array.write(validators_array);
             }
 
-            let new_validator = ValidatorInfo {
+            let new_validator = LocalValidatorInfo {
                 stake: validator.stake + stake,
                 markets_resolved: validator.markets_resolved,
                 accuracy_score: validator.accuracy_score,
@@ -208,7 +208,7 @@ mod MarketValidator {
         fn get_validator_info(
             self: @ContractState,
             validator: ContractAddress,
-        ) -> ValidatorInfo {
+        ) -> LocalValidatorInfo {
             self.validators.read(validator)
         }
 

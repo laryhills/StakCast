@@ -28,6 +28,7 @@ pub struct Position {
 }
 
 #[derive(Drop, Copy, Serde, starknet::Store)]
+#[allow(starknet::store_no_default_variant)]
 pub enum MarketStatus {
     Active,
     Closed,
