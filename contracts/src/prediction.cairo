@@ -1,41 +1,48 @@
 #[starknet::contract]
 mod PredictionMarket {
+    // Imports
     use starknet::ContractAddress;
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
+    use starknet::get_contract_address; // Assumed available
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
-    use starknet::storage::{
-        StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map};
+    // Additional interface imports
+    use stakcast::interface::{
+        IPredictionMarket, IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait,
+        Market as IMarket, Position as IPosition, MarketStatus as IMarketStatus,
+        MarketOutcome as IMarketOutcome, MarketDetails as IMarketDetails,
     };
 
-    // Data Structures
+    // Local Data Structures
     #[derive(Drop, Serde, starknet::Store)]
     struct Market {
-        pub creator: ContractAddress,
-        pub title: felt252,
-        pub description: felt252,
-        pub category: felt252,
-        pub start_time: u64,
-        pub end_time: u64,
-        pub resolution_time: u64,
-        pub total_stake: u256,
-        pub min_stake: u256,
-        pub max_stake: u256,
-        pub validator: ContractAddress,
+        creator: ContractAddress,
+        title: felt252,
+        description: felt252,
+        category: felt252,
+        start_time: u64,
+        end_time: u64,
+        resolution_time: u64,
+        total_stake: u256,
+        min_stake: u256,
+        max_stake: u256,
+        num_outcomes: u32,
+        validator: ContractAddress,
     }
 
-    #[derive(Copy, Serde, starknet::Store)]
+    #[derive(Copy, Drop, Destruct, Serde, starknet::Store)]
     struct Position {
-        pub amount: u256,
-        pub outcome_index: u32,
-        pub claimed: bool,
+        amount: u256,
+        outcome_index: u32,
+        claimed: bool,
     }
 
-    #[derive(Drop, Copy, Serde, starknet::Store)]
+    #[derive(Drop, Copy, Serde, starknet::Store, PartialEq)]
     #[allow(starknet::store_no_default_variant)]
-    pub enum MarketStatus {
+    enum MarketStatus {
         Active,
         Closed,
         Resolved,
@@ -45,15 +52,64 @@ mod PredictionMarket {
 
     #[derive(Copy, Drop, Serde, starknet::Store)]
     struct MarketOutcome {
-        pub winning_outcome: u32,
-        pub resolution_details: felt252,
+        winning_outcome: u32,
+        resolution_details: felt252,
     }
 
     #[derive(Drop, Serde, starknet::Store)]
     struct MarketDetails {
-        pub market: Market,
-        pub status: MarketStatus,
-        pub outcome: Option<MarketOutcome>,
+        market: Market,
+        status: MarketStatus,
+        outcome: Option<MarketOutcome>,
+    }
+
+    // Conversion functions to adapt internal structures to interface types.
+    fn to_interface_market(m: Market) -> IMarket {
+        IMarket {
+            creator: m.creator,
+            title: m.title,
+            description: m.description,
+            category: m.category,
+            start_time: m.start_time,
+            end_time: m.end_time,
+            resolution_time: m.resolution_time,
+            total_stake: m.total_stake,
+            min_stake: m.min_stake,
+            max_stake: m.max_stake,
+            validator: m.validator,
+        }
+    }
+
+    fn to_interface_market_outcome(o: MarketOutcome) -> IMarketOutcome {
+        IMarketOutcome {
+            winning_outcome: o.winning_outcome,
+            resolution_details: o.resolution_details,
+        }
+    }
+
+    fn to_interface_market_details(md: MarketDetails) -> IMarketDetails {
+        IMarketDetails {
+            market: to_interface_market(md.market),
+            status: match md.status {
+                MarketStatus::Active => IMarketStatus::Active,
+                MarketStatus::Closed => IMarketStatus::Closed,
+                MarketStatus::Resolved => IMarketStatus::Resolved,
+                MarketStatus::Disputed => IMarketStatus::Disputed,
+                MarketStatus::Cancelled => IMarketStatus::Cancelled,
+            },
+            outcome: (match md.outcome {
+                Option::Some(o) => Option::Some(to_interface_market_outcome(o)),
+                Option::None => Option::None,
+            }),
+        }
+    }
+
+    fn to_interface_position(p: Position) -> IPosition {
+        IPosition {
+            amount: p.amount,
+            outcome_index: p.outcome_index,
+            claimed: p.claimed,
+        }
     }
 
     // Storage
@@ -62,55 +118,55 @@ mod PredictionMarket {
         markets: Map<u32, Market>,
         market_count: u32,
         positions: Map<(u32, ContractAddress), Position>,
-        market_outcomes: Map<(u32, u32), felt252>, // (market_id, outcome_index) -> outcome
-        stakes_per_outcome: Map<(u32, u32), u256>, // (market_id, outcome_index) -> stake
+        market_outcomes: Map<u32, MarketOutcome>,
+        stakes_per_outcome: Map<(u32, u32), u256>,
         platform_fee: u256,
         fee_collector: ContractAddress,
         stake_token: ContractAddress,
         market_validator: ContractAddress,
+        // Now stored as a primitive.
         validator_index: u32,
-        market_categories: Map<felt252, Array<u32>>,
         market_status: Map<u32, MarketStatus>,
     }
 
     // Events
     #[derive(Drop, starknet::Event)]
     struct MarketCreated {
-        pub market_id: u32,
-        pub creator: ContractAddress,
-        pub title: felt252,
-        pub start_time: u64,
-        pub end_time: u64,
+        market_id: u32,
+        creator: ContractAddress,
+        title: felt252,
+        start_time: u64,
+        end_time: u64,
     }
 
     #[derive(Drop, starknet::Event)]
     struct PositionTaken {
-        pub market_id: u32,
-        pub user: ContractAddress,
-        pub outcome_index: u32,
-        pub amount: u256,
+        market_id: u32,
+        user: ContractAddress,
+        outcome_index: u32,
+        amount: u256,
     }
 
     #[derive(Drop, starknet::Event)]
     struct MarketResolved {
-        pub market_id: u32,
-        pub outcome: u32,
-        pub resolver: ContractAddress,
-        pub resolution_details: felt252,
+        market_id: u32,
+        outcome: u32,
+        resolver: ContractAddress,
+        resolution_details: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
     struct WinningsClaimed {
-        pub market_id: u32,
-        pub user: ContractAddress,
-        pub amount: u256,
+        market_id: u32,
+        user: ContractAddress,
+        amount: u256,
     }
 
     #[derive(Drop, starknet::Event)]
     struct MarketDisputed {
-        pub market_id: u32,
-        pub disputer: ContractAddress,
-        pub reason: felt252,
+        market_id: u32,
+        disputer: ContractAddress,
+        reason: felt252,
     }
 
     #[event]
@@ -143,27 +199,32 @@ mod PredictionMarket {
     #[external(v0)]
     #[abi(embed_v0)]
     impl PredictionMarketImp of IPredictionMarket<ContractState> {
+        fn get_stake_token(self: @ContractState) -> ContractAddress {
+            self.stake_token.read()
+        }
+
         fn get_market_details(
             self: @ContractState,
             market_id: u32,
-        ) -> MarketDetails {
-            let market = self.markets.read(market_id);
-            let status = self.market_status.read(market_id);
-            let outcome = self.market_outcomes.read(market_id);
-
-            MarketDetails {
-                market,
-                status,
-                outcome,
-            }
+        ) -> IMarketDetails {
+            let market = self.markets.entry(market_id).read();
+            let status = self.market_status.entry(market_id).read();
+            let outcome = if status == MarketStatus::Resolved {
+                Option::Some(self.market_outcomes.entry(market_id).read())
+            } else {
+                Option::None
+            };
+            let details = MarketDetails { market, status, outcome };
+            to_interface_market_details(details)
         }
 
         fn get_user_position(
             self: @ContractState,
             user: ContractAddress,
             market_id: u32,
-        ) -> Position {
-            self.positions.read((market_id, user))
+        ) -> IPosition {
+            let pos = self.positions.entry((market_id, user)).read();
+            to_interface_position(pos)
         }
 
         fn create_market(
@@ -179,60 +240,42 @@ mod PredictionMarket {
         ) -> u32 {
             let caller = get_caller_address();
             let current_time = get_block_timestamp();
+            assert!(start_time > current_time, "Invalid start time");
+            assert!(end_time > start_time, "Invalid end time");
+            let outcomes_len: usize = ArrayTrait::len(@outcomes);
+            assert!(outcomes_len >= 2, "Minimum 2 outcomes required");
+            assert!(min_stake > 0, "Min stake must be > 0");
+            assert!(max_stake >= min_stake, "Max stake < min stake");
 
-            // Input validation
-            assert(start_time > current_time, 'Invalid start time');
-            assert(end_time > start_time, 'Invalid end time');
-            assert(outcomes.len() >= 2, 'Minimum 2 outcomes required');
-            assert(min_stake > 0, 'Min stake must be > 0');
-            assert(max_stake >= min_stake, 'Max stake < min stake');
-
-            // Get and increment market count
             let market_id = self.market_count.read() + 1;
             self.market_count.write(market_id);
 
-            // Store outcomes in Map
-            let mut i = 0;
-            while i < outcomes.len() {
-                self.market_outcomes.write((market_id, i), *outcomes.at(i));
-                self.stakes_per_outcome.write((market_id, i), 0); // Initialize stakes to 0
-                i += 1;
-            }
-
-            // Create market
             let market = Market {
                 creator: caller,
-                title,
-                description,
-                category,
-                start_time,
-                end_time,
-                resolution_time: end_time + 86400, // 24h resolution window
+                title: title,
+                description: description,
+                category: category,
+                start_time: start_time,
+                end_time: end_time,
+                resolution_time: end_time + 86400,
                 total_stake: 0,
-                min_stake,
-                max_stake,
-                validator: 0.into(), // Will be assigned by assign_validator
+                min_stake: min_stake,
+                max_stake: max_stake,
+                num_outcomes: outcomes_len.try_into().unwrap(),
+                validator:get_contract_address(),  // default placeholder
             };
 
-            // Write to storage
-            self.markets.write(market_id, market);
-            self.market_status.write(market_id, MarketStatus::Active);
+            self.markets.entry(market_id).write(market);
+            self.market_status.entry(market_id).write(MarketStatus::Active);
 
-            // Assign a random validator
             self.assign_validator(market_id);
 
-            // Update category index
-            let mut category_markets = self.market_categories.read(category);
-            category_markets.append(market_id);
-            self.market_categories.write(category, category_markets);
-
-            // Emit event
             self.emit(MarketCreated {
-                market_id,
+                market_id: market_id,
                 creator: caller,
-                title,
-                start_time,
-                end_time,
+                title: title,
+                start_time: start_time,
+                end_time: end_time,
             });
 
             market_id
@@ -245,82 +288,84 @@ mod PredictionMarket {
             amount: u256,
         ) {
             let caller = get_caller_address();
-            let market = self.markets.read(market_id);
+            let market = self.markets.entry(market_id).read();
             let current_time = get_block_timestamp();
+            assert!(amount >= market.min_stake, "Below min stake");
+            assert!(amount <= market.max_stake, "Above max stake");
+            assert!(outcome_index < market.num_outcomes, "Invalid outcome");
+            assert!(self.market_status.entry(market_id).read() == MarketStatus::Active, "Market not active");
+            assert!(current_time >= market.start_time, "Market not started");
+            assert!(current_time < market.end_time, "Market ended");
 
-            // Validation
-            assert(amount >= market.min_stake, 'Below min stake');
-            assert(amount <= market.max_stake, 'Above max stake');
-            assert(outcome_index < outcomes.len(), 'Invalid outcome');
-            assert(
-                self.market_status.read(market_id) == MarketStatus::Active,
-                'Market not active'
-            );
-            assert(current_time >= market.start_time, 'Market not started');
-            assert(current_time < market.end_time, 'Market ended');
-
-            // Transfer tokens
-            let stake_token = IERC20Dispatcher { 
-                contract_address: self.stake_token.read() 
+            let stake_token = ERC20ABIDispatcher {
+                contract_address: self.stake_token.read()
             };
-            stake_token.transfer_from(caller, self.contract_address(), amount);
+            let contract_addr = get_contract_address();
+            let success = stake_token.transfer_from(caller, contract_addr, amount);
+            assert!(success, "Token transfer failed");
 
-            // Update position
-            let mut position = self.positions.read((market_id, caller));
-            position.amount += amount;
-            position.outcome_index = outcome_index;
-            self.positions.write((market_id, caller), position);
+            let old_pos = self.positions.entry((market_id, caller)).read();
+            let new_pos = Position {
+                amount: old_pos.amount + amount,
+                outcome_index: outcome_index,
+                claimed: old_pos.claimed,
+            };
+            self.positions.entry((market_id, caller)).write(new_pos);
 
-            // Update market
-            let mut market = self.markets.read(market_id);
-            market.total_stake += amount;
-            market.stakes_per_outcome[outcome_index] += amount;
-            self.markets.write(market_id, market);
+            let new_total = market.total_stake + amount;
+            let new_market = Market { total_stake: new_total, ..market };
+            self.markets.entry(market_id).write(new_market);
+
+            let curr_stake = self.stakes_per_outcome.entry((market_id, outcome_index)).read();
+            self.stakes_per_outcome.entry((market_id, outcome_index))
+                .write(curr_stake + amount);
 
             self.emit(PositionTaken {
-                market_id,
+                market_id: market_id,
                 user: caller,
-                outcome_index,
-                amount,
+                outcome_index: outcome_index,
+                amount: amount,
             });
         }
 
         fn claim_winnings(ref self: ContractState, market_id: u32) {
             let caller = get_caller_address();
-            let market = self.markets.read(market_id);
-            let status = self.market_status.read(market_id);
-            let outcome = self.market_outcomes.read(market_id);
-            let mut position = self.positions.read((market_id, caller));
+            let market = self.markets.entry(market_id).read();
+            let status = self.market_status.entry(market_id).read();
+            let outcome_opt = if status == MarketStatus::Resolved {
+                Option::Some(self.market_outcomes.entry(market_id).read())
+            } else {
+                Option::None
+            };
+            let outcome = OptionTrait::unwrap(outcome_opt);
+            let old_pos = self.positions.entry((market_id, caller)).read();
+            assert!(old_pos.amount > 0, "No position to claim");
+            assert!(!old_pos.claimed, "Already claimed");
 
-            // Validation
-            assert(status == MarketStatus::Resolved, 'Market not resolved');
-            assert(outcome.is_some(), 'No resolution recorded');
-            assert(position.amount > 0, 'No position to claim');
-            assert(!position.claimed, 'Already claimed');
-
-            let winning_outcome = outcome.unwrap().winning_outcome;
+            let winning_outcome = outcome.winning_outcome;
             let mut winnings = 0;
-
-            if position.outcome_index == winning_outcome {
-                let total_winning_stake = market.stakes_per_outcome[winning_outcome];
-                winnings = (position.amount * market.total_stake) / total_winning_stake;
+            if old_pos.outcome_index == winning_outcome {
+                let tot_win_stake = self.stakes_per_outcome.entry((market_id, winning_outcome)).read();
+                winnings = (old_pos.amount * market.total_stake) / tot_win_stake;
                 let fee = (winnings * self.platform_fee.read()) / 10000;
-
-                let stake_token = IERC20Dispatcher { 
-                    contract_address: self.stake_token.read() 
+                let stake_token = ERC20ABIDispatcher {
+                    contract_address: self.stake_token.read()
                 };
-
                 if winnings > fee {
                     stake_token.transfer(caller, winnings - fee);
                     stake_token.transfer(self.fee_collector.read(), fee);
                 }
             }
 
-            position.claimed = true;
-            self.positions.write((market_id, caller), position);
+            let new_pos = Position {
+                amount: old_pos.amount,
+                outcome_index: old_pos.outcome_index,
+                claimed: true,
+            };
+            self.positions.entry((market_id, caller)).write(new_pos);
 
             self.emit(WinningsClaimed {
-                market_id,
+                market_id: market_id,
                 user: caller,
                 amount: winnings,
             });
@@ -333,39 +378,22 @@ mod PredictionMarket {
             resolution_details: felt252,
         ) {
             let caller = get_caller_address();
-            let market = self.markets.read(market_id);
+            let market = self.markets.entry(market_id).read();
             let current_time = get_block_timestamp();
-
-            // Validation
-            assert(
-                caller == market.validator,
-                'Only assigned validator can resolve'
-            );
-            assert(
-                current_time >= market.end_time,
-                'Market not yet ended'
-            );
-            assert(
-                current_time <= market.resolution_time,
-                'Resolution period expired'
-            );
-            assert(
-                winning_outcome < market.outcomes.len(),
-                'Invalid winning outcome'
-            );
-
-            self.market_outcomes.write(market_id, Option::Some(MarketOutcome {
-                winning_outcome,
-                resolution_details,
-            }));
-
-            self.market_status.write(market_id, MarketStatus::Resolved);
-
+            assert!(caller == market.validator, "Only assigned validator can resolve");
+            assert!(current_time >= market.end_time, "Market not yet ended");
+            assert!(current_time <= market.resolution_time, "Resolution period expired");
+            assert!(winning_outcome < market.num_outcomes, "Invalid winning outcome");
+            self.market_outcomes.entry(market_id).write(MarketOutcome {
+                winning_outcome: winning_outcome,
+                resolution_details: resolution_details,
+            });
+            self.market_status.entry(market_id).write(MarketStatus::Resolved);
             self.emit(MarketResolved {
-                market_id,
-                winning_outcome,
+                market_id: market_id,
+                outcome: winning_outcome,
                 resolver: caller,
-                resolution_details,
+                resolution_details: resolution_details,
             });
         }
 
@@ -373,8 +401,16 @@ mod PredictionMarket {
             self: @ContractState,
             market_id: u32,
         ) -> (u256, Array<u256>) {
-            let market = self.markets.read(market_id);
-            (market.total_stake, market.stakes_per_outcome)
+            let market = self.markets.entry(market_id).read();
+            let mut stakes: Array<u256> = ArrayTrait::new();
+            let outcomes_count = market.num_outcomes;
+            let mut i = 0;
+            while i < outcomes_count {
+                let stake_i = self.stakes_per_outcome.entry((market_id, i)).read();
+                stakes.append(stake_i);
+                i += 1;
+            };
+            (market.total_stake, stakes)
         }
 
         fn dispute_market(
@@ -383,15 +419,15 @@ mod PredictionMarket {
             reason: felt252,
         ) {
             let caller = get_caller_address();
-            assert(
-                self.market_status.read(market_id) == MarketStatus::Resolved,
-                'Market not resolved'
+            assert!(
+                self.market_status.entry(market_id).read() == MarketStatus::Resolved,
+                "Market not resolved"
             );
-            self.market_status.write(market_id, MarketStatus::Disputed);
+            self.market_status.entry(market_id).write(MarketStatus::Disputed);
             self.emit(MarketDisputed {
-                market_id,
+                market_id: market_id,
                 disputer: caller,
-                reason,
+                reason: reason,
             });
         }
 
@@ -401,37 +437,36 @@ mod PredictionMarket {
             reason: felt252,
         ) {
             let caller = get_caller_address();
-            let market = self.markets.read(market_id);
-            assert(
-                caller == market.creator,
-                'Only market creator can cancel'
-            );
-            assert(
-                self.market_status.read(market_id) == MarketStatus::Active,
-                'Market not active'
-            );
-            self.market_status.write(market_id, MarketStatus::Cancelled);
+            let market = self.markets.entry(market_id).read();
+            assert!(caller == market.creator, "Only market creator can cancel");
+            assert!(self.market_status.entry(market_id).read() == MarketStatus::Active, "Market not active");
+            self.market_status.entry(market_id).write(MarketStatus::Cancelled);
+        }
+
+        // Internal helper: assign a validator to the market.
+        fn assign_validator(ref self: ContractState, market_id: u32) {
+            let validator = self.get_random_validator();
+            let market = self.markets.entry(market_id).read();
+            let new_market = Market { validator: validator, ..market };
+            self.markets.entry(market_id).write(new_market);
         }
     }
 
-    // Internal Implementation
+    // Note: get_random_validator needs to update storage, so we use a mutable reference.
     #[generate_trait]
     impl InternalImpl of InternalTrait {
-        fn get_random_validator(self: @TContractState) -> ContractAddress {
+        fn get_random_validator(ref self: ContractState) -> ContractAddress {
             let validator_contract = IMarketValidatorDispatcher {
                 contract_address: self.market_validator.read()
             };
-            let validators = validator_contract.get_validators_array();
-
-            // Fallback to fee collector if no validators are registered
-            if validators.len() == 0 { // Explicitly use ArrayTrait::len
+            let validator_count = validator_contract.get_validator_count();
+            if validator_count == 0 {
                 return self.fee_collector.read();
             }
-
-            // Use validator_index to cycle through validators
-            let index = self.validator_index.read() % validators.len(); // Explicitly use ArrayTrait::len
-            self.validator_index.write(index + 1); // Increment for next assignment
-            validators[index]
+            let current_index = self.validator_index.read();
+            let index = current_index % validator_count;
+            self.validator_index.write(current_index + 1);
+            validator_contract.get_validator_by_index(index)
         }
     }
 }

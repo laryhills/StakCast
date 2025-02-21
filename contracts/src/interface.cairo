@@ -23,12 +23,12 @@ pub struct Market {
 struct Storage {
     markets: Map<u32, Market>,
     market_outcomes: Map<(u32, u32), felt252>, // (market_id, outcome_index) -> outcome
-    stakes_per_outcome: Map<(u32, u32), u256>, // (market_id, outcome_index) -> stake
-    admin: ContractAddress, // Admin address for access control
-    stake_token: ContractAddress, // Stake token address
+    stakes_per_outcome: Map<(u32, u32), u256>,    // (market_id, outcome_index) -> stake
+    admin: ContractAddress,                       // Admin address for access control
+    stake_token: ContractAddress,                 // Stake token address
 }
 
-#[derive(Copy, Serde, starknet::Store)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct Position {
     pub amount: u256,
     pub outcome_index: u32,
@@ -47,8 +47,8 @@ pub enum MarketStatus {
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct MarketOutcome {
-    winning_outcome: u32,
-    resolution_details: felt252,
+   pub winning_outcome: u32,
+   pub resolution_details: felt252,
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
@@ -169,9 +169,15 @@ pub trait IMarketValidator<TContractState> {
         validator: ContractAddress,
     ) -> bool;
 
-    fn get_validators_array(
+    // Instead of returning an array of validators,
+    // use this function to retrieve a validator by its index.
+    fn get_validator_by_index(
         self: @TContractState,
-    ) -> Array<ContractAddress>;
+        index: u32,
+    ) -> ContractAddress;
+
+    // Optionally, you can add a helper to retrieve the validator count.
+    fn get_validator_count(self: @TContractState) -> u32;
 }
 
 #[starknet::interface]
@@ -267,4 +273,3 @@ enum Event {
     WinningsClaimed: WinningsClaimed,
     MarketDisputed: MarketDisputed,
 }
-
