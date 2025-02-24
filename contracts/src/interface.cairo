@@ -1,34 +1,42 @@
 use starknet::ContractAddress;
-use starknet::get_caller_address;
-use starknet::get_block_timestamp;
+use core::array::ArrayTrait;
 use core::option::OptionTrait;
+use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map};
 
-// Re-export data structures for external use
-#[derive(Drop, Copy, Serde, starknet::Store)]
+// Data Structures
+#[derive(Drop, Serde, starknet::Store)]
 pub struct Market {
-    creator: ContractAddress,
-    title: felt252,
-    description: felt252,
-    category: felt252,
-    start_time: u64,
-    end_time: u64,
-    resolution_time: u64,
-    total_stake: u256,
-    outcomes: Array<felt252>,
-    stakes_per_outcome: Array<u256>,
-    min_stake: u256,
-    max_stake: u256,
-    validator: ContractAddress,
+    pub creator: ContractAddress,
+    pub title: felt252,
+    pub description: felt252,
+    pub category: felt252,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub resolution_time: u64,
+    pub total_stake: u256,
+    pub min_stake: u256,
+    pub max_stake: u256,
+    pub validator: ContractAddress,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[storage]
+struct Storage {
+    markets: Map<u32, Market>,
+    market_outcomes: Map<(u32, u32), felt252>, // (market_id, outcome_index) -> outcome
+    stakes_per_outcome: Map<(u32, u32), u256>,    // (market_id, outcome_index) -> stake
+    admin: ContractAddress,                       // Admin address for access control
+    stake_token: ContractAddress,                 // Stake token address
+}
+
+#[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct Position {
-    amount: u256,
-    outcome_index: u32,
-    claimed: bool,
+    pub amount: u256,
+    pub outcome_index: u32,
+    pub claimed: bool,
 }
 
 #[derive(Drop, Copy, Serde, starknet::Store)]
+#[allow(starknet::store_no_default_variant)]
 pub enum MarketStatus {
     Active,
     Closed,
@@ -37,24 +45,32 @@ pub enum MarketStatus {
     Cancelled,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct MarketOutcome {
-    winning_outcome: u32,
-    resolution_details: felt252,
+   pub winning_outcome: u32,
+   pub resolution_details: felt252,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct ValidatorInfo {
-    stake: u256,
-    markets_resolved: u32,
-    accuracy_score: u32,
-    active: bool,
+    pub stake: u256,
+    pub markets_resolved: u32,
+    pub accuracy_score: u32,
+    pub active: bool,
 }
 
-// Interface for Prediction Market operations
+// New Struct for Market Details
+#[derive(Drop, Serde, starknet::Store)]
+pub struct MarketDetails {
+    pub market: Market,
+    pub status: MarketStatus,
+    pub outcome: Option<MarketOutcome>,
+}
+
+// Interfaces
 #[starknet::interface]
 pub trait IPredictionMarket<TContractState> {
-    // Creates a new prediction market
+    // Market Operations
     fn create_market(
         ref self: TContractState,
         title: felt252,
@@ -67,7 +83,6 @@ pub trait IPredictionMarket<TContractState> {
         max_stake: u256,
     ) -> u32;
 
-    // Takes a position in a market
     fn take_position(
         ref self: TContractState,
         market_id: u32,
@@ -75,36 +90,35 @@ pub trait IPredictionMarket<TContractState> {
         amount: u256,
     );
 
-    // Claims winnings from a resolved market
     fn claim_winnings(ref self: TContractState, market_id: u32);
-
-    // Gets details of a specific market
+    
+    // Getters
     fn get_market_details(
         self: @TContractState,
         market_id: u32,
-    ) -> (Market, MarketStatus, Option<MarketOutcome>);
+    ) -> MarketDetails;
 
-    // Gets a user's position in a specific market
     fn get_user_position(
         self: @TContractState,
         user: ContractAddress,
         market_id: u32,
     ) -> Position;
 
-    // Gets statistics for a specific market
     fn get_market_stats(
         self: @TContractState,
         market_id: u32,
     ) -> (u256, Array<u256>);
-}
 
-// Interface for Market Validator operations
-#[starknet::interface]
-pub trait IMarketValidator<TContractState> {
-    // Registers a new validator
-    fn register_validator(ref self: TContractState, stake: u256);
+    fn get_stake_token(
+        self: @TContractState,
+    ) -> ContractAddress; // New function to get stake token address
 
-    // Resolves a market
+    // Administration
+    fn assign_validator(
+        ref self: TContractState,
+        market_id: u32,
+    );
+
     fn resolve_market(
         ref self: TContractState,
         market_id: u32,
@@ -112,7 +126,31 @@ pub trait IMarketValidator<TContractState> {
         resolution_details: felt252,
     );
 
-    // Slashes a validator for misbehavior
+    fn dispute_market(
+        ref self: TContractState,
+        market_id: u32,
+        reason: felt252,
+    );
+
+    fn cancel_market(
+        ref self: TContractState,
+        market_id: u32,
+        reason: felt252,
+    );
+}
+
+#[starknet::interface]
+pub trait IMarketValidator<TContractState> {
+    // Validator Operations
+    fn register_validator(ref self: TContractState, stake: u256);
+    
+    fn resolve_market(
+        ref self: TContractState,
+        market_id: u32,
+        winning_outcome: u32,
+        resolution_details: felt252,
+    );
+
     fn slash_validator(
         ref self: TContractState,
         validator: ContractAddress,
@@ -120,35 +158,55 @@ pub trait IMarketValidator<TContractState> {
         reason: felt252,
     );
 
-    // Gets information about a validator
+    // Getters
     fn get_validator_info(
         self: @TContractState,
         validator: ContractAddress,
     ) -> ValidatorInfo;
 
-    // Checks if a validator is active
     fn is_active_validator(
         self: @TContractState,
         validator: ContractAddress,
     ) -> bool;
+
+    // Instead of returning an array of validators,
+    // use this function to retrieve a validator by its index.
+    fn get_validator_by_index(
+        self: @TContractState,
+        index: u32,
+    ) -> ContractAddress;
+
+    // Optionally, you can add a helper to retrieve the validator count.
+    fn get_validator_count(self: @TContractState) -> u32;
 }
 
-// Interface for ERC20 token operations
 #[starknet::interface]
 pub trait IERC20<TContractState> {
-    // Transfers tokens from the caller to another address
-    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256);
+    // Token Operations
+    fn transfer(
+        ref self: TContractState,
+        recipient: ContractAddress,
+        amount: u256,
+    ) -> bool;
 
-    // Transfers tokens from one address to another on behalf of the caller
     fn transfer_from(
         ref self: TContractState,
         sender: ContractAddress,
         recipient: ContractAddress,
         amount: u256,
-    );
+    ) -> bool;
 
-    // Gets the balance of an address
-    fn balance_of(self: @TContractState, owner: ContractAddress) -> u256;
+    // Getters
+    fn balance_of(
+        self: @TContractState,
+        owner: ContractAddress,
+    ) -> u256;
+
+    fn allowance(
+        self: @TContractState,
+        owner: ContractAddress,
+        spender: ContractAddress,
+    ) -> u256;
 }
 
 // Events
@@ -159,6 +217,8 @@ pub struct MarketCreated {
     pub title: felt252,
     pub start_time: u64,
     pub end_time: u64,
+    pub min_stake: u256,
+    pub max_stake: u256,
 }
 
 #[derive(Drop, starknet::Event)]
@@ -195,4 +255,21 @@ pub struct ValidatorSlashed {
     pub validator: ContractAddress,
     pub amount: u256,
     pub reason: felt252,
+}
+
+#[derive(Copy, Drop, starknet::Event)]
+struct MarketDisputed {
+    pub market_id: u32,
+    pub disputer: ContractAddress,
+    pub reason: felt252,
+}
+
+#[event]
+#[derive(Drop, starknet::Event)]
+enum Event {
+    MarketCreated: MarketCreated,
+    PositionTaken: PositionTaken,
+    MarketResolved: MarketResolved,
+    WinningsClaimed: WinningsClaimed,
+    MarketDisputed: MarketDisputed,
 }

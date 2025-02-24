@@ -2,8 +2,8 @@ use starknet::ContractAddress;
 use starknet::get_caller_address;
 use starknet::testing::{set_contract_address, set_caller_address, set_block_timestamp};
 
-use contracts::src::interface::{IPredictionMarket, IERC20};
-use contracts::src::prediction_market::PredictionMarket;
+use stakcast::interface::{IPredictionMarket, IERC20};
+use stakcast::src::prediction_market::PredictionMarket;
 
 #[test]
 fn test_create_market() {
@@ -15,26 +15,26 @@ fn test_create_market() {
     );
 
     // Set the caller address
-    set_caller_address(ContractAddress { value: 789 });
+    set_caller_address(789);
 
     // Set the block timestamp
     set_block_timestamp(500);
 
     // Create a new market
-    let market_id = prediction_market.create_market(
+    let mut market_id = prediction_market.create_market(
         title: 'Test Market',
         description: 'This is a test market',
         category: 'Test',
         start_time: 1000,
         end_time: 2000,
-        outcomes: ['Yes', 'No'],
+        outcomes: Array::from(['Yes', 'No']),
         min_stake: 100,
         max_stake: 1000,
     );
 
     // Verify the market was created
     let (market, status, outcome) = prediction_market.get_market_details(market_id);
-    assert(market.creator == get_caller_address(), 'Incorrect creator');
+    assert(market.get_creator() == get_caller_address(), 'Incorrect creator');
     assert(market.title == 'Test Market', 'Incorrect title');
     assert(status == MarketStatus::Active, 'Market should be active');
 }
@@ -49,7 +49,7 @@ fn test_take_position() {
     );
 
     // Set the caller address
-    set_caller_address(ContractAddress { value: 789 });
+    set_caller_address(789);
 
     // Set the block timestamp
     set_block_timestamp(500);
@@ -67,7 +67,7 @@ fn test_take_position() {
     );
 
     // Take a position in the market
-    set_caller_address(ContractAddress { value: 999 });
+    set_caller_address(999);
     prediction_market.take_position(market_id, 0, 500);
 
     // Verify the position was taken
@@ -86,7 +86,7 @@ fn test_claim_winnings() {
     );
 
     // Set the caller address
-    set_caller_address(ContractAddress { value: 789 });
+    set_caller_address(789 );
 
     // Set the block timestamp
     set_block_timestamp(500);
@@ -104,15 +104,15 @@ fn test_claim_winnings() {
     );
 
     // Take a position in the market
-    set_caller_address(ContractAddress { value: 999 });
+    set_caller_address(999);
     prediction_market.take_position(market_id, 0, 500);
 
     // Resolve the market
-    set_caller_address(ContractAddress { value: 789 }); // Validator address
+    set_caller_address(789); // Validator address
     prediction_market.resolve_market(market_id, 0, 'Test resolution');
 
     // Claim winnings
-    set_caller_address(ContractAddress { value: 999 });
+    set_caller_address(999);
     prediction_market.claim_winnings(market_id);
 
     // Verify the position was claimed
