@@ -1,121 +1,169 @@
-use starknet::ContractAddress;
-use starknet::get_caller_address;
-use starknet::testing::{set_contract_address, set_caller_address, set_block_timestamp};
+#[cfg(test)]
+mod tests {
+    use stakcast::interface::{
+        IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait,
+        MarketStatus, MarketDetails
+    };
+    use starknet::testing::{set_caller_address, set_contract_address, set_block_timestamp};
+    use starknet::contract_address_const;
+    use starknet::syscalls::deploy_syscall;
+    use starknet::ContractAddress;
+    use stakcast::prediction::PredictionMarket;
 
-use stakcast::interface::{IPredictionMarket, IERC20};
-use stakcast::src::prediction_market::PredictionMarket;
+    // Helper function to deploy the PredictionMarket contract
+    fn deploy_prediction_market(
+        stake_token: ContractAddress,
+        fee_collector: ContractAddress,
+        platform_fee: u256,
+        market_validator: ContractAddress
+    ) -> IPredictionMarketDispatcher {
+        let (address, _) = deploy_syscall(
+            PredictionMarket::TEST_CLASS_HASH.try_into().unwrap(),
+            0,
+            array![
+                stake_token.into(),
+                fee_collector.into(),
+                platform_fee.low.into(),  // Split u256
+                platform_fee.high.into(),
+                market_validator.into()
+            ].span(),
+            false
+        ).unwrap();
+        
+        IPredictionMarketDispatcher { contract_address: address }
+    }
 
-#[test]
-fn test_create_market() {
-    // Deploy the PredictionMarket contract
-    let prediction_market = PredictionMarket::deploy(
-        stake_token_address: ContractAddress { value: 123 },
-        fee_collector: ContractAddress { value: 456 },
-        platform_fee: 100,
-    );
+    #[test]
+    fn test_create_market_and_get_details() {
+        // Dummy addresses
+        let stake_token = contract_address_const::<'stake_token'>();
+        let fee_collector = contract_address_const::<'fee_collector'>();
+        let market_validator = contract_address_const::<'market_validator'>();
+        let market_creator = contract_address_const::<'creator'>();
 
-    // Set the caller address
-    set_caller_address(789);
+        // Deploy contract
+        let contract = deploy_prediction_market(
+            stake_token,
+            fee_collector,
+            100_u256,
+            market_validator
+        );
 
-    // Set the block timestamp
-    set_block_timestamp(500);
+        // Set context
+        set_contract_address(contract.contract_address);
+        set_caller_address(market_creator);
+        set_block_timestamp(1000);
 
-    // Create a new market
-    let mut market_id = prediction_market.create_market(
-        title: 'Test Market',
-        description: 'This is a test market',
-        category: 'Test',
-        start_time: 1000,
-        end_time: 2000,
-        outcomes: Array::from(['Yes', 'No']),
-        min_stake: 100,
-        max_stake: 1000,
-    );
+        // Create market
+        let market_id = contract.create_market(
+            'Market Title',  // felt252 literal
+            'Market Desc',  // felt252 literal
+            'Category',    // felt252 literal
+            1100,  // start_time
+            1300,  // end_time
+            array!['Outcome 1', 'Outcome 2'],  // felt252 literals
+            50_u256,
+            500_u256
+        );
 
-    // Verify the market was created
-    let (market, status, outcome) = prediction_market.get_market_details(market_id);
-    assert(market.get_creator() == get_caller_address(), 'Incorrect creator');
-    assert(market.title == 'Test Market', 'Incorrect title');
-    assert(status == MarketStatus::Active, 'Market should be active');
-}
+        // Verify details
+        let details: MarketDetails = contract.get_market_details(market_id);
+        assert_eq!(details.status, MarketStatus::Active, "Incorrect status");
+        assert_eq!(details.market.creator, market_creator, "Creator mismatch");
+        assert_eq!(details.market.num_outcomes, 2, "Outcome count mismatch");
+    }
 
-#[test]
-fn test_take_position() {
-    // Deploy the PredictionMarket contract
-    let prediction_market = PredictionMarket::deploy(
-        stake_token_address: ContractAddress { value: 123 },
-        fee_collector: ContractAddress { value: 456 },
-        platform_fee: 100,
-    );
+    #[test]
+    #[should_panic(expected: "Market not ended")]
+    fn test_early_resolution() {
+        let contract = deploy_prediction_market(
+            contract_address_const::<'stake_token'>(),
+            contract_address_const::<'fee_collector'>(),
+            100_u256,
+            contract_address_const::<'validator'>()
+        );
 
-    // Set the caller address
-    set_caller_address(789);
+        // Create market
+        set_caller_address(contract_address_const::<'creator'>());
+        let market_id = contract.create_market(
+            'Test Market',  // felt252 literal
+            '',            // felt252 literal
+            '',            // felt252 literal
+            2000,  // start_time
+            3000,  // end_time
+            array!['A', 'B'],  // felt252 literals
+            10_u256,
+            1000_u256
+        );
 
-    // Set the block timestamp
-    set_block_timestamp(500);
+        // Attempt early resolution
+        set_block_timestamp(1500);
+        set_caller_address(contract_address_const::<'validator'>());
+        contract.resolve_market(
+            market_id,
+            0,
+            'Too early'  // felt252 literal
+        );
+    }
 
-    // Create a new market
-    let market_id = prediction_market.create_market(
-        title: 'Test Market',
-        description: 'This is a test market',
-        category: 'Test',
-        start_time: 1000,
-        end_time: 2000,
-        outcomes: ['Yes', 'No'],
-        min_stake: 100,
-        max_stake: 1000,
-    );
+    #[test]
+    fn test_full_market_lifecycle() {
+        let stake_token = contract_address_const::<'stake_token'>();
+        let fee_collector = contract_address_const::<'fee_collector'>();
+        let market_validator = contract_address_const::<'validator'>();
+        let contract = deploy_prediction_market(
+            stake_token,
+            fee_collector,
+            100_u256,
+            market_validator
+        );
 
-    // Take a position in the market
-    set_caller_address(999);
-    prediction_market.take_position(market_id, 0, 500);
+        // Create market
+        let creator = contract_address_const::<'creator'>();
+        set_caller_address(creator);
+        set_block_timestamp(1000);
+        let market_id = contract.create_market(
+            'BTC Price Prediction',  // felt252 literal
+            'BTC $100K by 2024?',   // felt252 literal
+            'Crypto',               // felt252 literal
+            1100,  // start_time
+            1300,   // end_time
+            array!['Yes', 'No'],    // felt252 literals
+            10_u256,
+            1000_u256
+        );
 
-    // Verify the position was taken
-    let position = prediction_market.get_user_position(get_caller_address(), market_id);
-    assert(position.amount == 500, 'Incorrect position amount');
-    assert(position.outcome_index == 0, 'Incorrect outcome index');
-}
+        // Take position
+        let user = contract_address_const::<'user'>();
+        set_caller_address(user);
+        contract.take_position(market_id, 0, 100_u256);
 
-#[test]
-fn test_claim_winnings() {
-    // Deploy the PredictionMarket contract
-    let prediction_market = PredictionMarket::deploy(
-        stake_token_address: ContractAddress { value: 123 },
-        fee_collector: ContractAddress { value: 456 },
-        platform_fee: 100,
-    );
+        // Verify position
+        let position = contract.get_user_position(user, market_id);
+        assert_eq!(position.amount, 100_u256, "Position amount mismatch");
+        assert!(!position.claimed, "Position should be unclaimed");
 
-    // Set the caller address
-    set_caller_address(789 );
+        // Resolve market
+        set_block_timestamp(1350);
+        set_caller_address(market_validator);
+        contract.resolve_market(
+            market_id,
+            0,
+            'Consensus reached'  // felt252 literal
+        );
 
-    // Set the block timestamp
-    set_block_timestamp(500);
+        // Verify resolution
+        let details: MarketDetails = contract.get_market_details(market_id);
+        assert_eq!(details.status, MarketStatus::Resolved, "Market not resolved");
 
-    // Create a new market
-    let market_id = prediction_market.create_market(
-        title: 'Test Market',
-        description: 'This is a test market',
-        category: 'Test',
-        start_time: 1000,
-        end_time: 2000,
-        outcomes: ['Yes', 'No'],
-        min_stake: 100,
-        max_stake: 1000,
-    );
+        assert!(details.outcome.is_some(), "Missing outcome details");
 
-    // Take a position in the market
-    set_caller_address(999);
-    prediction_market.take_position(market_id, 0, 500);
+        // Claim winnings
+        set_caller_address(user);
+        contract.claim_winnings(market_id);
 
-    // Resolve the market
-    set_caller_address(789); // Validator address
-    prediction_market.resolve_market(market_id, 0, 'Test resolution');
-
-    // Claim winnings
-    set_caller_address(999);
-    prediction_market.claim_winnings(market_id);
-
-    // Verify the position was claimed
-    let position = prediction_market.get_user_position(get_caller_address(), market_id);
-    assert(position.claimed, 'Winnings not claimed');
+        // Verify claim
+        let updated_position = contract.get_user_position(user, market_id);
+        assert!(updated_position.claimed, "Winnings not claimed");
+    }
 }

@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 use core::array::ArrayTrait;
 use core::option::OptionTrait;
-use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map};
+use starknet::storage::{Map};
 
 // Data Structures
 #[derive(Drop, Serde, starknet::Store)]
@@ -16,6 +16,7 @@ pub struct Market {
     pub total_stake: u256,
     pub min_stake: u256,
     pub max_stake: u256,
+    pub num_outcomes: u32,
     pub validator: ContractAddress,
 }
 
@@ -35,7 +36,7 @@ pub struct Position {
     pub claimed: bool,
 }
 
-#[derive(Drop, Copy, Serde, starknet::Store)]
+#[derive(Drop, Copy, Serde, starknet::Store, Debug, PartialEq)]
 #[allow(starknet::store_no_default_variant)]
 pub enum MarketStatus {
     Active,
@@ -55,8 +56,11 @@ pub struct MarketOutcome {
 pub struct ValidatorInfo {
     pub stake: u256,
     pub markets_resolved: u32,
+    pub disputed_resolutions: u32,  // Added
     pub accuracy_score: u32,
     pub active: bool,
+    pub last_resolution_time: u64,  // Added
+    pub validator_index: u32,       // Added
 }
 
 // New Struct for Market Details
@@ -71,6 +75,7 @@ pub struct MarketDetails {
 #[starknet::interface]
 pub trait IPredictionMarket<TContractState> {
     // Market Operations
+    #[external(v0)]
     fn create_market(
         ref self: TContractState,
         title: felt252,
@@ -83,6 +88,7 @@ pub trait IPredictionMarket<TContractState> {
         max_stake: u256,
     ) -> u32;
 
+    #[external(v0)]
     fn take_position(
         ref self: TContractState,
         market_id: u32,
@@ -90,25 +96,30 @@ pub trait IPredictionMarket<TContractState> {
         amount: u256,
     );
 
+    #[external(v0)]
     fn claim_winnings(ref self: TContractState, market_id: u32);
     
     // Getters
+    #[external(v0)]
     fn get_market_details(
         self: @TContractState,
         market_id: u32,
     ) -> MarketDetails;
 
+    #[external(v0)]
     fn get_user_position(
         self: @TContractState,
         user: ContractAddress,
         market_id: u32,
     ) -> Position;
 
+    #[external(v0)]
     fn get_market_stats(
         self: @TContractState,
         market_id: u32,
     ) -> (u256, Array<u256>);
 
+    #[external(v0)]
     fn get_stake_token(
         self: @TContractState,
     ) -> ContractAddress; // New function to get stake token address
@@ -119,6 +130,7 @@ pub trait IPredictionMarket<TContractState> {
         market_id: u32,
     );
 
+    #[external(v0)]
     fn resolve_market(
         ref self: TContractState,
         market_id: u32,
@@ -132,6 +144,7 @@ pub trait IPredictionMarket<TContractState> {
         reason: felt252,
     );
 
+    #[external(v0)]
     fn cancel_market(
         ref self: TContractState,
         market_id: u32,
@@ -142,8 +155,10 @@ pub trait IPredictionMarket<TContractState> {
 #[starknet::interface]
 pub trait IMarketValidator<TContractState> {
     // Validator Operations
+    #[external(v0)]
     fn register_validator(ref self: TContractState, stake: u256);
     
+    #[external(v0)]
     fn resolve_market(
         ref self: TContractState,
         market_id: u32,
@@ -151,6 +166,7 @@ pub trait IMarketValidator<TContractState> {
         resolution_details: felt252,
     );
 
+    #[external(v0)]
     fn slash_validator(
         ref self: TContractState,
         validator: ContractAddress,
@@ -159,11 +175,13 @@ pub trait IMarketValidator<TContractState> {
     );
 
     // Getters
+    #[external(v0)]
     fn get_validator_info(
         self: @TContractState,
         validator: ContractAddress,
     ) -> ValidatorInfo;
 
+    #[external(v0)]
     fn is_active_validator(
         self: @TContractState,
         validator: ContractAddress,
@@ -171,12 +189,14 @@ pub trait IMarketValidator<TContractState> {
 
     // Instead of returning an array of validators,
     // use this function to retrieve a validator by its index.
+    #[external(v0)]
     fn get_validator_by_index(
         self: @TContractState,
         index: u32,
     ) -> ContractAddress;
 
     // Optionally, you can add a helper to retrieve the validator count.
+    #[external(v0)]
     fn get_validator_count(self: @TContractState) -> u32;
 }
 
@@ -265,7 +285,7 @@ struct MarketDisputed {
 }
 
 #[event]
-#[derive(Drop, starknet::Event)]
+#[derive(Drop, starknet::Event,)]
 enum Event {
     MarketCreated: MarketCreated,
     PositionTaken: PositionTaken,
