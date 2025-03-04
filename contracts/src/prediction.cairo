@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod PredictionMarket {
+pub mod PredictionMarket {
     // Imports
     use starknet::ContractAddress;
     use starknet::get_caller_address;
@@ -76,6 +76,7 @@ mod PredictionMarket {
             total_stake: m.total_stake,
             min_stake: m.min_stake,
             max_stake: m.max_stake,
+            num_outcomes: m.num_outcomes,
             validator: m.validator,
         }
     }
@@ -181,7 +182,7 @@ mod PredictionMarket {
 
     // Constructor
     #[constructor]
-    fn constructor(
+    pub fn constructor(
         ref self: ContractState,
         stake_token_address: ContractAddress,
         fee_collector: ContractAddress,
