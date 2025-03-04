@@ -2,7 +2,6 @@ use starknet::ContractAddress;
 use starknet::get_caller_address;
 use starknet::get_block_timestamp;
 use starknet::get_contract_address; // Added missing import.
-use core::option::OptionTrait;
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use stakcast::interface::{
     IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, ValidatorInfo, IMarketValidator
@@ -10,7 +9,7 @@ use stakcast::interface::{
 use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map};
 
 #[starknet::contract]
-mod MarketValidator {
+pub mod MarketValidator {
     use super::*;
 
     // Storage: Removed the array and introduced a mapping for index-based lookup.
@@ -75,7 +74,7 @@ mod MarketValidator {
 
     // Constructor
     #[constructor]
-    fn constructor(
+    pub fn constructor(
         ref self: ContractState,
         prediction_market: ContractAddress,
         min_stake: u256,
@@ -220,8 +219,11 @@ mod MarketValidator {
             ValidatorInfo {
                 stake: local_info.stake,
                 markets_resolved: local_info.markets_resolved,
+                disputed_resolutions: local_info.disputed_resolutions,
                 accuracy_score: local_info.accuracy_score,
                 active: local_info.active,
+                last_resolution_time: local_info.last_resolution_time,
+                validator_index: local_info.validator_index,
             }
         }
 
