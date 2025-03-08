@@ -12,27 +12,27 @@ import { Footer } from "./components/footer";
 //import { ThemeProvider } from "./components/theme-provider";
 
 export default function Home() {
-  // Add animation library
-  useEffect(() => {
-    const animateOnScroll = () => {
-      const elements = document.querySelectorAll(".animate-on-scroll");
+  // // Add animation library
+  // useEffect(() => {
+  //   const animateOnScroll = () => {
+  //     const elements = document.querySelectorAll(".animate-on-scroll");
 
-      elements.forEach((element) => {
-        const elementTop = element.getBoundingClientRect().top;
-        const elementVisible = 150;
+  //     elements.forEach((element) => {
+  //       const elementTop = element.getBoundingClientRect().top;
+  //       const elementVisible = 150;
 
-        if (elementTop < window.innerHeight - elementVisible) {
-          element.classList.add("animate-fade-in");
-        }
-      });
-    };
+  //       if (elementTop < window.innerHeight - elementVisible) {
+  //         element.classList.add("animate-fade-in");
+  //       }
+  //     });
+  //   };
 
-    window.addEventListener("scroll", animateOnScroll);
-    // Trigger once on load
-    animateOnScroll();
+  //   window.addEventListener("scroll", animateOnScroll);
+  //   // Trigger once on load
+  //   animateOnScroll();
 
-    return () => window.removeEventListener("scroll", animateOnScroll);
-  }, []);
+  //   return () => window.removeEventListener("scroll", animateOnScroll);
+  // }, []);
 
   return (
     // <ThemeProvider
