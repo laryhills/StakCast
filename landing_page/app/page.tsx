@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Header } from "./components/header";
 import { Hero } from "./components/hero";
 import { DashboardPreview } from "./components/dashboard-preview";
