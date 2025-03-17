@@ -1,49 +1,46 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-
 import { MarketCard } from "./components/ui";
 import { SearchX } from "lucide-react";
 import { DummyMarketType } from "./types";
 import axios from "axios";
+import Spinner from "./components/loading/Spinner"; 
 
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentCategory = searchParams.get("category") || "All";
-  const [allMarkets,setAllMarkets]=useState<DummyMarketType|[]>([])
-  // Safely handle undefined or empty markets
+  const [allMarkets, setAllMarkets] = useState<DummyMarketType[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Local loading state
 
   useEffect(() => {
-   
-      (async()=>{
-        try {
-          const res=await axios.get('/api/dummy_data/')
-          console.log(res);
-          setAllMarkets(res.data)
-        } catch (error) {
-          console.log(error)
-        }
-       
-        
-      })()
-      
-  }, []);
-  const markets: DummyMarketType[] = Array.isArray(allMarkets)
-    ? allMarkets
-    : [];
+    const fetchMarkets = async () => {
+      try {
+        const res = await axios.get("/api/dummy_data/");
+        setAllMarkets(res.data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsLoading(false); // Hide spinner after fetching (whether successful or not)
+      }
+    };
 
+    fetchMarkets();
+  }, []);
+
+  const markets: DummyMarketType[] = Array.isArray(allMarkets) ? allMarkets : [];
 
   const filteredMarkets =
     currentCategory === "All"
       ? markets
-      : markets.filter((market) =>
-          market?.categories?.includes(currentCategory)
-        );
+      : markets.filter((market) => market?.categories?.includes(currentCategory));
 
   return (
     <main className="p-4">
-      {filteredMarkets.length > 0 ? (
+      {isLoading ? ( // Show spinner if loading
+        <Spinner />
+      ) : filteredMarkets.length > 0 ? (
         <div className="md:flex flex-wrap md:grid-cols-2 gap-3 p-4">
           {filteredMarkets.map((market, index) => (
             <MarketCard
