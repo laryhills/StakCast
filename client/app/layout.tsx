@@ -6,7 +6,6 @@ import "primereact/resources/themes/lara-light-cyan/theme.css";
 import { Providers } from "./provider";
 import { StarknetProvider } from "./components/utils/Provider";
 import { AppProvider } from "./context/appContext";
-import LoadingProvider from "./components/loading/LoadingProvider"; // Import the LoadingProvider
 import { Suspense } from "react";
 
 const manrope = Manrope({
@@ -17,10 +16,10 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Stakcast",
   description: "Your crypto prediction market",
-  icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
-  },
+  icons:{
+    icon:'/logo.svg',
+    apple:'/logo.svg'
+  }
 };
 
 export default function RootLayout({
@@ -34,12 +33,10 @@ export default function RootLayout({
         <Suspense>
           <StarknetProvider>
             <AppProvider>
-              <LoadingProvider> {/* Add the LoadingProvider here */}
-                <Providers>
-                  <Header />
-                  {children}
-                </Providers>
-              </LoadingProvider>
+              <Providers>
+                <Header />
+                {children}
+              </Providers>
             </AppProvider>
           </StarknetProvider>
         </Suspense>
