@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${manrope.variable} antialiased bg-[#F8F8FF] text-gray-600`}>
+      <body className={`${manrope.className} antialiased bg-[white] text-gray-600`}>
         <Suspense>
           <StarknetProvider>
             <AppProvider>
