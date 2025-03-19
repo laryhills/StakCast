@@ -60,7 +60,7 @@ jobs:
         working-directory: client
 
       - name: Install dependencies for landing page
-        run: npm install
+        run: pnpm i
         working-directory: landing_page
 
       - name: Build landing page
