@@ -16,8 +16,7 @@ const Header = () => {
     if (status === "connected") {
       setIsConnected(true);
     }
- 
-  }, [status,isConnected]);
+  }, [status, isConnected]);
   const router = useRouter();
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -67,6 +66,8 @@ const Header = () => {
                 >
                   Dashboard
                 </Link>
+                {/* profile */}
+                <div className="px-5 py-5 rounded-full bg-blue-200"></div>
               </div>
             ) : (
               <button
