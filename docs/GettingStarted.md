@@ -34,9 +34,9 @@ pnpm install
 
 ---
 
-## 🌍 Step 3: Set Up Environment Variables
-Create a `.env` file in the root directory and add the necessary environment variables.  
-Refer to `.env.example` for guidance.
+## 🌍 Step 3: Set Up Environment Variables if exists
+Create a `.env` file in the root directory and add the necessary environment variables if env.example exists.  
+Refer to `.env.example` for guidance if exists.
 
 Example:
 ```env
@@ -48,7 +48,8 @@ NEXT_PUBLIC_API_URL=http://localhost:3000/api
 ## 🚀 Step 4: Start the Development Server
 Run the following command:
 ```bash
-pnpm run dev
+pnpm dev:landing #for landing page
+pnpm dev:client #for client application
 ```
 Then, open `http://localhost:3000` in your browser.
 

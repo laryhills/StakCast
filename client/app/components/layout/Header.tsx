@@ -16,8 +16,7 @@ const Header = () => {
     if (status === "connected") {
       setIsConnected(true);
     }
- 
-  }, [status,isConnected]);
+  }, [status, isConnected]);
   const router = useRouter();
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -35,8 +34,8 @@ const Header = () => {
             <Image
               src="/logo.svg"
               alt="Stakcast"
-              width={120}
-              height={40}
+              width={170}
+              height={170}
               onClick={() => router.push("/")}
             />
           </div>
@@ -67,6 +66,8 @@ const Header = () => {
                 >
                   Dashboard
                 </Link>
+                {/* profile */}
+                <div className="px-5 py-5 rounded-full bg-blue-200"></div>
               </div>
             ) : (
               <button
