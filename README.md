@@ -1,5 +1,5 @@
 # ⚠ Attention Contributors  
-Before making any contributions, please review our **[Contributors Quick Start](docs/gettingstarted.md)** and  **[Contributing Guidelines](docs/contributing.md)**   to ensure compliance with our standards and best practices. This will help keep StakCast's development smooth and efficient.  
+Before making any contributions, please review our **[Contributors Quick Start](docs/GettingStarted.md)** and  **[Contributing Guidelines](docs/CONTRIBUTING.md)**   to ensure compliance with our standards and best practices. This will help keep StakCast's development smooth and efficient.  
 
 Thank you for your support! 🚀  
 
