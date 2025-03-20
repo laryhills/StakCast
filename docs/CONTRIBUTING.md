@@ -18,41 +18,31 @@ Please follow this guide to ensure a smooth contribution process.
 ---
 
 ## 📜 Code of Conduct
-By contributing, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).  
+By contributing, you agree to have read our getting Started [Getting Started](docs/GettingStarted.md).  
 Please read it before making any contributions.
 
 ---
 
 ## 🔧 Getting Started
 Before contributing, ensure you have the following installed:
-- [Node.js](https://nodejs.org/) 
+- [Node.js](https://nodejs.org/)  
 - [Git](https://git-scm.com/)
 - A code editor (e.g., [VS Code](https://code.visualstudio.com/))
 - [Cairo Language](https://github.com/starkware-libs/cairo)
+- [pnpm](https://pnpm.io/)
+
+We use **pnpm workspaces** for package management and **Husky** for git hooks enforcement.
+
+For detailed setup instructions, refer to [GettingStarted.md](docs/GettingStarted.md).
 
 ---
 
 ## ⚙️ Setting Up the Development Environment
 1. **Fork the Repository**  
-   Click the "Fork" button at the top right of the repository page.
-
 2. **Clone Your Fork**  
-   ```bash
-   https://github.com/gear5labs/StakCast.git
-   cd stakcast
-   ```
-
 3. **Install Dependencies**  
-   ```bash
-   pnpm install
-   ```
-
 4. **Start the Development Server**  
-   ```bash
-   pnpm run dev
-   ```
-   Open `http://localhost:3000` in your browser to see the app running.
-
+   For detailed  instructions, refer to [GettingStarted.md](docs/GettingStarted.md).
 ---
 
 ## ⚡ Working on the Cairo Smart Contracts
@@ -78,14 +68,18 @@ Stakcast includes smart contracts written in [Cairo](https://cairo-lang.org/) fo
    snforge test
    ```
 
+---
+
 ## 🛠 Making Changes
-1. **Create a New Branch**  
+1. **Create a Feature Branch**  
+   We use **feature branches** for all new changes. Please create one before making any modifications:
    ```bash
    git checkout -b feature-branch-name
    ```
 
 2. **Make Your Changes**  
-   Write code, add tests if applicable, and update the documentation.
+   - Write code, add tests if applicable, and update the documentation.
+   - Ensure your changes follow the project's coding style.
 
 3. **Run Tests**  
    ```bash
@@ -97,6 +91,8 @@ Stakcast includes smart contracts written in [Cairo](https://cairo-lang.org/) fo
    git add .
    git commit -m "Describe your changes"
    ```
+
+Husky will run pre-commit hooks to enforce formatting and linting.
 
 ---
 
@@ -117,12 +113,14 @@ Stakcast includes smart contracts written in [Cairo](https://cairo-lang.org/) fo
 ---
 
 ## 🐛 Reporting Issues
-If you encounter a bug or have a suggestion, please [open an issue](https://github.com/gear5labs/StakCast.git/issues) and include:
-- A clear description of the problem
-- Steps to reproduce it
-- Screenshots or error messages (if applicable)
+If you encounter a bug or have a feature request, please [open an issue](https://github.com/gear5labs/StakCast.git/issues). Your issue should include:
+- A **clear description** of the problem or feature request.
+- **Why** the change is necessary.
+- Steps to reproduce the issue (if applicable).
+- Avoid unnecessary long, AI-generated descriptions—keep it concise and relevant.
+- When applying to an issue, mention your estimated **ETA**.
+- We expect a **draft PR** within **48 hours** of assignment, even if it's incomplete—this shows progress has started.
 
 ---
 
 Thank you for contributing to Stakcast! 🎉
-
