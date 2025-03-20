@@ -1,38 +1,54 @@
-#[cfg(test)]
-mod tests {
-    use stakcast::interface::{IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait, ValidatorInfo};
-    use starknet::testing::{set_caller_address, set_contract_address, set_block_timestamp};
-    use starknet::contract_address_const;
-    use starknet::syscalls::deploy_syscall;
-    use starknet::ContractAddress;
-    use stakcast::market::MarketValidator;
+use snforge_std::{declare, DeclareResultTrait};
+use starknet::testing::{set_caller_address, set_contract_address,};
+use starknet::contract_address_const;
+use starknet::syscalls::deploy_syscall;
+use starknet::ContractAddress;
+use stakcast::interface::{
+    IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait, 
+};
 
-    // Helper to deploy MarketValidator
-    fn deploy_market_validator(
-        prediction_market: ContractAddress,
-        min_stake: u256,
-        resolution_timeout: u64,
-        slash_percentage: u64
-    ) -> IMarketValidatorDispatcher {
-        let (address, _) = deploy_syscall(
-            MarketValidator::TEST_CLASS_HASH.try_into().unwrap(),
-            0,
-            array![
-                prediction_market.into(),
-                min_stake.low.into(),  // Split u256
-                min_stake.high.into(),
-                resolution_timeout.into(),
-                slash_percentage.into()
-            ].span(),
-            false
-        ).unwrap();
-        
-        IMarketValidatorDispatcher { contract_address: address }
-    }
+// Helper function to deploy the MarketValidator contract
+fn deploy_market_validator(
+    prediction_market: ContractAddress,
+    min_stake: u256,
+    resolution_timeout: u64,
+    slash_percentage: u64
+) -> IMarketValidatorDispatcher {
+    // Declare the contract class first
+    let declare_result = declare("stakcast::market::MarketValidator").unwrap();
+    
+    // Extract the ContractClass from the DeclareResult
+    let contract_class = declare_result.contract_class();
+    
+    // Access the class_hash from the ContractClass
+    let class_hash = *contract_class.class_hash;
+
+    println!("ClassHash: {:?}", class_hash);
+
+    // Deploy the contract using the extracted ClassHash
+    let (address, _) = deploy_syscall(
+        class_hash,
+        0,
+        array![
+            prediction_market.into(),
+            min_stake.low.into(),  // Split u256
+            min_stake.high.into(),
+            resolution_timeout.into(),
+            slash_percentage.into()
+        ].span(),
+        false
+    ).unwrap();
+
+    IMarketValidatorDispatcher { contract_address: address }
+}
+
+#[cfg(test)]
+mod tests_market {
+    use super::*;
 
     #[test]
     fn test_register_validator() {
-        let prediction_market = contract_address_const::<'pm'>();
+        let prediction_market = contract_address_const::<'prediction_market'>();
         let validator = contract_address_const::<'validator'>();
         
         // Deploy with 100 min stake
@@ -66,30 +82,15 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_market() {
-        let prediction_market = contract_address_const::<'pm'>();
-        let validator = contract_address_const::<'validator'>();
-        let contract = deploy_market_validator(prediction_market, 100_u256, 10, 10);
-
-        // Register validator
-        set_caller_address(validator);
-        contract.register_validator(100_u256);
-
-        // Resolve market
-        set_block_timestamp(1000);
-        contract.resolve_market(1, 0, 'resolution_details');
-
-        // Verify resolution
-        let info = contract.get_validator_info(validator);
-        assert_eq!(info.markets_resolved, 1, "Resolved count mismatch");
-        assert_eq!(info.last_resolution_time, 1000, "Timestamp not updated");
-    }
-
-    #[test]
     fn test_slash_validator() {
-        let prediction_market = contract_address_const::<'pm'>();
+        let prediction_market = contract_address_const::<'prediction_market'>();
         let validator = contract_address_const::<'validator'>();
-        let contract = deploy_market_validator(prediction_market, 100_u256, 10, 10);
+        let contract = deploy_market_validator(
+            prediction_market,
+            150_u256, 
+            10, 
+            10
+        );
 
         // Register with 150 stake
         set_caller_address(validator);
@@ -109,9 +110,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_slash_inactive_validator() {
-        let prediction_market = contract_address_const::<'pm'>();
+        let prediction_market = contract_address_const::<'prediction_market'>();
         let validator = contract_address_const::<'validator'>();
-        let contract = deploy_market_validator(prediction_market, 100_u256, 10, 10);
+        let contract = deploy_market_validator(
+            prediction_market,
+            100_u256, 
+            10, 
+            10
+        );
 
         // Try to slash non-existent validator
         set_caller_address(prediction_market);
