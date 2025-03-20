@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use stakcast::interface::{IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait, ValidatorInfo};
+    use stakcast::interface::{IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait};
     use starknet::testing::{set_caller_address, set_contract_address, set_block_timestamp};
     use starknet::contract_address_const;
     use starknet::syscalls::deploy_syscall;
@@ -12,21 +12,23 @@ mod tests {
         prediction_market: ContractAddress,
         min_stake: u256,
         resolution_timeout: u64,
-        slash_percentage: u64
+        slash_percentage: u64,
     ) -> IMarketValidatorDispatcher {
         let (address, _) = deploy_syscall(
             MarketValidator::TEST_CLASS_HASH.try_into().unwrap(),
             0,
             array![
                 prediction_market.into(),
-                min_stake.low.into(),  // Split u256
+                min_stake.low.into(), // Split u256
                 min_stake.high.into(),
                 resolution_timeout.into(),
-                slash_percentage.into()
-            ].span(),
-            false
-        ).unwrap();
-        
+                slash_percentage.into(),
+            ]
+                .span(),
+            false,
+        )
+            .unwrap();
+
         IMarketValidatorDispatcher { contract_address: address }
     }
 
@@ -34,14 +36,9 @@ mod tests {
     fn test_register_validator() {
         let prediction_market = contract_address_const::<'pm'>();
         let validator = contract_address_const::<'validator'>();
-        
+
         // Deploy with 100 min stake
-        let contract = deploy_market_validator(
-            prediction_market,
-            100_u256, 
-            10, 
-            10
-        );
+        let contract = deploy_market_validator(prediction_market, 100_u256, 10, 10);
 
         // Set context
         set_contract_address(contract.contract_address);
@@ -57,11 +54,7 @@ mod tests {
         assert_eq!(info.markets_resolved, 0, "Initial resolved markets should be 0");
 
         // Verify index mapping
-        assert_eq!(
-            contract.get_validator_by_index(0),
-            validator,
-            "Index mapping incorrect"
-        );
+        assert_eq!(contract.get_validator_by_index(0), validator, "Index mapping incorrect");
         assert_eq!(contract.get_validator_count(), 1, "Validator count mismatch");
     }
 

@@ -4,7 +4,7 @@ use starknet::get_block_timestamp;
 use starknet::get_contract_address; // Added missing import.
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use stakcast::interface::{
-    IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, ValidatorInfo, IMarketValidator
+    IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, ValidatorInfo, IMarketValidator,
 };
 use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map};
 
@@ -98,26 +98,31 @@ pub mod MarketValidator {
             // Ensure the provided stake meets the minimum.
             assert!(stake >= self.min_stake.read(), "Insufficient stake");
 
-            let pm = IPredictionMarketDispatcher { contract_address: self.prediction_market.read() };
+            let pm = IPredictionMarketDispatcher {
+                contract_address: self.prediction_market.read(),
+            };
             let stake_token_addr = pm.get_stake_token();
 
             let stake_token = IERC20Dispatcher { contract_address: stake_token_addr };
             // Use get_contract_address from Starknet.
-            assert!(stake_token.transfer_from(caller, get_contract_address(), stake),
-                "Stake transfer failed");
+            assert!(
+                stake_token.transfer_from(caller, get_contract_address(), stake),
+                "Stake transfer failed",
+            );
 
             let mut validator_info = self.validators.entry(caller).read();
             if !validator_info.active {
                 // Initialize the validator info if not already active.
-                validator_info = LocalValidatorInfo {
-                    stake: 0.into(),
-                    markets_resolved: 0,
-                    disputed_resolutions: 0,
-                    accuracy_score: 0,
-                    active: false,
-                    last_resolution_time: 0,
-                    validator_index: 0,
-                };
+                validator_info =
+                    LocalValidatorInfo {
+                        stake: 0.into(),
+                        markets_resolved: 0,
+                        disputed_resolutions: 0,
+                        accuracy_score: 0,
+                        active: false,
+                        last_resolution_time: 0,
+                        validator_index: 0,
+                    };
             }
 
             if !validator_info.active {
@@ -156,29 +161,32 @@ pub mod MarketValidator {
             }
 
             // Ensure sufficient time has passed since the last resolution.
-            assert!(current_time > validator_info.last_resolution_time + self.resolution_timeout.read(),
-                    "Too frequent resolutions");
+            assert!(
+                current_time > validator_info.last_resolution_time + self.resolution_timeout.read(),
+                "Too frequent resolutions",
+            );
 
             validator_info.markets_resolved += 1;
             validator_info.last_resolution_time = current_time;
 
             self.validators.entry(caller).write(validator_info);
 
-            let pm = IPredictionMarketDispatcher { contract_address: self.prediction_market.read() };
+            let pm = IPredictionMarketDispatcher {
+                contract_address: self.prediction_market.read(),
+            };
             pm.resolve_market(market_id, winning_outcome, resolution_details);
 
-            self.emit(MarketResolved { market_id, resolver: caller, resolution_time: current_time });
+            self
+                .emit(
+                    MarketResolved { market_id, resolver: caller, resolution_time: current_time },
+                );
         }
 
         fn slash_validator(
-            ref self: ContractState,
-            validator: ContractAddress,
-            amount: u256,
-            reason: felt252,
+            ref self: ContractState, validator: ContractAddress, amount: u256, reason: felt252,
         ) {
             // Only the prediction market contract can perform slashing.
-            assert!(get_caller_address() == self.prediction_market.read(),
-                    "Unauthorized slashing");
+            assert!(get_caller_address() == self.prediction_market.read(), "Unauthorized slashing");
 
             let mut validator_info = self.validators.entry(validator).read();
 
@@ -204,17 +212,16 @@ pub mod MarketValidator {
 
             self.validators.entry(validator).write(validator_info);
 
-            let pm = IPredictionMarketDispatcher { contract_address: self.prediction_market.read() };
+            let pm = IPredictionMarketDispatcher {
+                contract_address: self.prediction_market.read(),
+            };
             let stake_token = IERC20Dispatcher { contract_address: pm.get_stake_token() };
             stake_token.transfer(self.prediction_market.read(), slash_amount);
 
             self.emit(ValidatorSlashed { validator, amount: slash_amount, reason });
         }
 
-        fn get_validator_info(
-            self: @ContractState,
-            validator: ContractAddress,
-        ) -> ValidatorInfo {
+        fn get_validator_info(self: @ContractState, validator: ContractAddress) -> ValidatorInfo {
             let local_info = self.validators.entry(validator).read();
             ValidatorInfo {
                 stake: local_info.stake,
@@ -227,26 +234,18 @@ pub mod MarketValidator {
             }
         }
 
-        fn is_active_validator(
-            self: @ContractState,
-            validator: ContractAddress,
-        ) -> bool {
+        fn is_active_validator(self: @ContractState, validator: ContractAddress) -> bool {
             self.validators.entry(validator).read().active
         }
 
         // Implement missing trait items:
-        fn get_validator_by_index(
-            self: @ContractState,
-            index: u32,
-        ) -> ContractAddress {
+        fn get_validator_by_index(self: @ContractState, index: u32) -> ContractAddress {
             let validator_count = self.validator_count.read();
             assert!(index < validator_count, "Invalid validator index: {}", index);
             self.validators_by_index.entry(index).read()
         }
 
-        fn get_validator_count(
-            self: @ContractState,
-        ) -> u32 {
+        fn get_validator_count(self: @ContractState) -> u32 {
             self.validator_count.read()
         }
     }

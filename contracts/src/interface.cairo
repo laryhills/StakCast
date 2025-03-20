@@ -1,8 +1,5 @@
 use starknet::ContractAddress;
-use core::array::ArrayTrait;
-use core::option::OptionTrait;
 use starknet::storage::{Map};
-
 // Data Structures
 #[derive(Drop, Serde, starknet::Store)]
 pub struct Market {
@@ -24,9 +21,9 @@ pub struct Market {
 struct Storage {
     markets: Map<u32, Market>,
     market_outcomes: Map<(u32, u32), felt252>, // (market_id, outcome_index) -> outcome
-    stakes_per_outcome: Map<(u32, u32), u256>,    // (market_id, outcome_index) -> stake
-    admin: ContractAddress,                       // Admin address for access control
-    stake_token: ContractAddress,                 // Stake token address
+    stakes_per_outcome: Map<(u32, u32), u256>, // (market_id, outcome_index) -> stake
+    admin: ContractAddress, // Admin address for access control
+    stake_token: ContractAddress // Stake token address
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
@@ -48,19 +45,19 @@ pub enum MarketStatus {
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct MarketOutcome {
-   pub winning_outcome: u32,
-   pub resolution_details: felt252,
+    pub winning_outcome: u32,
+    pub resolution_details: felt252,
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct ValidatorInfo {
     pub stake: u256,
     pub markets_resolved: u32,
-    pub disputed_resolutions: u32,  // Added
+    pub disputed_resolutions: u32, // Added
     pub accuracy_score: u32,
     pub active: bool,
-    pub last_resolution_time: u64,  // Added
-    pub validator_index: u32,       // Added
+    pub last_resolution_time: u64, // Added
+    pub validator_index: u32 // Added
 }
 
 // New Struct for Market Details
@@ -89,35 +86,20 @@ pub trait IPredictionMarket<TContractState> {
     ) -> u32;
 
     #[external(v0)]
-    fn take_position(
-        ref self: TContractState,
-        market_id: u32,
-        outcome_index: u32,
-        amount: u256,
-    );
+    fn take_position(ref self: TContractState, market_id: u32, outcome_index: u32, amount: u256);
 
     #[external(v0)]
     fn claim_winnings(ref self: TContractState, market_id: u32);
-    
+
     // Getters
     #[external(v0)]
-    fn get_market_details(
-        self: @TContractState,
-        market_id: u32,
-    ) -> MarketDetails;
+    fn get_market_details(self: @TContractState, market_id: u32) -> MarketDetails;
 
     #[external(v0)]
-    fn get_user_position(
-        self: @TContractState,
-        user: ContractAddress,
-        market_id: u32,
-    ) -> Position;
+    fn get_user_position(self: @TContractState, user: ContractAddress, market_id: u32) -> Position;
 
     #[external(v0)]
-    fn get_market_stats(
-        self: @TContractState,
-        market_id: u32,
-    ) -> (u256, Array<u256>);
+    fn get_market_stats(self: @TContractState, market_id: u32) -> (u256, Array<u256>);
 
     #[external(v0)]
     fn get_stake_token(
@@ -125,31 +107,17 @@ pub trait IPredictionMarket<TContractState> {
     ) -> ContractAddress; // New function to get stake token address
 
     // Administration
-    fn assign_validator(
-        ref self: TContractState,
-        market_id: u32,
-    );
+    fn assign_validator(ref self: TContractState, market_id: u32);
 
     #[external(v0)]
     fn resolve_market(
-        ref self: TContractState,
-        market_id: u32,
-        winning_outcome: u32,
-        resolution_details: felt252,
+        ref self: TContractState, market_id: u32, winning_outcome: u32, resolution_details: felt252,
     );
 
-    fn dispute_market(
-        ref self: TContractState,
-        market_id: u32,
-        reason: felt252,
-    );
+    fn dispute_market(ref self: TContractState, market_id: u32, reason: felt252);
 
     #[external(v0)]
-    fn cancel_market(
-        ref self: TContractState,
-        market_id: u32,
-        reason: felt252,
-    );
+    fn cancel_market(ref self: TContractState, market_id: u32, reason: felt252);
 }
 
 #[starknet::interface]
@@ -157,43 +125,28 @@ pub trait IMarketValidator<TContractState> {
     // Validator Operations
     #[external(v0)]
     fn register_validator(ref self: TContractState, stake: u256);
-    
+
     #[external(v0)]
     fn resolve_market(
-        ref self: TContractState,
-        market_id: u32,
-        winning_outcome: u32,
-        resolution_details: felt252,
+        ref self: TContractState, market_id: u32, winning_outcome: u32, resolution_details: felt252,
     );
 
     #[external(v0)]
     fn slash_validator(
-        ref self: TContractState,
-        validator: ContractAddress,
-        amount: u256,
-        reason: felt252,
+        ref self: TContractState, validator: ContractAddress, amount: u256, reason: felt252,
     );
 
     // Getters
     #[external(v0)]
-    fn get_validator_info(
-        self: @TContractState,
-        validator: ContractAddress,
-    ) -> ValidatorInfo;
+    fn get_validator_info(self: @TContractState, validator: ContractAddress) -> ValidatorInfo;
 
     #[external(v0)]
-    fn is_active_validator(
-        self: @TContractState,
-        validator: ContractAddress,
-    ) -> bool;
+    fn is_active_validator(self: @TContractState, validator: ContractAddress) -> bool;
 
     // Instead of returning an array of validators,
     // use this function to retrieve a validator by its index.
     #[external(v0)]
-    fn get_validator_by_index(
-        self: @TContractState,
-        index: u32,
-    ) -> ContractAddress;
+    fn get_validator_by_index(self: @TContractState, index: u32) -> ContractAddress;
 
     // Optionally, you can add a helper to retrieve the validator count.
     #[external(v0)]
@@ -203,30 +156,16 @@ pub trait IMarketValidator<TContractState> {
 #[starknet::interface]
 pub trait IERC20<TContractState> {
     // Token Operations
-    fn transfer(
-        ref self: TContractState,
-        recipient: ContractAddress,
-        amount: u256,
-    ) -> bool;
+    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
 
     fn transfer_from(
-        ref self: TContractState,
-        sender: ContractAddress,
-        recipient: ContractAddress,
-        amount: u256,
+        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
     ) -> bool;
 
     // Getters
-    fn balance_of(
-        self: @TContractState,
-        owner: ContractAddress,
-    ) -> u256;
+    fn balance_of(self: @TContractState, owner: ContractAddress) -> u256;
 
-    fn allowance(
-        self: @TContractState,
-        owner: ContractAddress,
-        spender: ContractAddress,
-    ) -> u256;
+    fn allowance(self: @TContractState, owner: ContractAddress, spender: ContractAddress) -> u256;
 }
 
 // Events
@@ -285,7 +224,7 @@ struct MarketDisputed {
 }
 
 #[event]
-#[derive(Drop, starknet::Event,)]
+#[derive(Drop, starknet::Event)]
 enum Event {
     MarketCreated: MarketCreated,
     PositionTaken: PositionTaken,
