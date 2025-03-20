@@ -18,7 +18,7 @@ Please follow this guide to ensure a smooth contribution process.
 ---
 
 ## 📜 Code of Conduct
-By contributing, you agree to have read our getting Started [Getting Started](docs/GettingStarted.md).  
+By contributing, you agree to have read our getting Started [Getting Started](/GettingStarted.md).  
 Please read it before making any contributions.
 
 ---
@@ -33,7 +33,7 @@ Before contributing, ensure you have the following installed:
 
 We use **pnpm workspaces** for package management and **Husky** for git hooks enforcement.
 
-For detailed setup instructions, refer to [GettingStarted.md](docs/GettingStarted.md).
+For detailed setup instructions, refer to [GettingStarted.md](/GettingStarted.md).
 
 ---
 
@@ -42,7 +42,7 @@ For detailed setup instructions, refer to [GettingStarted.md](docs/GettingStarte
 2. **Clone Your Fork**  
 3. **Install Dependencies**  
 4. **Start the Development Server**  
-   For detailed  instructions, refer to [GettingStarted.md](docs/GettingStarted.md).
+   For detailed  instructions, refer to [GettingStarted.md](/GettingStarted.md).
 ---
 
 ## ⚡ Working on the Cairo Smart Contracts
