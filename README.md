@@ -1,3 +1,10 @@
+# ⚠ Attention Contributors  
+Before making any contributions, please review our **[Contributors Quick Start](docs/gettingstarted.md)** and  **[Contributing Guidelines](docs/contributing.md)**   to ensure compliance with our standards and best practices. This will help keep StakCast's development smooth and efficient.  
+
+Thank you for your support! 🚀  
+
+---
+
 # StakCast
 
 **Predict & Earn with StakCast**  
@@ -9,10 +16,10 @@ Stake STRK tokens, predict near-future events, and earn rewards. Join the decent
 - **Join Now** – Be part of the StakCast community.
 
 ## 📊 Key Metrics
-- **Trading Volume:** In Beta
-- **Predictions:** Join Now
-- **Community:** Live Soon
-- **Resolution Rate:** Coming Soon
+- **Trading Volume:** In Beta  
+- **Predictions:** Join Now  
+- **Community:** Live Soon  
+- **Resolution Rate:** Coming Soon  
 
 ## 🔥 Why Choose StakCast
 
@@ -48,4 +55,3 @@ Follow our updates and announcements to stay informed about new features and imp
 ---
 
 ### 🚀 Join the Future of Prediction Markets with StakCast!
-
