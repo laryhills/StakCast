@@ -7,9 +7,26 @@ on:
     branches: ["develop"]
 
 jobs:
+  build-contracts:
+    runs-on: ubuntu-latest
+    name: Build contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.9.2"
+
+      - name: Build contracts
+        run: scarb build
+        working-directory: contracts
+
   test:
     runs-on: ubuntu-latest
     name: tests
+    needs: build-contracts
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -26,22 +43,6 @@ jobs:
 
       - name: Run tests
         run: snforge test
-        working-directory: contracts
-
-  build-contracts:
-    runs-on: ubuntu-latest
-    name: Build contracts
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Scarb
-        uses: software-mansion/setup-scarb@v1
-        with:
-          scarb-version: "2.9.2"
-
-      - name: Build contracts
-        run: scarb build
         working-directory: contracts
 
   build-client:
