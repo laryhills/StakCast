@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
     use stakcast::interface::{
-        IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait,
-        MarketStatus, MarketDetails
+        IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, MarketStatus, MarketDetails,
     };
     use starknet::testing::{set_caller_address, set_contract_address, set_block_timestamp};
     use starknet::contract_address_const;
@@ -15,7 +14,7 @@ mod tests {
         stake_token: ContractAddress,
         fee_collector: ContractAddress,
         platform_fee: u256,
-        market_validator: ContractAddress
+        market_validator: ContractAddress,
     ) -> IPredictionMarketDispatcher {
         let (address, _) = deploy_syscall(
             PredictionMarket::TEST_CLASS_HASH.try_into().unwrap(),
@@ -23,13 +22,15 @@ mod tests {
             array![
                 stake_token.into(),
                 fee_collector.into(),
-                platform_fee.low.into(),  // Split u256
+                platform_fee.low.into(), // Split u256
                 platform_fee.high.into(),
-                market_validator.into()
-            ].span(),
-            false
-        ).unwrap();
-        
+                market_validator.into(),
+            ]
+                .span(),
+            false,
+        )
+            .unwrap();
+
         IPredictionMarketDispatcher { contract_address: address }
     }
 
@@ -43,10 +44,7 @@ mod tests {
 
         // Deploy contract
         let contract = deploy_prediction_market(
-            stake_token,
-            fee_collector,
-            100_u256,
-            market_validator
+            stake_token, fee_collector, 100_u256, market_validator,
         );
 
         // Set context
@@ -55,16 +53,17 @@ mod tests {
         set_block_timestamp(1000);
 
         // Create market
-        let market_id = contract.create_market(
-            'Market Title',  // felt252 literal
-            'Market Desc',  // felt252 literal
-            'Category',    // felt252 literal
-            1100,  // start_time
-            1300,  // end_time
-            array!['Outcome 1', 'Outcome 2'],  // felt252 literals
-            50_u256,
-            500_u256
-        );
+        let market_id = contract
+            .create_market(
+                'Market Title', // felt252 literal
+                'Market Desc', // felt252 literal
+                'Category', // felt252 literal
+                1100, // start_time
+                1300, // end_time
+                array!['Outcome 1', 'Outcome 2'], // felt252 literals
+                50_u256,
+                500_u256,
+            );
 
         // Verify details
         let details: MarketDetails = contract.get_market_details(market_id);
@@ -80,29 +79,27 @@ mod tests {
             contract_address_const::<'stake_token'>(),
             contract_address_const::<'fee_collector'>(),
             100_u256,
-            contract_address_const::<'validator'>()
+            contract_address_const::<'validator'>(),
         );
 
         // Create market
         set_caller_address(contract_address_const::<'creator'>());
-        let market_id = contract.create_market(
-            'Test Market',  // felt252 literal
-            '',            // felt252 literal
-            '',            // felt252 literal
-            2000,  // start_time
-            3000,  // end_time
-            array!['A', 'B'],  // felt252 literals
-            10_u256,
-            1000_u256
-        );
+        let market_id = contract
+            .create_market(
+                'Test Market', // felt252 literal
+                '', // felt252 literal
+                '', // felt252 literal
+                2000, // start_time
+                3000, // end_time
+                array!['A', 'B'], // felt252 literals
+                10_u256,
+                1000_u256,
+            );
 
         // Attempt early resolution
         set_block_timestamp(1500);
         set_caller_address(contract_address_const::<'validator'>());
-        contract.resolve_market(
-            market_id,
-            0,
-            'Too early'  // felt252 literal
+        contract.resolve_market(market_id, 0, 'Too early' // felt252 literal
         );
     }
 
@@ -112,26 +109,24 @@ mod tests {
         let fee_collector = contract_address_const::<'fee_collector'>();
         let market_validator = contract_address_const::<'validator'>();
         let contract = deploy_prediction_market(
-            stake_token,
-            fee_collector,
-            100_u256,
-            market_validator
+            stake_token, fee_collector, 100_u256, market_validator,
         );
 
         // Create market
         let creator = contract_address_const::<'creator'>();
         set_caller_address(creator);
         set_block_timestamp(1000);
-        let market_id = contract.create_market(
-            'BTC Price Prediction',  // felt252 literal
-            'BTC $100K by 2024?',   // felt252 literal
-            'Crypto',               // felt252 literal
-            1100,  // start_time
-            1300,   // end_time
-            array!['Yes', 'No'],    // felt252 literals
-            10_u256,
-            1000_u256
-        );
+        let market_id = contract
+            .create_market(
+                'BTC Price Prediction', // felt252 literal
+                'BTC $100K by 2024?', // felt252 literal
+                'Crypto', // felt252 literal
+                1100, // start_time
+                1300, // end_time
+                array!['Yes', 'No'], // felt252 literals
+                10_u256,
+                1000_u256,
+            );
 
         // Take position
         let user = contract_address_const::<'user'>();
@@ -146,10 +141,7 @@ mod tests {
         // Resolve market
         set_block_timestamp(1350);
         set_caller_address(market_validator);
-        contract.resolve_market(
-            market_id,
-            0,
-            'Consensus reached'  // felt252 literal
+        contract.resolve_market(market_id, 0, 'Consensus reached' // felt252 literal
         );
 
         // Verify resolution
