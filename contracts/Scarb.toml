@@ -20,8 +20,9 @@ test = "snforge test"
 [lib]
 path = "contracts/src/lib.cairo"
 
-[[target.cairo-test]]
-path = "contracts/src/test.cairo"
 
 [tool.scarb]
 allow-prebuilt-plugins = ["snforge_std"]
+
+[tool.snforge]
+contracts-path = "target/dev"
