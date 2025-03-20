@@ -48,7 +48,8 @@ NEXT_PUBLIC_API_URL=http://localhost:3000/api
 ## 🚀 Step 4: Start the Development Server
 Run the following command:
 ```bash
-pnpm run dev
+pnpm dev:landing //for landing page
+pnpm dev:client //for client application
 ```
 Then, open `http://localhost:3000` in your browser.
 
