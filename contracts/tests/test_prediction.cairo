@@ -1,12 +1,14 @@
-use snforge_std::{declare, DeclareResultTrait};
-use starknet::testing::{set_caller_address, set_contract_address};
+use snforge_std::{
+    declare, ContractClassTrait, DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
+use starknet::testing::set_contract_address;
 use starknet::contract_address_const;
-use starknet::syscalls::deploy_syscall;
 use starknet::ContractAddress;
 use stakcast::interface::{
     IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait,
     IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait,
-    MarketStatus, MarketDetails, ValidatorInfo
+    MarketStatus, MarketDetails,
 };
 
 // Helper function to deploy the PredictionMarket contract
@@ -14,27 +16,22 @@ fn deploy_prediction_market(
     stake_token: ContractAddress,
     fee_collector: ContractAddress,
     platform_fee: u256,
-    market_validator: ContractAddress
+    market_validator: ContractAddress,
 ) -> IPredictionMarketDispatcher {
-    // Declare the contract class first
-    let declare_result = declare("stakcast::prediction::PredictionMarket").unwrap();
+    // Declare the contract class
+    let declare_result = declare("PredictionMarket").unwrap();
     let contract_class = declare_result.contract_class();
-    let class_hash = *contract_class.class_hash;
-    println!("ClassHash for PredictionMarket: {:?}", class_hash);
+    // Prepare constructor arguments
+    let mut constructor_args = array![
+        stake_token.into(),
+        fee_collector.into(),
+        platform_fee.low.into(),  // Split u256
+        platform_fee.high.into(),
+        market_validator.into()
+    ];
 
-    // Deploy the contract using the extracted ClassHash
-    let (address, _) = deploy_syscall(
-        class_hash,
-        0,
-        array![
-            stake_token.into(),
-            fee_collector.into(),
-            platform_fee.low.into(),  // Split u256
-            platform_fee.high.into(),
-            market_validator.into()
-        ].span(),
-        false
-    ).unwrap();
+    // Deploy the contract
+    let (address, _) = contract_class.deploy(@constructor_args).unwrap();
 
     IPredictionMarketDispatcher { contract_address: address }
 }
@@ -44,33 +41,29 @@ fn deploy_market_validator(
     prediction_market: ContractAddress,
     min_stake: u256,
     resolution_timeout: u64,
-    slash_percentage: u64
+    slash_percentage: u64,
 ) -> IMarketValidatorDispatcher {
-    // Declare the contract class first
+    // Declare the contract class
     let declare_result = declare("stakcast::market::MarketValidator").unwrap();
     let contract_class = declare_result.contract_class();
-    let class_hash = *contract_class.class_hash;
-    println!("ClassHash for MarketValidator: {:?}", class_hash);
 
-    // Deploy the contract using the extracted ClassHash
-    let (address, _) = deploy_syscall(
-        class_hash,
-        0,
-        array![
-            prediction_market.into(),
-            min_stake.low.into(),  // Split u256
-            min_stake.high.into(),
-            resolution_timeout.into(),
-            slash_percentage.into()
-        ].span(),
-        false
-    ).unwrap();
+    // Prepare constructor arguments
+    let mut constructor_args = array![
+        prediction_market.into(),
+        min_stake.low.into(),  // Split u256
+        min_stake.high.into(),
+        resolution_timeout.into(),
+        slash_percentage.into()
+    ];
+
+    // Deploy the contract
+    let (address, _) = contract_class.deploy(@constructor_args).unwrap();
 
     IMarketValidatorDispatcher { contract_address: address }
 }
 
 #[cfg(test)]
-mod tests_prediction {
+mod tests {
     use super::*;
 
     #[test]
@@ -86,12 +79,15 @@ mod tests_prediction {
             stake_token,
             fee_collector,
             100_u256,
-            market_validator
+            market_validator,
         );
 
         // Set context
         set_contract_address(contract.contract_address);
-        set_caller_address(market_creator);
+        start_cheat_caller_address(contract.contract_address, market_creator);
+
+        // Spy on events (optional)
+        // let mut event_spy = spy_events();
 
         // Create market
         let market_id = contract.create_market(
@@ -102,8 +98,16 @@ mod tests_prediction {
             1300,           // end_time
             array!['Outcome 1', 'Outcome 2'],  // felt252 literals
             50_u256,
-            500_u256
+            500_u256,
         );
+
+        // Stop cheating caller address
+        stop_cheat_caller_address(contract.contract_address);
+
+        // Verify emitted events (optional)
+        // event_spy.assert_emitted(@array![
+        //     (market_id, market_creator, 'Market Title', 'Market Desc', 'Category', array!['Outcome 1', 'Outcome 2']),
+        // ]);
 
         // Verify details
         let details: MarketDetails = contract.get_market_details(market_id);
@@ -111,31 +115,37 @@ mod tests_prediction {
         assert_eq!(details.market.creator, market_creator, "Creator mismatch");
         assert_eq!(details.market.num_outcomes, 2, "Outcome count mismatch");
     }
-}
-
-#[cfg(test)]
-mod tests_market {
-    use super::*;
 
     #[test]
     fn test_register_validator() {
         let prediction_market = contract_address_const::<'prediction_market'>();
         let validator = contract_address_const::<'validator'>();
-        
+
         // Deploy with 100 min stake
         let contract = deploy_market_validator(
             prediction_market,
-            100_u256, 
-            10, 
-            10
+            100_u256,
+            10,
+            10,
         );
 
         // Set context
         set_contract_address(contract.contract_address);
-        set_caller_address(validator);
+        start_cheat_caller_address(contract.contract_address, validator);
+
+        // Spy on events (optional)
+        // let mut event_spy = spy_events();
 
         // Register with min stake
         contract.register_validator(100_u256);
+
+        // Stop cheating caller address
+        stop_cheat_caller_address(contract.contract_address);
+
+        // Verify emitted events (optional)
+        // event_spy.assert_emitted(@array![
+        //     (validator, 100_u256),
+        // ]);
 
         // Verify registration
         let info = contract.get_validator_info(validator);

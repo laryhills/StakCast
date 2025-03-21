@@ -5,7 +5,7 @@ import { MarketCard } from "./components/ui";
 import { SearchX } from "lucide-react";
 import { DummyMarketType } from "./types";
 import axios from "axios";
-import Spinner from "./components/loading/Spinner"; 
+import Spinner from "./components/ui/loading/Spinner"; 
 
 export default function Home() {
   const router = useRouter();
