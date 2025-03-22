@@ -6,6 +6,7 @@ import Categories from "../sections/Categories";
 import Link from "next/link";
 import { useAppContext } from "@/app/context/appContext";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "../utils/ThemeToggle";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,7 +23,6 @@ const Header = () => {
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
 
-    // Cleanup function (equivalent to onUnmounted)
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
@@ -45,7 +45,7 @@ const Header = () => {
     // <header className="border-b border-gray-100" >
     <header
       className={`border-b border-gray-100 w-full fixed top-0 left-0 right-0 z-10 transition-all duration-300 ${
-        isScrolled ? "bg-white" : "bg-white"
+        isScrolled ? "bg-white dark:bg-slate-950" : "bg-white dark:bg-slate-950"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -62,17 +62,20 @@ const Header = () => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex space-x-6">
-            <Link href="/dashboard" className="hover:text-blue-400">
-              Dashboard
-            </Link>
-            <Link href="/howitworks" className="hover:text-blue-400">
-              How It Works
-            </Link>
-            <a href="#about" className="hover:text-blue-400">
-              About Us
-            </a>
-          </nav>
+          <div className="flex gap-2">
+            <nav className="hidden md:flex space-x-6 self-center">
+              <Link href="/dashboard" className="hover:text-blue-400">
+                Dashboard
+              </Link>
+              <Link href="/howitworks" className="hover:text-blue-400">
+                How It Works
+              </Link>
+              <a href="#about" className="hover:text-blue-400">
+                About Us
+              </a>
+            </nav>
+            <ThemeToggle />
+          </div>
 
           {/* Wallet Section */}
           <div className="hidden md:block">

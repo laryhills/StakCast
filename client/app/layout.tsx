@@ -7,6 +7,7 @@ import { Providers } from "./provider";
 import { StarknetProvider } from "./components/utils/Provider";
 import { AppProvider } from "./context/appContext";
 import { Suspense } from "react";
+import { ThemeProvider } from "./context/ThemeContext";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -36,8 +37,10 @@ export default function RootLayout({
           <StarknetProvider>
             <AppProvider>
               <Providers>
-                <Header />
-                <main className="px-4 pb-4 pt-32 md:pt-36">{children}</main>
+                <ThemeProvider>
+                  <Header />
+                  <main className="px-4 pb-4 pt-32 md:pt-36">{children}</main>
+                </ThemeProvider>
               </Providers>
             </AppProvider>
           </StarknetProvider>
