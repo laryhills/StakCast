@@ -32,12 +32,16 @@ export default function RootLayout({
   
   return (
     <html lang="en">
-      <body className={`${manrope.className} antialiased bg-[white] text-gray-600`}>
+      <body
+        className={`${manrope.className} antialiased bg-[white] text-gray-600`}
+      >
         <Suspense>
+
        <StarknetConfig chains={chains} provider={providers} connectors={connectors}>
           {children}
         </StarknetConfig>
            
+
         </Suspense>
       </body>
     </html>
