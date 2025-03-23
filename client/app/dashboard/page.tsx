@@ -1,16 +1,25 @@
 "use client";
 import React, { useState } from "react";
-import { useAppContext } from "../context/appContext";
-import { Wallet, TrendingUp, PlusCircle, History, HelpCircle } from "lucide-react";
+// import { useAppContext } from "../context/appContext";
+import {
+  Wallet,
+  TrendingUp,
+  PlusCircle,
+  History,
+  HelpCircle,
+} from "lucide-react";
 import { DummyMarketType } from "../types";
-
-
+import { useAccount, useBalance } from "@starknet-react/core";
 
 const DashboardPage = () => {
-  const { address, status ,balance} = useAppContext();
+  // const { address, status ,balance} = useAppContext();
+  const { address, isConnected } = useAccount();
+
+  const { data } = useBalance({ address: address || undefined });
+  const balance = data?.formatted ? `${data.formatted} ${data.symbol}` : "";
   const [_markets, setMarkets] = useState<DummyMarketType[]>([]);
-  console.log(_markets)
-  const [newMarket, setNewMarket] = useState<Omit<DummyMarketType, 'id'>>({
+  console.log(_markets);
+  const [newMarket, setNewMarket] = useState<Omit<DummyMarketType, "id">>({
     name: "",
     image: "",
     totalRevenue: "",
@@ -19,17 +28,17 @@ const DashboardPage = () => {
     startTime: 0,
     endTime: 0,
     createdBy: address || "",
-    options: []
+    options: [],
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewMarket(prev => ({ ...prev, [name]: value }));
+    setNewMarket((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAddMarket = (e: React.FormEvent) => {
     e.preventDefault();
-    setMarkets(prev => [...prev, { ...newMarket, id: prev.length + 1 }]);
+    setMarkets((prev) => [...prev, { ...newMarket, id: prev.length + 1 }]);
     setNewMarket({
       name: "",
       image: "",
@@ -39,17 +48,21 @@ const DashboardPage = () => {
       startTime: 0,
       endTime: 0,
       createdBy: address || "",
-      options: []
+      options: [],
     });
   };
 
-  if (status !== "connected") {
-    console.log(status,'from here')
+  if (!isConnected) {
+    console.log(isConnected, "from here");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Wallet to View Dashboard</h1>
-          <p className="text-gray-600">Please connect your wallet to access your dashboard.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Connect Wallet to View Dashboard
+          </h1>
+          <p className="text-gray-600">
+            Please connect your wallet to access your dashboard.
+          </p>
         </div>
       </div>
     );
@@ -70,7 +83,7 @@ const DashboardPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatsCard
             title="Total Balance"
-            value={balance|| '0.00 ETH'}
+            value={balance || "0.00 ETH"}
             icon={<Wallet className="w-6 h-6" />}
             trend="+0.00%"
           />
@@ -194,7 +207,17 @@ const DashboardPage = () => {
   );
 };
 
-const StatsCard = ({ title, value, icon, trend }: { title: string; value: string; icon: React.ReactNode; trend: string }) => (
+const StatsCard = ({
+  title,
+  value,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  trend: string;
+}) => (
   <div className="bg-white rounded-2xl shadow-sm p-6">
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-gray-500 text-sm">{title}</h3>
@@ -209,7 +232,13 @@ const StatsCard = ({ title, value, icon, trend }: { title: string; value: string
   </div>
 );
 
-const DashboardCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const DashboardCard = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
   <div className="bg-white rounded-2xl shadow-sm">
     <div className="px-6 py-4 border-b border-gray-100">
       <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -218,7 +247,15 @@ const DashboardCard = ({ title, children }: { title: string; children: React.Rea
   </div>
 );
 
-const QuickActionButton = ({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) => (
+const QuickActionButton = ({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+}) => (
   <button
     onClick={onClick}
     className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
@@ -228,4 +265,4 @@ const QuickActionButton = ({ label, icon, onClick }: { label: string; icon: Reac
   </button>
 );
 
-export default DashboardPage; 
+export default DashboardPage;

@@ -1,3 +1,4 @@
+"use client"
 import { createContext, Dispatch, SetStateAction, useContext } from "react";
 import { DummyMarketType } from "../types";
 interface MarketContextType {

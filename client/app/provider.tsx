@@ -1,4 +1,4 @@
-"use client";
+"use client"
 import React, {  useEffect, } from "react";
 import { useConnect, useAccount } from "@starknet-react/core";
 
@@ -35,7 +35,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         console.log(status,address)
       }}
     })();
-  }, [address,status]);
+  }, [address,status, connectAsync, connectors]);
 
   return <>{children}</>;
 }
