@@ -1,30 +1,40 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Connector from "../utils/Connector";
+// import {Connectors} from "../utils/connectors/index";
 import Image from "next/image";
 import Categories from "../sections/Categories";
 import Link from "next/link";
-import { useAppContext } from "@/app/context/appContext";
+
 import { useRouter } from "next/navigation";
+import { useAccount, useConnect } from "@starknet-react/core";
+// import { WalletModal } from "../ui";
+import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [walletModal, setWalletModal] = useState<boolean>(false);
+  // const [walletModal, setWalletModal] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState(false);
-  const { status, address } = useAppContext();
+  const { address, status } = useAccount();
+  const { connectAsync, connectors } = useConnect();
   useEffect(() => {
     if (status === "connected") {
       setIsConnected(true);
     }
   }, [status, isConnected]);
   const router = useRouter();
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-  const toggleModal = () => {
-    setWalletModal(!walletModal);
-  };
 
+  const { starknetkitConnectModal } = useStarknetkitConnectModal({
+    connectors: connectors as StarknetkitConnector[],
+    modalTheme: "dark",
+  });
+
+  const authWalletHandler = async () => {
+    const { connector } = await starknetkitConnectModal();
+    if (!connector) {
+      return;
+    }
+    await connectAsync({ connector });
+  };
   return (
     <header className="border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,7 +82,7 @@ const Header = () => {
             ) : (
               <button
                 className="bg-yellow-600 text-white hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium"
-                onClick={toggleModal}
+                onClick={authWalletHandler}
               >
                 Connect Wallet
               </button>
@@ -82,7 +92,7 @@ const Header = () => {
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
-              onClick={toggleMenu}
+             onClick={()=> setIsMenuOpen(!isMenuOpen)}
               className="text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
             >
               <svg
@@ -129,7 +139,7 @@ const Header = () => {
             {status !== "connected" && (
               <button
                 className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white"
-                onClick={toggleModal}
+                onClick={authWalletHandler}
               >
                 Connect Wallet
               </button>
@@ -137,11 +147,7 @@ const Header = () => {
           </nav>
         </div>
       )}
-      {walletModal && (
-        <div>
-          <Connector />
-        </div>
-      )}
+
       <Categories />
     </header>
   );

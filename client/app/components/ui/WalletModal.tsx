@@ -1,17 +1,22 @@
 "use client";
 import React from "react";
 import { useConnect } from "@starknet-react/core";
-import { useAppContext } from "@/app/context/appContext";
+// import { useAppContext } from "@/app/context/appContext";
+// import { useAccount, useDisconnect } from "@starknet-react/core";
+import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
 
 const WalletModal = () => {
-  const { connectors } = useConnect();
-  const { connectWallet } = useAppContext();
+  const { connectAsync, connectors } = useConnect()
 
+  const { starknetkitConnectModal } = useStarknetkitConnectModal({
+    connectors: connectors as StarknetkitConnector[],
+    modalTheme: "light",
+  })
   return (
     <div className="p-6 max-w-md mx-auto  rounded-xl shadow-md space-y-4">
       <h2 className="text-xl font-semibold text-center">Connect Your Wallet</h2>
       <div className="space-y-2">
-        {connectors.map((connector, index) => (
+        {/* {connectors.map((connector, index) => (
           <div
             key={`connectWalletModal${connector.id}${index}`}
             onClick={() => connectWallet(connector)}
@@ -21,8 +26,21 @@ const WalletModal = () => {
               {connector.id.charAt(0).toUpperCase() + connector.id.slice(1)}
             </p>
           </div>
-        ))}
+        ))} */}
       </div>
+      <button
+        className="w-full justify-center"
+        onClick={async () => {
+          const { connector } = await starknetkitConnectModal();
+          if (!connector) {
+            return;
+          }
+          await connectAsync({ connector });
+        }}
+        
+      >
+        Starknetkit Modal
+      </button>
     </div>
   );
 };
