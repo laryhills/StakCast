@@ -1,3 +1,4 @@
+
 "use client"
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -6,6 +7,7 @@ import Spinner from './components/ui/loading/Spinner';
 import { MarketCard } from './components/ui';
 import { SearchX } from 'lucide-react';
 import { DummyMarketType } from './types';
+
 
 // Starknet integration imports
 // import {  publicProvider } from '@starknet-react/core';
@@ -52,6 +54,7 @@ const Home = () => {
         );
 
   return (
+
     // <StarknetConfig chains={chains} provider={providers} connectors={connectors}>
         <main className="p-4">
       <Providers>
@@ -92,3 +95,4 @@ const Home = () => {
 };
 
 export default Home;
+
