@@ -10,8 +10,31 @@ import { useRouter } from "next/navigation";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [walletModal, setWalletModal] = useState<boolean>(false);
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { status, address, disconnectWallet } = useAppContext();
+  const [isConnected, setIsConnected] = useState(false);
+
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  const handleScroll = () => {
+    setIsScrolled(window.scrollY > 50);
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+
+    // Cleanup function (equivalent to onUnmounted)
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []); // Empty dependency array means this runs once on mount
+
+  useEffect(() => {
+    if (status === "connected") {
+      setIsConnected(true);
+    }
+  }, [status, isConnected]);
   const router = useRouter();
 
   // Compute isConnected based on status
@@ -30,7 +53,12 @@ const Header = () => {
   };
 
   return (
-    <header className="border-b border-gray-100">
+    // <header className="border-b border-gray-100" >
+    <header
+      className={`border-b border-gray-100 w-full fixed top-0 left-0 right-0 z-10 transition-all duration-300 ${
+        isScrolled ? "bg-white" : "bg-white"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
