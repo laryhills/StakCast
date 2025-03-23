@@ -20,14 +20,7 @@ const manrope = Manrope({
   subsets: ["latin"],
 });
 
-// export const metadata: Metadata = {
-//   title: "Stakcast",
-//   description: "Your crypto prediction market",
-//   icons:{
-//     icon:'/logo.svg',
-//     apple:'/logo.svg'
-//   }
-// };
+
 
 export default function RootLayout({
   children,

@@ -1,18 +1,20 @@
 "use client";
 import React, { useEffect, useState } from "react";
-// import {Connectors} from "../utils/connectors/index";
+/* 
+import {Connectors} from "../utils/connectors/index";
+*/
 import Image from "next/image";
 import Categories from "../sections/Categories";
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
 import { useAccount, useConnect } from "@starknet-react/core";
-// import { WalletModal } from "../ui";
+/*  import { WalletModal } from "../ui";*/
 import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // const [walletModal, setWalletModal] = useState<boolean>(false);
+ /* const [walletModal, setWalletModal] = useState<boolean>(false);*/
   const [isConnected, setIsConnected] = useState(false);
   const { address, status } = useAccount();
   const { connectAsync, connectors } = useConnect();
