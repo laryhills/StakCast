@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Manrope } from "next/font/google";
+import { ThemeProvider } from "./contexts/ThemeContext";
 // const quicksand = Quicksand({
 //   variable: "--font-quicksand",
 //   subsets: ["latin"],
@@ -23,7 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${manrope.className}  antialiased `}>{children}</body>
+      <ThemeProvider>
+        <body className={`${manrope.className}  antialiased `}>{children}</body>
+      </ThemeProvider>
     </html>
   );
 }
