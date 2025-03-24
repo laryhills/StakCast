@@ -4,15 +4,15 @@ const CommentSection = () => {
   return (
     <div className="mt-8">
       <h2 className="text-xl font-semibold">Comments</h2>
-      <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
+      <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded-lg shadow-inner">
         <ul>
-          <li className="text-gray-700 py-2 border-b">
+          <li className="text-gray-700 dark:text-white py-2 border-b">
             User123: This market looks promising!
           </li>
-          <li className="text-gray-700 py-2 border-b">
+          <li className="text-gray-700 dark:text-white py-2 border-b">
             User456: I think the odds will shift soon.
           </li>
-          <li className="text-gray-700 py-2">User789: Any updates on this?</li>
+          <li className="text-gray-700 dark:text-white py-2">User789: Any updates on this?</li>
         </ul>
       </div>
       <div className="mt-4">
