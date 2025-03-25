@@ -41,11 +41,11 @@ export default function Home() {
         );
 
   return (
-    <>
+    <div className="">
       {isLoading ? ( // Show spinner if loading
         <Spinner />
       ) : filteredMarkets.length > 0 ? (
-        <div className="md:flex flex-wrap md:grid-cols-2 gap-3 p-4">
+        <div className="md:flex flex-wrap md:grid-cols-2 gap-3 p-4 dark:bg-slate-950">
           {filteredMarkets.map((market, index) => (
             <MarketCard
               key={index}
@@ -58,7 +58,7 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center dark:bg-slate-950 dark:text-white transition-colors duration-300">
           <SearchX className="w-16 h-16 text-gray-400 mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
             No Markets Found
@@ -70,6 +70,6 @@ export default function Home() {
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 }

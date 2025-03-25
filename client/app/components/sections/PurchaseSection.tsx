@@ -57,12 +57,12 @@ const PurchaseSection = () => {
 
       {/* Units Input and Total Price */}
       {selectedOption && (
-        <div className="mt-6 p-6 bg-white rounded-lg shadow-lg max-w-lg mx-auto">
-          <p className="text-xl font-semibold text-gray-800">
+        <div className="mt-6 p-6 bg-white dark:bg-slate-950 rounded-lg shadow-lg max-w-lg mx-auto">
+          <p className="text-xl font-semibold text-gray-800 dark:text-white">
             Selected Option:{" "}
             <span className="text-green-600">{selectedOption}</span>
           </p>
-          <p className="mt-2 text-lg text-gray-600">
+          <p className="mt-2 text-lg text-gray-600 dark:text-white">
             Price per unit:{" "}
             <span className="font-medium text-green-600">
               ${pricePerUnit.toFixed(2)}
@@ -79,7 +79,7 @@ const PurchaseSection = () => {
             />
           </div>
 
-          <p className="mt-4 text-lg font-medium text-gray-800">
+          <p className="mt-4 text-lg font-medium text-gray-800 dark:text-white">
             Total Price:{" "}
             <span className="text-green-600">
               ${units > 0 ? (units * pricePerUnit).toFixed(2) : "0.00"}

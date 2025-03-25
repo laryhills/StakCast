@@ -34,17 +34,17 @@ const MarketCard: React.FC<MarketCardProps> = ({
         /> */}
       </div>
       <div className="p-4 h-[14em] flex flex-col justify-between overflow-auto">
-        <h3 className="font-bold text-gray-800">{name}</h3>
-        <p className="text-sm text-gray-600 mt-2">
+        <h3 className="font-bold text-gray-800 dark:text-white">{name}</h3>
+        <p className="text-sm text-gray-600 dark:text-white mt-2">
           <span className="font-medium">Total Revenue:</span> {totalRevenue}
         </p>
         <div className="mt-2 space-y-2 overflow-auto text-sm">
           {options?.map((option, index) => (
             <div
               key={index}
-              className="flex items-center justify-between bg-gray-100 p-2 rounded-md"
+              className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-2 rounded-md"
             >
-              <span className="text-sm font-medium text-gray-800">
+              <span className="text-sm font-medium text-gray-800 dark:text-white">
                 {option.name}
               </span>
               <span className="text-sm font-bold text-blue-600">
