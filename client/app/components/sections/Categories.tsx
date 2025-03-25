@@ -34,7 +34,7 @@ const Categories = () => {
             className={`cursor-pointer px-4 py-2 text-sm font-medium ${
               currentCategory === category.name
                 ? "text-blue-500 border-b-2 border-blue-500"
-                : "text-gray-600 hover:text-black"
+                : "text-gray-600 dark:text-white hover:text-black"
             }`}
           >
             {category.name}
