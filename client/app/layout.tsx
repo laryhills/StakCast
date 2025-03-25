@@ -8,11 +8,15 @@ import "primereact/resources/themes/lara-light-cyan/theme.css";
 // import { StarknetProvider } from "./components/utils/Provider";
 // import { AppProvider } from "./context/appContext";
 import { Suspense } from "react";
+
 import { StarknetConfig, publicProvider } from "@starknet-react/core";
 import { mainnet, sepolia } from "@starknet-react/chains";
 // import { connectors } from "@/components/utils/connectors";
 import "./globals.css";
 import { connectors } from "./components/utils/connectors";
+
+
+import { ThemeProvider } from "./context/ThemeContext";
 
 
 const manrope = Manrope({
@@ -37,8 +41,11 @@ export default function RootLayout({
       >
         <Suspense>
 
+
        <StarknetConfig chains={chains} provider={providers} connectors={connectors}>
+             <ThemeProvider>
           {children}
+                  </ThemeProvider>
         </StarknetConfig>
            
 

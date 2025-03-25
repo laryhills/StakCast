@@ -108,7 +108,7 @@ console.log(handlePurchase)
         handleOptionSelect,
       }}
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="flex items-center space-x-4 mb-8">
@@ -116,13 +116,13 @@ console.log(handlePurchase)
               onClick={() => router.push("/")}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <ArrowLeft className="w-6 h-6 text-gray-600" />
+              <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-white" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {market.name}
               </h1>
-              <p className="text-gray-500 text-sm">Market ID: {market.id}</p>
+              <p className="text-gray-500 dark:text-white text-sm">Market ID: {market.id}</p>
             </div>
           </div>
 
@@ -131,7 +131,7 @@ console.log(handlePurchase)
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
               {/* Market Image */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-sm overflow-hidden">
                 <div className="relative h-64 w-full">
                   <Image
                     src={market.image}
@@ -143,7 +143,7 @@ console.log(handlePurchase)
               </div>
 
               {/* Tabs Navigation */}
-              <div className="bg-white rounded-2xl shadow-sm p-4">
+              <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-sm p-4">
                 <div className="flex space-x-4 border-b">
                   {tabs.map((tab) => (
                     <button
@@ -171,7 +171,7 @@ console.log(handlePurchase)
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-8">
+              <div className="bg-white  dark:bg-slate-800 rounded-2xl shadow-sm p-6 sticky top-8">
                 <PurchaseSection />
               </div>
             </div>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { ExternalLink, Menu, X } from "lucide-react";
 import Image from "next/image";
-// import { ThemeToggle } from "@/components/theme-toggle";
+import ThemeToggle from "./theme-toggle";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -67,7 +67,7 @@ export function Header() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            {/* <ThemeToggle /> */}
+            <ThemeToggle />
             <Button
               variant="ghost"
               className="transition-all duration-300 hover:-translate-y-0.5"
@@ -132,6 +132,7 @@ export function Header() {
                   <Link href="https://www.stakcast.com/">Get Started</Link>
                 </Button>
               </div>
+              <ThemeToggle />
             </nav>
           </div>
         )}
