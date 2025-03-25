@@ -55,6 +55,7 @@ const Home = () => {
 
   return (
 
+
     // <StarknetConfig chains={chains} provider={providers} connectors={connectors}>
         <main className="p-4">
       <Providers>
@@ -91,6 +92,7 @@ const Home = () => {
       </Providers>
         </main>
     // </StarknetConfig>
+
   );
 };
 

@@ -55,14 +55,12 @@ const DashboardPage = () => {
   if (!isConnected) {
     console.log(isConnected, "from here");
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Connect Wallet to View Dashboard
-          </h1>
-          <p className="text-gray-600">
-            Please connect your wallet to access your dashboard.
-          </p>
+
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Connect Wallet to View Dashboard</h1>
+          <p className="text-gray-600 dark:text-white">Please connect your wallet to access your dashboard.</p>
+
         </div>
       </div>
     );
