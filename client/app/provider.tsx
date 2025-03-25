@@ -5,9 +5,7 @@ import { useConnect, useAccount } from "@starknet-react/core";
 export function Providers({ children }: { children: React.ReactNode }) {
   const { connectors, connectAsync } = useConnect({});
   const {status,address}=useAccount()
-  // const { address, status, connector } = useAccount();
-
-  // const [connecting, setConnecting] = useState(true)
+ 
   useEffect(() => {
     const LS_connector = localStorage.getItem("connector");
    

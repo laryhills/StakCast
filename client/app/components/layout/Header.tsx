@@ -24,7 +24,7 @@ const Header = () => {
   const { address, status } = useAccount();
   const { connectAsync, connectors } = useConnect();
 
-  const { status, address } = useAppContext();
+  // const { status, address } = useAppContext();
 
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -50,15 +50,16 @@ const Header = () => {
 
   const { starknetkitConnectModal } = useStarknetkitConnectModal({
     connectors: connectors as StarknetkitConnector[],
-    modalTheme: "dark",
+    modalTheme: "system",
   });
 
   const authWalletHandler = async () => {
     const { connector } = await starknetkitConnectModal();
     if (!connector) {
+  
       return;
     }
-    await connectAsync({ connector });
+    await connectAsync({ connector }).then(()=> console.log("success")).catch((e)=> console.log(e));
   };
   return (
 

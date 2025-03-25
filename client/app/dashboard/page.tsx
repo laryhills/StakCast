@@ -12,7 +12,7 @@ import { DummyMarketType } from "../types";
 import { useAccount, useBalance } from "@starknet-react/core";
 
 const DashboardPage = () => {
-  // const { address, status ,balance} = useAppContext();
+
   const { address, isConnected } = useAccount();
 
   const { data } = useBalance({ address: address || undefined });
