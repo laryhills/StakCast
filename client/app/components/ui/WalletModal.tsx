@@ -33,13 +33,14 @@ const WalletModal = () => {
         onClick={async () => {
           const { connector } = await starknetkitConnectModal();
           if (!connector) {
+            console.log("User rejected to connect")
             return;
           }
-          await connectAsync({ connector });
+       await  connectAsync({ connector }).then(()=> console.log("success")).catch((e)=> console.log(e));
         }}
         
       >
-        Starknetkit Modal
+       connect wallet
       </button>
     </div>
   );
