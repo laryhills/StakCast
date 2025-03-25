@@ -24,8 +24,6 @@ const Header = () => {
   const { address, status } = useAccount();
   const { connectAsync, connectors } = useConnect();
 
-  const { status, address } = useAppContext();
-
   const [isScrolled, setIsScrolled] = useState(false);
 
   const handleScroll = () => {
