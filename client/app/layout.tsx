@@ -7,6 +7,7 @@ import { Providers } from "./provider";
 import { StarknetProvider } from "./components/utils/Provider";
 import { AppProvider } from "./context/appContext";
 import { Suspense } from "react";
+import { ThemeProvider } from "./context/ThemeContext";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -16,10 +17,10 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Stakcast",
   description: "Your crypto prediction market",
-  icons:{
-    icon:'/logo.svg',
-    apple:'/logo.svg'
-  }
+  icons: {
+    icon: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -29,13 +30,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${manrope.className} antialiased bg-[white] text-gray-600`}>
+      <body
+        className={`${manrope.className} antialiased bg-[white] text-gray-600`}
+      >
         <Suspense>
           <StarknetProvider>
             <AppProvider>
               <Providers>
-                <Header />
-                {children}
+                <ThemeProvider>
+                  <Header />
+                  <main className="px-4 pb-4 pt-32 md:pt-36">{children}</main>
+                </ThemeProvider>
               </Providers>
             </AppProvider>
           </StarknetProvider>
