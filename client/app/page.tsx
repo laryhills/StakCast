@@ -11,6 +11,7 @@ import Header from "./components/layout/Header";
 import { Providers } from "./provider";
 
 const Home = () => {
+  // const notify = () => toast("Wow so easy!");
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentCategory = searchParams.get("category") || "All";
@@ -45,8 +46,10 @@ const Home = () => {
 
   return (
     <main className="p-4">
+     
       <Providers>
         <Header />
+
         {isLoading ? (
           <Spinner />
         ) : filteredMarkets.length > 0 ? (

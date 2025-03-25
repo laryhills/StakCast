@@ -8,7 +8,7 @@ import Categories from "../sections/Categories";
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
-
+import {toast}  from "react-toastify"
 import { useAccount, useConnect } from "@starknet-react/core";
 /*  import { WalletModal } from "../ui";*/
 import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
@@ -59,7 +59,7 @@ const Header = () => {
   
       return;
     }
-    await connectAsync({ connector }).then(()=> console.log("success")).catch((e)=> console.log(e));
+    await connectAsync({ connector }).then(()=> toast.success("wallet connected")).catch((e)=> toast.error("user rejected", e));
   };
   return (
 
