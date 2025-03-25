@@ -5,7 +5,7 @@ import { MarketCard } from "./components/ui";
 import { SearchX } from "lucide-react";
 import { DummyMarketType } from "./types";
 import axios from "axios";
-import Spinner from "./components/ui/loading/Spinner"; 
+import Spinner from "./components/ui/loading/Spinner";
 
 export default function Home() {
   const router = useRouter();
@@ -29,19 +29,23 @@ export default function Home() {
     fetchMarkets();
   }, []);
 
-  const markets: DummyMarketType[] = Array.isArray(allMarkets) ? allMarkets : [];
+  const markets: DummyMarketType[] = Array.isArray(allMarkets)
+    ? allMarkets
+    : [];
 
   const filteredMarkets =
     currentCategory === "All"
       ? markets
-      : markets.filter((market) => market?.categories?.includes(currentCategory));
+      : markets.filter((market) =>
+          market?.categories?.includes(currentCategory)
+        );
 
   return (
-    <main className="p-4">
+    <div className="">
       {isLoading ? ( // Show spinner if loading
         <Spinner />
       ) : filteredMarkets.length > 0 ? (
-        <div className="md:flex flex-wrap md:grid-cols-2 gap-3 p-4">
+        <div className="md:flex flex-wrap md:grid-cols-2 gap-3 p-4 dark:bg-slate-950">
           {filteredMarkets.map((market, index) => (
             <MarketCard
               key={index}
@@ -54,7 +58,7 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center dark:bg-slate-950 dark:text-white transition-colors duration-300">
           <SearchX className="w-16 h-16 text-gray-400 mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
             No Markets Found
@@ -66,6 +70,6 @@ export default function Home() {
           </p>
         </div>
       )}
-    </main>
+    </div>
   );
 }
