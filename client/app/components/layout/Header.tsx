@@ -11,6 +11,7 @@ import ThemeToggle from "../utils/ThemeToggle";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [walletModal, setWalletModal] = useState<boolean>(false);
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { status, address, disconnectWallet } = useAppContext();
   const [isConnected, setIsConnected] = useState(false);
