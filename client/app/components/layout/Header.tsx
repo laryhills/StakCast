@@ -27,7 +27,7 @@ const Header = () => {
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   useEffect(() => {
     if (status === "connected") {
@@ -50,7 +50,6 @@ const Header = () => {
   };
 
   return (
-    // <header className="border-b border-gray-100" >
     <header
       className={`border-b border-gray-100 w-full fixed top-0 left-0 right-0 z-10 transition-all duration-300 ${
         isScrolled ? "bg-white dark:bg-slate-950" : "bg-white dark:bg-slate-950"
@@ -58,12 +57,12 @@ const Header = () => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+
           <div className="flex-shrink-0 cursor-pointer" onClick={() => router.push("/")}>
             <Image src="/logo.svg" alt="Stakcast" width={170} height={170} />
           </div>
 
-          {/* Navigation Links */}
+
           <div className="flex gap-2">
             <nav className="hidden md:flex space-x-6 self-center">
               <Link href="/dashboard" className="hover:text-blue-400">
@@ -79,7 +78,6 @@ const Header = () => {
             <ThemeToggle />
           </div>
 
-          {/* Wallet Section */}
           <div className="hidden md:block">
             {isConnected ? (
               <div className="flex items-center space-x-2">
@@ -93,7 +91,7 @@ const Header = () => {
                   Dashboard
                 </Link>
 
-                {/* User Profile Dropdown */}
+
                 <div className="relative">
                   <button
                     type="button"
@@ -160,7 +158,6 @@ const Header = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
               onClick={toggleMenu}
@@ -184,7 +181,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+
       {isMenuOpen && (
         <div className="md:hidden">
           <nav className="px-2 py-4 space-y-2">
