@@ -39,13 +39,18 @@
 //   const { data } = useBalance({ address: address || undefined });
 //   const balance = data?.formatted ? `${data.formatted} ${data.symbol}` : "";
 
-//   const showToast = (
-//     severity: "success" | "error" | "info",
-//     summary: string,
-//     detail: string
-//   ) => {
-//     toast.current?.show({ severity, summary, detail });
-//   };
+
+  const disconnectWallet = async () => {
+    try {
+      await disconnectAsync();
+      localStorage.removeItem("connector");
+      showToast("success", "Success", "Wallet disconnected successfully");
+    } catch (error) {
+      console.log(error);
+      showToast("error", "Error", "Failed to disconnect wallet");
+    }
+  };
+
 
 //   // connectWallet: if on mobile, use Argent Mobile connector with built-in modal; otherwise, use an injected connector.
 //   const connectWallet = async (connector: Connector) => {
