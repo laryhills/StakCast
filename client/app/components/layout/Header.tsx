@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import {toast}  from "react-toastify"
 import { useAccount, useConnect } from "@starknet-react/core";
 /*  import { WalletModal } from "../ui";*/
-import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
+import {  StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
 
 import ThemeToggle from "../utils/ThemeToggle";
 
@@ -27,10 +27,10 @@ const Header = () => {
 
   // const { status, address } = useAppContext();
 
-  const [walletModal, setWalletModal] = useState<boolean>(false);
+  // const [walletModal, setWalletModal] = useState<boolean>(false);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const { disconnectWallet } = useAppContext();
+  // const { disconnectWallet } = useAppContext();
  
 
 
@@ -58,13 +58,13 @@ const Header = () => {
 
 
 
-  const toggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
+  // const toggleMenu = () => {
+  //   setIsMenuOpen((prev) => !prev);
+  // };
 
-  const toggleModal = () => {
-    setWalletModal((prev) => !prev);
-  };
+  // const toggleModal = () => {
+  //   setWalletModal((prev) => !prev);
+  // };
 
   const toggleDropdown = () => {
     setIsDropdownOpen((prev) => !prev);
@@ -173,7 +173,7 @@ const Header = () => {
                           <button
                             className="block px-4 py-2 text-sm text-red-700 hover:bg-gray-100"
                             onClick={() => {
-                              disconnectWallet();
+                              // disconnectWallet();
                               setIsDropdownOpen(false);
                             }}
                           >
@@ -245,11 +245,11 @@ const Header = () => {
 
 
       {/* Wallet Connector Modal */}
-      {walletModal && (
+      {/* {walletModal && (
         <div>
           <Connector />
         </div>
-      )}
+      )} */}
 
 
       <Categories />
