@@ -1,35 +1,35 @@
-"use client";
-import React from "react";
+// "use client";
+// import React from "react";
 
-import { sepolia, mainnet } from "@starknet-react/chains";
-import {
-  StarknetConfig,
-  publicProvider,
-  argent,
-  braavos,
-  useInjectedConnectors,
-  voyager,
+// import { sepolia, mainnet } from "@starknet-react/chains";
+// import {
+//   StarknetConfig,
+//   publicProvider,
+//   argent,
+//   braavos,
+//   useInjectedConnectors,
+//   voyager,
  
-} from "@starknet-react/core";
+// } from "@starknet-react/core";
 
-export function StarknetProvider({ children }: { children: React.ReactNode }) {
+// export function StarknetProvider({ children }: { children: React.ReactNode }) {
  
-  const { connectors } = useInjectedConnectors({
+//   const { connectors } = useInjectedConnectors({
 
-    recommended: [argent(), braavos()],
-    //includeRecommended: "onlyIfNoConnectors",
-    order: "alphabetical",
-  });
+//     recommended: [argent(), braavos()],
+//     //includeRecommended: "onlyIfNoConnectors",
+//     order: "alphabetical",
+//   });
 
   
-  return (
-    <StarknetConfig
-      chains={[mainnet, sepolia]}
-      provider={publicProvider()}
-      connectors={connectors}
-      explorer={voyager}
-    >
-      {children}
-    </StarknetConfig>
-  );
-}
+//   return (
+//     <StarknetConfig
+//       chains={[mainnet, sepolia]}
+//       provider={publicProvider()}
+//       connectors={connectors}
+//       explorer={voyager}
+//     >
+//       {children}
+//     </StarknetConfig>
+//   );
+// }

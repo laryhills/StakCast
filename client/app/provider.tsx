@@ -1,13 +1,11 @@
-"use client";
+"use client"
 import React, {  useEffect, } from "react";
 import { useConnect, useAccount } from "@starknet-react/core";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const { connectors, connectAsync } = useConnect({});
   const {status,address}=useAccount()
-  // const { address, status, connector } = useAccount();
-
-  // const [connecting, setConnecting] = useState(true)
+ 
   useEffect(() => {
     const LS_connector = localStorage.getItem("connector");
    
@@ -35,7 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         console.log(status,address)
       }}
     })();
-  }, [address,status]);
+  }, [address,status, connectAsync, connectors]);
 
   return <>{children}</>;
 }
