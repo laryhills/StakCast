@@ -3,6 +3,9 @@ use starknet::get_caller_address;
 use starknet::get_block_timestamp;
 use starknet::get_contract_address; // Added missing import.
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+use openzeppelin::access::accesscontrol::AccessControlComponent;
+use openzeppelin::access::ownable::OwnableComponent;
+use openzeppelin::introspection::src5::SRC5Component;
 use stakcast::interface::{
     IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, ValidatorInfo, IMarketValidator,
 };
@@ -11,6 +14,31 @@ use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, Sto
 #[starknet::contract]
 pub mod MarketValidator {
     use super::*;
+
+
+    const ADMIN_ROLE: felt252 = selector!("ADMIN_ROLE");
+
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl OwnableCamelOnlyImpl =
+        OwnableComponent::OwnableCamelOnlyImpl<ContractState>;
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+
+
+    #[abi(embed_v0)]
+    impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
+
+
+    impl InternalImplOwnable = OwnableComponent::InternalImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
 
     // Storage: Removed the array and introduced a mapping for index-based lookup.
     #[storage]
@@ -22,6 +50,12 @@ pub mod MarketValidator {
         min_stake: u256,
         resolution_timeout: u64,
         slash_percentage: u64,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        accesscontrol: AccessControlComponent::Storage,
     }
 
     // Data Structures
@@ -70,7 +104,14 @@ pub mod MarketValidator {
         MarketResolved: MarketResolved,
         ValidatorSlashed: ValidatorSlashed,
         ValidatorActivated: ValidatorActivated,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
     }
+
 
     // Constructor
     #[constructor]
@@ -80,12 +121,16 @@ pub mod MarketValidator {
         min_stake: u256,
         resolution_timeout: u64,
         slash_percentage: u64,
+        owner: ContractAddress,
     ) {
         self.prediction_market.write(prediction_market);
         self.min_stake.write(min_stake);
         self.resolution_timeout.write(resolution_timeout);
         self.slash_percentage.write(slash_percentage);
         self.validator_count.write(0);
+        self.ownable.initializer(owner);
+        self.accesscontrol.initializer();
+        self.accesscontrol._grant_role(ADMIN_ROLE, owner);
     }
 
     // External Implementation
@@ -151,6 +196,9 @@ pub mod MarketValidator {
             winning_outcome: u32,
             resolution_details: felt252,
         ) {
+            // this function can only be called by the admin
+            self.accesscontrol.assert_only_role(ADMIN_ROLE);
+
             let caller = get_caller_address();
             let current_time = get_block_timestamp();
 
@@ -185,6 +233,9 @@ pub mod MarketValidator {
         fn slash_validator(
             ref self: ContractState, validator: ContractAddress, amount: u256, reason: felt252,
         ) {
+            // this function can only be called by the admin
+            self.accesscontrol.assert_only_role(ADMIN_ROLE);
+
             // Only the prediction market contract can perform slashing.
             assert!(get_caller_address() == self.prediction_market.read(), "Unauthorized slashing");
 
@@ -248,6 +299,12 @@ pub mod MarketValidator {
         fn get_validator_count(self: @ContractState) -> u32 {
             self.validator_count.read()
         }
+
+        fn set_role(
+            ref self: ContractState, recipient: ContractAddress, role: felt252, is_enable: bool,
+        ) {
+            self._set_role(recipient, role, is_enable);
+        }
     }
 
     #[generate_trait]
@@ -269,6 +326,18 @@ pub mod MarketValidator {
                 return 0;
             }
             ((total - validator_info.disputed_resolutions) * 100) / total
+        }
+
+        fn _set_role(
+            ref self: ContractState, recipient: ContractAddress, role: felt252, is_enable: bool,
+        ) {
+            self.accesscontrol.assert_only_role(ADMIN_ROLE);
+            assert!(role == ADMIN_ROLE, "role not enable");
+            if is_enable {
+                self.accesscontrol._grant_role(role, recipient);
+            } else {
+                self.accesscontrol._revoke_role(role, recipient);
+            }
         }
     }
 }
