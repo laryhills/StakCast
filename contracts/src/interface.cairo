@@ -151,6 +151,11 @@ pub trait IMarketValidator<TContractState> {
     // Optionally, you can add a helper to retrieve the validator count.
     #[external(v0)]
     fn get_validator_count(self: @TContractState) -> u32;
+
+    #[external(v0)]
+    fn set_role(
+        ref self: TContractState, recipient: ContractAddress, role: felt252, is_enable: bool,
+    );
 }
 
 #[starknet::interface]

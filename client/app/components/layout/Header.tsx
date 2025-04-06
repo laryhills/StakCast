@@ -1,61 +1,122 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Connector from "../utils/Connector";
+/* 
+import {Connectors} from "../utils/connectors/index";
+*/
 import Image from "next/image";
 import Categories from "../sections/Categories";
 import Link from "next/link";
-import { useAppContext } from "@/app/context/appContext";
+
 import { useRouter } from "next/navigation";
+import {toast}  from "react-toastify"
+import { useAccount, useConnect } from "@starknet-react/core";
+/*  import { WalletModal } from "../ui";*/
+import {  StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
+
+import ThemeToggle from "../utils/ThemeToggle";
+
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [walletModal, setWalletModal] = useState<boolean>(false);
+
+ /* const [walletModal, setWalletModal] = useState<boolean>(false);*/
   const [isConnected, setIsConnected] = useState(false);
-  const { status, address } = useAppContext();
+
+  const { address, status } = useAccount();
+  const { connectAsync, connectors } = useConnect();
+
+  // const { status, address } = useAppContext();
+
+  // const [walletModal, setWalletModal] = useState<boolean>(false);
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // const { disconnectWallet } = useAppContext();
+ 
+
+
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  const handleScroll = () => {
+    setIsScrolled(window.scrollY > 50);
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+
   useEffect(() => {
     if (status === "connected") {
       setIsConnected(true);
     }
   }, [status, isConnected]);
   const router = useRouter();
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-  const toggleModal = () => {
-    setWalletModal(!walletModal);
+
+
+
+  // const toggleMenu = () => {
+  //   setIsMenuOpen((prev) => !prev);
+  // };
+
+  // const toggleModal = () => {
+  //   setWalletModal((prev) => !prev);
+  // };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen((prev) => !prev);
   };
 
+
+  const { starknetkitConnectModal } = useStarknetkitConnectModal({
+    connectors: connectors as StarknetkitConnector[],
+    modalTheme: "system",
+  });
+
+  const authWalletHandler = async () => {
+    const { connector } = await starknetkitConnectModal();
+    if (!connector) {
+  
+      return;
+    }
+    await connectAsync({ connector }).then(()=> toast.success("wallet connected")).catch((e)=> toast.error("user rejected", e));
+  };
   return (
-    <header className="border-b border-gray-100">
+
+    <header
+      className={`border-b border-gray-100 w-full fixed top-0 left-0 right-0 z-10 transition-all duration-300 ${
+        isScrolled ? "bg-white dark:bg-slate-950" : "bg-white dark:bg-slate-950"
+      }`}
+    >
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Image
-              src="/logo.svg"
-              alt="Stakcast"
-              width={170}
-              height={170}
-              onClick={() => router.push("/")}
-            />
+
+          <div className="flex-shrink-0 cursor-pointer" onClick={() => router.push("/")}>
+            <Image src="/logo.svg" alt="Stakcast" width={170} height={170} />
           </div>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex space-x-6">
-            <Link href="/dashboard" className="hover:text-blue-400">
-              Dashboard
-            </Link>
-            <Link href="/howitworks" className="hover:text-blue-400">
-              How It Works
-            </Link>
-            <a href="#about" className="hover:text-blue-400">
-              About Us
-            </a>
-          </nav>
 
-          {/* Wallet Section */}
+          <div className="flex gap-2">
+            <nav className="hidden md:flex space-x-6 self-center">
+              <Link href="/dashboard" className="hover:text-blue-400">
+                Dashboard
+              </Link>
+              <Link href="/howitworks" className="hover:text-blue-400">
+                How It Works
+              </Link>
+              <a href="#about" className="hover:text-blue-400">
+                About Us
+              </a>
+            </nav>
+            <ThemeToggle />
+          </div>
+
           <div className="hidden md:block">
-            {status === "connected" ? (
+            {isConnected ? (
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
@@ -66,23 +127,77 @@ const Header = () => {
                 >
                   Dashboard
                 </Link>
-                {/* profile */}
-                <div className="px-5 py-5 rounded-full bg-blue-200"></div>
+
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={toggleDropdown}
+                    className="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300"
+                    id="user-menu-button"
+                    aria-expanded={isDropdownOpen}
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    <Image
+                      src="/logo.svg"
+                      alt="user photo"
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 z-50 mt-2 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm">
+                      <div className="px-4 py-3">
+                        <span className="block text-sm text-gray-900">Bonnie Green</span>
+                        <span className="block text-sm text-gray-500 truncate">example@email.com</span>
+                      </div>
+                      <ul className="py-2" aria-labelledby="user-menu-button">
+                        <li>
+                          <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            Dashboard
+                          </a>
+                        </li>
+                        <li>
+                          <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            Settings
+                          </a>
+                        </li>
+                        <li>
+                          <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            Earnings
+                          </a>
+                        </li>
+                        <li>
+                          <button
+                            className="block px-4 py-2 text-sm text-red-700 hover:bg-gray-100"
+                            onClick={() => {
+                              // disconnectWallet();
+                              setIsDropdownOpen(false);
+                            }}
+                          >
+                            Sign out
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <button
                 className="bg-yellow-600 text-white hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium"
-                onClick={toggleModal}
+                onClick={authWalletHandler}
               >
                 Connect Wallet
               </button>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
-              onClick={toggleMenu}
+             onClick={()=> setIsMenuOpen(!isMenuOpen)}
               className="text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
             >
               <svg
@@ -93,19 +208,9 @@ const Header = () => {
                 stroke="currentColor"
               >
                 {isMenuOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 )}
               </svg>
             </button>
@@ -113,23 +218,23 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+
       {isMenuOpen && (
         <div className="md:hidden">
           <nav className="px-2 py-4 space-y-2">
             <Link href="/dashboard" className="block hover:text-blue-400">
               Dashboard
             </Link>
-            <a href="/howitworks" className="block hover:text-blue-400">
+            <Link href="/howitworks" className="block hover:text-blue-400">
               How It Works
-            </a>
+            </Link>
             <a href="#about" className="block hover:text-blue-400">
               About Us
             </a>
-            {status !== "connected" && (
+            { !isConnected && (
               <button
                 className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white"
-                onClick={toggleModal}
+                onClick={authWalletHandler}
               >
                 Connect Wallet
               </button>
@@ -137,11 +242,16 @@ const Header = () => {
           </nav>
         </div>
       )}
-      {walletModal && (
+
+
+      {/* Wallet Connector Modal */}
+      {/* {walletModal && (
         <div>
           <Connector />
         </div>
-      )}
+      )} */}
+
+
       <Categories />
     </header>
   );

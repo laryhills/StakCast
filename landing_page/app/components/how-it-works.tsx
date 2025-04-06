@@ -4,7 +4,7 @@ export function HowItWorks() {
       number: "01",
       title: "Create Your Account",
       description:
-        "Sign up for StakCast in seconds. Connect your wallet and verify your identity to get started.",
+        "Sign up for StakCast in seconds.  and verify your identity to get started.",
       align: "right",
     },
     {
