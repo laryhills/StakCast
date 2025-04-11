@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --exec ts-node --files src/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,9 @@
     "atoma-sdk": "^0.1.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "nodemon": "^3.1.9",
+    "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
     "typescript": "^5"
   },
