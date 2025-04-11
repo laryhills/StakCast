@@ -11,6 +11,11 @@
   "license": "ISC",
   "dependencies": {
     "atoma-sdk": "^0.1.1",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "tsc": "^2.0.4",
+    "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.24"
   }
 }
