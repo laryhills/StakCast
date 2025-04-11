@@ -10,13 +10,19 @@ import {
 } from "lucide-react";
 import { DummyMarketType } from "../types";
 import { useAccount, useBalance } from "@starknet-react/core";
+import Header from "../components/layout/Header";
 
 const DashboardPage = () => {
-
   const { address, isConnected } = useAccount();
 
-  const { data } = useBalance({ address: address || undefined });
-  const balance = data?.formatted ? `${data.formatted} ${data.symbol}` : "";
+  const { data, isFetching } = useBalance({ address: address || undefined });
+  console.log(data);
+
+  const balance = isFetching
+    ? "loading..."
+    : data?.formatted
+    ? `${data.formatted}.${data.decimals} ${data.symbol}`
+    : "";
   const [_markets, setMarkets] = useState<DummyMarketType[]>([]);
   console.log(_markets);
   const [newMarket, setNewMarket] = useState<Omit<DummyMarketType, "id">>({
@@ -53,14 +59,16 @@ const DashboardPage = () => {
   };
 
   if (!isConnected) {
-    console.log(isConnected, "from here");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+        <Header />
         <div className="text-center">
-
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Connect Wallet to View Dashboard</h1>
-          <p className="text-gray-600 dark:text-white">Please connect your wallet to access your dashboard.</p>
-
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Connect Wallet to View Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-white">
+            Please connect your wallet to access your dashboard.
+          </p>
         </div>
       </div>
     );
@@ -81,7 +89,7 @@ const DashboardPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatsCard
             title="Total Balance"
-            value={balance || "0.00 ETH"}
+            value={balance || " 0.00 ETH"}
             icon={<Wallet className="w-6 h-6" />}
             trend="+0.00%"
           />
