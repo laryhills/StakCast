@@ -1,3 +1,7 @@
+
+//we will define all all our envionment and configuration variables here, 
+
+
 export default {
   atoma: {
     apiKey: process.env.ATOMA_KEY,
