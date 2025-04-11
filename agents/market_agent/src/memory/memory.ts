@@ -1,12 +1,7 @@
 //contrubutors, this is agent context
 // TODO: Switch from in-memory storage to a persistent solution
 import prompt from "../prompts/prompt";
-
-type MemoryItem = {
-  role: "system" | "user" | "assistant";
-  content: string;
-};
-
+import { MemoryItem } from "../@types/interface";
 export default class Memory {
   private static memory: MemoryItem[] = [];
 
