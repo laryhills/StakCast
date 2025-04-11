@@ -199,7 +199,7 @@ const DashboardPage = () => {
               </div>
             </DashboardCard>
 
-            {/* Recent Activity */}
+       
             <DashboardCard title="Recent Activity">
               <div className="p-6 text-center text-gray-500">
                 <History className="w-12 h-12 mx-auto mb-4" />
