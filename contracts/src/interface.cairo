@@ -4,9 +4,9 @@ use starknet::storage::{Map};
 #[derive(Drop, Serde, starknet::Store)]
 pub struct Market {
     pub creator: ContractAddress,
-    pub title: felt252,
-    pub description: felt252,
-    pub category: felt252,
+    pub title: ByteArray,
+    pub description: ByteArray,
+    pub category: ByteArray,
     pub start_time: u64,
     pub end_time: u64,
     pub resolution_time: u64,
@@ -75,9 +75,9 @@ pub trait IPredictionMarket<TContractState> {
     #[external(v0)]
     fn create_market(
         ref self: TContractState,
-        title: felt252,
-        description: felt252,
-        category: felt252,
+        title: ByteArray,
+        description: ByteArray,
+        category: ByteArray,
         start_time: u64,
         end_time: u64,
         outcomes: Array<felt252>,
@@ -118,6 +118,8 @@ pub trait IPredictionMarket<TContractState> {
 
     #[external(v0)]
     fn cancel_market(ref self: TContractState, market_id: u32, reason: felt252);
+
+    fn set_market_validator(ref self: TContractState, market_validator: ContractAddress);
 }
 
 #[starknet::interface]
@@ -156,6 +158,9 @@ pub trait IMarketValidator<TContractState> {
     fn set_role(
         ref self: TContractState, recipient: ContractAddress, role: felt252, is_enable: bool,
     );
+     // New function to set the PredictionMarket address
+     fn set_prediction_market(ref self: TContractState, prediction_market: ContractAddress);
+    
 }
 
 #[starknet::interface]
@@ -178,7 +183,7 @@ pub trait IERC20<TContractState> {
 pub struct MarketCreated {
     pub market_id: u32,
     pub creator: ContractAddress,
-    pub title: felt252,
+    pub title: ByteArray,
     pub start_time: u64,
     pub end_time: u64,
     pub min_stake: u256,
@@ -230,7 +235,7 @@ struct MarketDisputed {
 
 #[event]
 #[derive(Drop, starknet::Event)]
-enum Event {
+pub enum Event {
     MarketCreated: MarketCreated,
     PositionTaken: PositionTaken,
     MarketResolved: MarketResolved,
