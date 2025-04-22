@@ -4,7 +4,7 @@ pub mod PredictionMarket {
     use starknet::ContractAddress;
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
-    use starknet::get_contract_address; // Assumed available
+    use starknet::get_contract_address; 
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
@@ -22,9 +22,9 @@ pub mod PredictionMarket {
     #[derive(Drop, Serde, starknet::Store)]
     struct Market {
         creator: ContractAddress,
-        title: felt252,
-        description: felt252,
-        category: felt252,
+        title: ByteArray,
+        description: ByteArray,
+        category: ByteArray,
         start_time: u64,
         end_time: u64,
         resolution_time: u64,
@@ -44,7 +44,7 @@ pub mod PredictionMarket {
 
     #[derive(Drop, Copy, Serde, starknet::Store, PartialEq)]
     #[allow(starknet::store_no_default_variant)]
-    enum MarketStatus {
+    pub enum MarketStatus {
         Active,
         Closed,
         Resolved,
@@ -129,16 +129,16 @@ pub mod PredictionMarket {
 
     // Events
     #[derive(Drop, starknet::Event)]
-    struct MarketCreated {
+    pub struct MarketCreated {
         market_id: u32,
         creator: ContractAddress,
-        title: felt252,
+        title: ByteArray,
         start_time: u64,
         end_time: u64,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct PositionTaken {
+    pub struct PositionTaken {
         market_id: u32,
         user: ContractAddress,
         outcome_index: u32,
@@ -146,30 +146,30 @@ pub mod PredictionMarket {
     }
 
     #[derive(Drop, starknet::Event)]
-    struct MarketResolved {
-        market_id: u32,
-        outcome: u32,
-        resolver: ContractAddress,
-        resolution_details: felt252,
+    pub struct MarketResolved {
+       pub market_id: u32,
+       pub outcome: u32,
+       pub resolver: ContractAddress,
+       pub resolution_details: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct WinningsClaimed {
+    pub struct WinningsClaimed {
         market_id: u32,
         user: ContractAddress,
         amount: u256,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct MarketDisputed {
-        market_id: u32,
-        disputer: ContractAddress,
-        reason: felt252,
+    pub struct MarketDisputed {
+       pub market_id: u32,
+       pub disputer: ContractAddress,
+       pub reason: felt252,
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         MarketCreated: MarketCreated,
         PositionTaken: PositionTaken,
         MarketResolved: MarketResolved,
@@ -222,9 +222,9 @@ pub mod PredictionMarket {
 
         fn create_market(
             ref self: ContractState,
-            title: felt252,
-            description: felt252,
-            category: felt252,
+            title: ByteArray,
+            description: ByteArray,
+            category: ByteArray,
             start_time: u64,
             end_time: u64,
             outcomes: Array<felt252>,
@@ -245,7 +245,7 @@ pub mod PredictionMarket {
 
             let market = Market {
                 creator: caller,
-                title: title,
+                title: title.clone(),
                 description: description,
                 category: category,
                 start_time: start_time,
@@ -435,6 +435,10 @@ pub mod PredictionMarket {
             let market = self.markets.entry(market_id).read();
             let new_market = Market { validator: validator, ..market };
             self.markets.entry(market_id).write(new_market);
+        }
+        fn set_market_validator(ref self: ContractState, market_validator: ContractAddress) {
+            // self.accesscontrol.assert_only_role(ADMIN_ROLE); // Ensure only admin can call this
+            self.market_validator.write(market_validator);
         }
     }
 

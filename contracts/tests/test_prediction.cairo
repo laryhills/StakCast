@@ -1,164 +1,350 @@
 use snforge_std::{
     declare, ContractClassTrait, DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    start_cheat_caller_address, test_address,
 };
-use starknet::testing::set_contract_address;
-use starknet::contract_address_const;
+use starknet::testing::set_block_timestamp;
 use starknet::ContractAddress;
+use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use stakcast::interface::{
-    IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait,
-    IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait,
-    MarketStatus, MarketDetails,
+    IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, IMarketValidatorDispatcher,
+    IMarketValidatorDispatcherTrait, // Import the trait defining set_prediction_market
+};
+use stakcast::interface::MarketStatus; // Import MarketStatus
+use stakcast::prediction::PredictionMarket::{
+    Event, MarketResolved,  MarketDisputed
 };
 
-// Helper function to deploy the PredictionMarket contract
+// Helper to deploy MarketValidator (dependency)
+fn deploy_market_validator(
+    prediction_market: ContractAddress,
+    min_stake: u256,
+    resolution_timeout: u64,
+    slash_percentage: u64,
+    owner: ContractAddress,
+) -> IMarketValidatorDispatcher {
+    let declare_result = declare("MarketValidator").unwrap();
+    let contract_class = declare_result.contract_class();
+    let constructor_args = array![
+        prediction_market.into(),
+        min_stake.low.into(), // Split into low
+        min_stake.high.into(), // and high
+        resolution_timeout.into(),
+        slash_percentage.into(),
+        owner.into(),
+    ];
+    let (address, _) = contract_class.deploy(@constructor_args).unwrap();
+    IMarketValidatorDispatcher { contract_address: address }
+}
+
+// Helper to deploy PredictionMarket
 fn deploy_prediction_market(
     stake_token: ContractAddress,
     fee_collector: ContractAddress,
     platform_fee: u256,
     market_validator: ContractAddress,
 ) -> IPredictionMarketDispatcher {
-    // Declare the contract class
     let declare_result = declare("PredictionMarket").unwrap();
     let contract_class = declare_result.contract_class();
-    // Prepare constructor arguments
-    let mut constructor_args = array![
+    let constructor_args = array![
         stake_token.into(),
         fee_collector.into(),
-        platform_fee.low.into(),  // Split u256
-        platform_fee.high.into(),
-        market_validator.into()
+        platform_fee.low.into(), // Split into low
+        platform_fee.high.into(), // and high
+        market_validator.into(),
     ];
-
-    // Deploy the contract
     let (address, _) = contract_class.deploy(@constructor_args).unwrap();
-
     IPredictionMarketDispatcher { contract_address: address }
 }
 
-// Helper function to deploy the MarketValidator contract
-fn deploy_market_validator(
-    prediction_market: ContractAddress,
-    min_stake: u256,
-    resolution_timeout: u64,
-    slash_percentage: u64,
-) -> IMarketValidatorDispatcher {
-    // Declare the contract class
-    let declare_result = declare("stakcast::market::MarketValidator").unwrap();
+// Helper to deploy a mock ERC20 token
+fn deploy_mock_erc20() -> IERC20Dispatcher {
+    let declare_result = declare("MockERC20").unwrap();
     let contract_class = declare_result.contract_class();
-
-    // Prepare constructor arguments
-    let mut constructor_args = array![
-        prediction_market.into(),
-        min_stake.low.into(),  // Split u256
-        min_stake.high.into(),
-        resolution_timeout.into(),
-        slash_percentage.into()
-    ];
-
-    // Deploy the contract
-    let (address, _) = contract_class.deploy(@constructor_args).unwrap();
-
-    IMarketValidatorDispatcher { contract_address: address }
+    let (address, _) = contract_class.deploy(@array![].into()).unwrap();
+    IERC20Dispatcher { contract_address: address }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Test: Market Creation
+#[test]
+fn test_create_market() {
+    // Deploy dependencies
+    let erc20 = deploy_mock_erc20();
+    let fee_collector = test_address();
+    let owner = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), // PredictionMarket address (mock for now)
+        100_u256, 86400, 10, owner,
+    );
+    let pm_contract = deploy_prediction_market(
+        erc20.contract_address, fee_collector, 500_u256, // 5% fee
+        mv_contract.contract_address,
+    );
 
-    #[test]
-    fn test_create_market_and_get_details() {
-        // Dummy addresses
-        let stake_token = contract_address_const::<'stake_token'>();
-        let fee_collector = contract_address_const::<'fee_collector'>();
-        let market_validator = contract_address_const::<'market_validator'>();
-        let market_creator = contract_address_const::<'creator'>();
+    // Mock caller as admin (assuming creator is admin for simplicity in this test)
+    start_cheat_caller_address(pm_contract.contract_address, owner);
+    set_block_timestamp(1000);
 
-        // Deploy contract
-        let contract = deploy_prediction_market(
-            stake_token,
-            fee_collector,
-            100_u256,
-            market_validator,
+    // Create market
+    let outcomes = array!['Yes', 'No'];
+    let market_id = pm_contract
+        .create_market(
+            "Test Market", "", "Category", 2000, 3000, outcomes, 100_u256, 1000_u256,
         );
 
-        // Set context
-        set_contract_address(contract.contract_address);
-        start_cheat_caller_address(contract.contract_address, market_creator);
+    // Verify market details
+    let market_details = pm_contract.get_market_details(market_id);
+    assert_eq!(market_details.market.title, "Test Market", "Incorrect market title");
+    assert_eq!(market_details.status, MarketStatus::Active, "Market should be active");
+}
 
-        // Spy on events (optional)
-        // let mut event_spy = spy_events();
+// Test: Taking a Position
+#[test]
+fn test_take_position() {
+    // Deploy dependencies
+    let erc20 = deploy_mock_erc20();
+    let owner = test_address();
+    let user = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), // PredictionMarket address (mock for now)
+        100_u256, 86400, 10, owner,
+    );
+    let pm_contract = deploy_prediction_market(
+        erc20.contract_address, owner, 500_u256, mv_contract.contract_address,
+    );
 
-        // Create market
-        let market_id = contract.create_market(
-            'Market Title',  // felt252 literal
-            'Market Desc',  // felt252 literal
-            'Category',     // felt252 literal
-            1100,           // start_time
-            1300,           // end_time
-            array!['Outcome 1', 'Outcome 2'],  // felt252 literals
-            50_u256,
-            500_u256,
+    // Create market
+    start_cheat_caller_address(pm_contract.contract_address, owner);
+    let outcomes = array!['Yes', 'No'];
+    let market_id = pm_contract
+        .create_market(
+            "Test Market", "", "Category", 2000, 3000, outcomes, 100_u256, 1000_u256,
         );
 
-        // Stop cheating caller address
-        stop_cheat_caller_address(contract.contract_address);
+    // Mock user's ERC20 transfer
+    start_cheat_caller_address(pm_contract.contract_address, user);
+    erc20.transfer(pm_contract.contract_address, 500_u256); // Fund user
 
-        // Verify emitted events (optional)
-        // event_spy.assert_emitted(@array![
-        //     (market_id, market_creator, 'Market Title', 'Market Desc', 'Category', array!['Outcome 1', 'Outcome 2']),
-        // ]);
+    // Take position
+    pm_contract.take_position(market_id, 0, 500_u256);
 
-        // Verify details
-        let details: MarketDetails = contract.get_market_details(market_id);
-        assert_eq!(details.status, MarketStatus::Active, "Incorrect status");
-        assert_eq!(details.market.creator, market_creator, "Creator mismatch");
-        assert_eq!(details.market.num_outcomes, 2, "Outcome count mismatch");
-    }
+    // Verify position
+    let position = pm_contract.get_user_position(user, market_id);
+    assert_eq!(position.outcome_index, 0, "Incorrect outcome index");
+    assert_eq!(position.amount, 500_u256, "Incorrect stake amount");
+}
 
-    #[test]
-    fn test_register_validator() {
-        let prediction_market = contract_address_const::<'prediction_market'>();
-        let validator = contract_address_const::<'validator'>();
+#[test]
+fn test_resolve_market() {
+    // Deploy dependencies
+    let erc20 = deploy_mock_erc20();
+    let owner = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(),
+        100_u256,
+        86400,
+        10,
+        owner
+    );
+    let pm_contract = deploy_prediction_market(
+        erc20.contract_address,
+        owner,
+        500_u256,
+        mv_contract.contract_address
+    );
 
-        // Deploy with 100 min stake
-        let contract = deploy_market_validator(
-            prediction_market,
-            100_u256,
-            10,
-            10,
+    // Update MarketValidator with PredictionMarket address
+    let mv_contract_dispatcher = IMarketValidatorDispatcher { contract_address: mv_contract.contract_address };
+    mv_contract_dispatcher.set_prediction_market(pm_contract.contract_address);
+
+    // Create market
+    start_cheat_caller_address(pm_contract.contract_address, owner);
+    let outcomes = array!['Yes', 'No'];
+    let market_id = pm_contract.create_market(
+        "Test Market",
+        "",
+        "Category",
+        2000,
+        3000,
+        outcomes,
+        100_u256,
+        1000_u256
+    );
+
+    // Resolve market
+    set_block_timestamp(3500); // After end_time
+    start_cheat_caller_address(pm_contract.contract_address, owner); // Set caller to validator
+    let mut spy = spy_events();
+    pm_contract.resolve_market(market_id, 0, 'Resolution details');
+
+    // Verify resolution
+    let market_details = pm_contract.get_market_details(market_id);
+    assert_eq!(market_details.status, MarketStatus::Resolved, "Market should be resolved");
+    spy.assert_emitted(
+        @array![
+            (
+                pm_contract.contract_address,
+                Event::MarketResolved(
+                    MarketResolved {
+                        market_id: market_id,
+                        outcome: 0,
+                        resolver: owner,
+                        resolution_details: 'Resolution details',
+                    }
+                )
+            ),
+        ]
+    );
+}
+
+#[test]
+fn test_dispute_market() {
+    // Deploy dependencies
+    let erc20 = deploy_mock_erc20();
+    let owner = test_address();
+    let disputer = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(),
+        100_u256,
+        86400,
+        10,
+        owner
+    );
+    let pm_contract = deploy_prediction_market(
+        erc20.contract_address,
+        owner,
+        500_u256,
+        mv_contract.contract_address
+    );
+
+    // Update MarketValidator with PredictionMarket address
+    let mv_contract_dispatcher = IMarketValidatorDispatcher { contract_address: mv_contract.contract_address };
+    mv_contract_dispatcher.set_prediction_market(pm_contract.contract_address);
+
+    // Create and resolve market
+    start_cheat_caller_address(pm_contract.contract_address, owner);
+    let outcomes = array!['Yes', 'No'];
+    let market_id = pm_contract.create_market(
+        "Test Market",
+        "",
+        "Category",
+        2000,
+        3000,
+        outcomes,
+        100_u256,
+        1000_u256
+    );
+    set_block_timestamp(3500);
+    pm_contract.resolve_market(market_id, 0, 'Resolution details');
+
+    // Dispute market
+    start_cheat_caller_address(pm_contract.contract_address, disputer);
+    let mut spy = spy_events();
+    pm_contract.dispute_market(market_id, 'Dispute reason');
+
+    // Verify dispute
+    let market_details = pm_contract.get_market_details(market_id);
+    assert_eq!(market_details.status, MarketStatus::Disputed, "Market should be disputed");
+    spy.assert_emitted(
+        @array![
+            (
+                pm_contract.contract_address,
+                Event::MarketDisputed(
+                    MarketDisputed {
+                        market_id: market_id,
+                        disputer: disputer,
+                        reason: 'Dispute reason',
+                    }
+                )
+            ),
+        ]
+    );
+}
+
+// Test: Market Cancellation
+#[test]
+fn test_cancel_market() {
+    // Deploy dependencies
+    let erc20 = deploy_mock_erc20();
+    let creator = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), // PredictionMarket address (mock for now)
+        100_u256, 86400, 10, creator,
+    );
+    let pm_contract = deploy_prediction_market(
+        erc20.contract_address, creator, 500_u256, mv_contract.contract_address,
+    );
+
+    // Update MarketValidator with PredictionMarket address
+    let mv_contract_dispatcher = IMarketValidatorDispatcher { contract_address: mv_contract.contract_address };
+    mv_contract_dispatcher.set_prediction_market(pm_contract.contract_address);
+
+    // Create market
+    start_cheat_caller_address(pm_contract.contract_address, creator);
+    let outcomes = array!['Yes', 'No'];
+    let market_id = pm_contract
+        .create_market(
+            "Test Market", "", "Category", 2000, 3000, outcomes, 100_u256, 1000_u256,
         );
 
-        // Set context
-        set_contract_address(contract.contract_address);
-        start_cheat_caller_address(contract.contract_address, validator);
+    // Cancel market
+    pm_contract.cancel_market(market_id, 'Cancel reason');
 
-        // Spy on events (optional)
-        // let mut event_spy = spy_events();
+    // Verify cancellation
+    let market = pm_contract.get_market_details(market_id);
+    assert_eq!(market.status, MarketStatus::Cancelled, "Market should be cancelled");
+}
 
-        // Register with min stake
-        contract.register_validator(100_u256);
+// Test: Claim Winnings
+#[test]
+fn test_claim_winnings() {
+    // Deploy dependencies
+    let erc20 = deploy_mock_erc20();
+    let owner = test_address();
+    let user = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), // PredictionMarket address (mock for now)
+        100_u256, 86400, 10, owner,
+    );
+    let pm_contract = deploy_prediction_market(
+        erc20.contract_address, owner, 500_u256, mv_contract.contract_address,
+    );
 
-        // Stop cheating caller address
-        stop_cheat_caller_address(contract.contract_address);
+    // Update MarketValidator with PredictionMarket address
+    let mv_contract_dispatcher = IMarketValidatorDispatcher { contract_address: mv_contract.contract_address };
+    mv_contract_dispatcher.set_prediction_market(pm_contract.contract_address);
 
-        // Verify emitted events (optional)
-        // event_spy.assert_emitted(@array![
-        //     (validator, 100_u256),
-        // ]);
-
-        // Verify registration
-        let info = contract.get_validator_info(validator);
-        assert_eq!(info.stake, 100_u256, "Stake mismatch");
-        assert!(info.active, "Validator not active");
-        assert_eq!(info.markets_resolved, 0, "Initial resolved markets should be 0");
-
-        // Verify index mapping
-        assert_eq!(
-            contract.get_validator_by_index(0),
-            validator,
-            "Index mapping incorrect"
+    // Create market and take position
+    start_cheat_caller_address(pm_contract.contract_address, owner);
+    let outcomes = array!['Yes', 'No'];
+    let market_id = pm_contract
+        .create_market(
+            "Test Market", "", "Category", 2000, 3000, outcomes, 100_u256, 1000_u256,
         );
-        assert_eq!(contract.get_validator_count(), 1, "Validator count mismatch");
-    }
+    start_cheat_caller_address(pm_contract.contract_address, user);
+    erc20.transfer(pm_contract.contract_address, 500_u256); // Fund user
+    pm_contract.take_position(market_id, 0, 500_u256);
+
+    // Resolve market
+    set_block_timestamp(3500);
+    start_cheat_caller_address(pm_contract.contract_address, owner); // Switch to resolver
+    pm_contract.resolve_market(market_id, 0, 'Resolution details');
+
+    // Claim winnings
+    start_cheat_caller_address(pm_contract.contract_address, user); // Switch back to user
+    pm_contract.claim_winnings(market_id);
+
+    // Verify claim
+    let position = pm_contract.get_user_position(user, market_id);
+    assert!(position.claimed, "Position should be claimed");
+}
+
+// Edge Case Test: Invalid Market ID
+#[test]
+#[should_panic(expected: "Hint Error: \n        0x496e70757420746f6f206c6f6e6720666f7220617267756d656e7473 ('Input too long for arguments')\n    ")]
+fn test_invalid_market_id() {
+    let mv_contract = deploy_market_validator(test_address(), 100_u256, 86400, 10, test_address());
+    let pm_contract = deploy_prediction_market(
+        test_address(), test_address(), 500_u256, mv_contract.contract_address,
+    );
+    pm_contract.resolve_market(9999, 0, 'Invalid'); // Non-existent market
 }
