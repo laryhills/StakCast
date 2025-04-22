@@ -47,6 +47,7 @@ pub mod MarketValidator {
         validators: Map<ContractAddress, LocalValidatorInfo>,
         validators_by_index: Map<u32, ContractAddress>, // mapping from index to validator address
         validator_count: u32,
+        stake_token: ContractAddress,
         min_stake: u256,
         resolution_timeout: u64,
         slash_percentage: u64,
@@ -72,23 +73,23 @@ pub mod MarketValidator {
 
     // Events
     #[derive(Drop, starknet::Event)]
-    struct ValidatorRegistered {
-        validator: ContractAddress,
-        stake: u256,
+    pub struct ValidatorRegistered {
+        pub validator: ContractAddress,
+        pub stake: u256,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct MarketResolved {
-        market_id: u32,
-        resolver: ContractAddress,
-        resolution_time: u64,
+    pub struct MarketResolved {
+        pub market_id: u32,
+        pub resolver: ContractAddress,
+        pub resolution_time: u64,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct ValidatorSlashed {
-        validator: ContractAddress,
-        amount: u256,
-        reason: felt252,
+    pub struct ValidatorSlashed {
+        pub validator: ContractAddress,
+        pub amount: u256,
+        pub reason: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -99,7 +100,7 @@ pub mod MarketValidator {
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         ValidatorRegistered: ValidatorRegistered,
         MarketResolved: MarketResolved,
         ValidatorSlashed: ValidatorSlashed,
@@ -118,13 +119,15 @@ pub mod MarketValidator {
     pub fn constructor(
         ref self: ContractState,
         prediction_market: ContractAddress,
-        min_stake: u256,
+        stake_token_address: ContractAddress,
+        min_stake: u128,
         resolution_timeout: u64,
         slash_percentage: u64,
         owner: ContractAddress,
     ) {
         self.prediction_market.write(prediction_market);
-        self.min_stake.write(min_stake);
+        self.stake_token.write(stake_token_address);
+        self.min_stake.write(min_stake.into());
         self.resolution_timeout.write(resolution_timeout);
         self.slash_percentage.write(slash_percentage);
         self.validator_count.write(0);
@@ -305,10 +308,14 @@ pub mod MarketValidator {
         ) {
             self._set_role(recipient, role, is_enable);
         }
+        fn set_prediction_market(ref self: ContractState, prediction_market: ContractAddress) {
+            self.accesscontrol.assert_only_role(ADMIN_ROLE);
+            self.prediction_market.write(prediction_market);
+        }
     }
 
     #[generate_trait]
-    impl InternalImpl of InternalTrait {
+    pub impl InternalImpl of InternalTrait {
         // Retrieve a validator's address by its index from the new mapping.
         fn get_validator_by_index(self: @ContractState, index: u32) -> ContractAddress {
             let validator_count = self.validator_count.read();

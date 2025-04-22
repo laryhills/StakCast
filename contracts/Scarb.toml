@@ -23,3 +23,6 @@ path = "contracts/src/lib.cairo"
 
 [tool.scarb]
 allow-prebuilt-plugins = ["snforge_std"]
+
+[tool.snforge]
+contracts-path = "target/dev"
