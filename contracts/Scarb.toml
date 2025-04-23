@@ -14,12 +14,14 @@ assert_macros = "2.9.2"
 [[target.starknet-contract]]
 sierra = true
 
+[cairo]
+sierra-replace-ids = true
+
 [scripts]
 test = "snforge test"
 
 [lib]
 path = "contracts/src/lib.cairo"
-
 
 [tool.scarb]
 allow-prebuilt-plugins = ["snforge_std"]
