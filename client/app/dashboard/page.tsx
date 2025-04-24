@@ -15,13 +15,16 @@ import Header from "../components/layout/Header";
 const DashboardPage = () => {
   const { address, isConnected } = useAccount();
 
-  const { data, isFetching } = useBalance({ address: address || undefined });
+  const { data, isFetching } = useBalance({
+    token: "0x04718f5a0Fc34cC1AF16A1cdee98fFB20C31f5cD61D6Ab07201858f4287c938D",
+    address: address as "0x",
+  });
   console.log(data);
 
   const balance = isFetching
     ? "loading..."
     : data?.formatted
-    ? `${data.formatted}.${data.decimals} ${data.symbol}`
+    ? `${parseFloat(data.formatted).toFixed(2)} ${data.symbol}`
     : "";
   const [_markets, setMarkets] = useState<DummyMarketType[]>([]);
   console.log(_markets);
@@ -199,7 +202,6 @@ const DashboardPage = () => {
               </div>
             </DashboardCard>
 
-       
             <DashboardCard title="Recent Activity">
               <div className="p-6 text-center text-gray-500">
                 <History className="w-12 h-12 mx-auto mb-4" />
