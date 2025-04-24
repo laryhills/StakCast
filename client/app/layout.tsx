@@ -20,6 +20,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
+  
 });
 
 export default function RootLayout({
