@@ -45,7 +45,7 @@ const Home = () => {
         );
 
   return (
-    <main className="p-4">
+    <main className="p-10">
      
       <Providers>
         <Header />
@@ -53,7 +53,7 @@ const Home = () => {
         {isLoading ? (
           <Spinner />
         ) : filteredMarkets.length > 0 ? (
-          <div className="md:flex flex-wrap md:grid-cols-2 gap-3 p-4">
+          <div className="md:flex flex-wrap md:grid-cols-2 gap-3 grid-cols-1 py-[5.5rem]">
             {filteredMarkets.map((market, index) => (
               <MarketCard
                 key={index}
