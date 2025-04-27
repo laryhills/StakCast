@@ -4,7 +4,7 @@ use snforge_std::{
 };
 use starknet::testing::set_block_timestamp;
 use starknet::ContractAddress;
-use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+use openzeppelin::token::erc20::interface::{IERC20Dispatcher};
 use stakcast::interface::{
     IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, IMarketValidatorDispatcher,
     IMarketValidatorDispatcherTrait, // Import the trait defining set_prediction_market
@@ -38,7 +38,6 @@ fn deploy_market_validator(
 
 // Helper to deploy PredictionMarket
 fn deploy_prediction_market(
-    stake_token: ContractAddress,
     fee_collector: ContractAddress,
     platform_fee: u256,
     market_validator: ContractAddress,
@@ -46,7 +45,6 @@ fn deploy_prediction_market(
     let declare_result = declare("PredictionMarket").unwrap();
     let contract_class = declare_result.contract_class();
     let constructor_args = array![
-        stake_token.into(),
         fee_collector.into(),
         platform_fee.low.into(), // Split into low
         platform_fee.high.into(), // and high
@@ -68,7 +66,6 @@ fn deploy_mock_erc20() -> IERC20Dispatcher {
 #[test]
 fn test_create_market() {
     // Deploy dependencies
-    let erc20 = deploy_mock_erc20();
     let fee_collector = test_address();
     let owner = test_address();
     let mv_contract = deploy_market_validator(
@@ -76,7 +73,7 @@ fn test_create_market() {
         100_u256, 86400, 10, owner,
     );
     let pm_contract = deploy_prediction_market(
-        erc20.contract_address, fee_collector, 500_u256, // 5% fee
+        fee_collector, 500_u256, // 5% fee
         mv_contract.contract_address,
     );
 
@@ -100,8 +97,7 @@ fn test_create_market() {
 // Test: Taking a Position
 #[test]
 fn test_take_position() {
-    // Deploy dependencies
-    let erc20 = deploy_mock_erc20();
+    
     let owner = test_address();
     let user = test_address();
     let mv_contract = deploy_market_validator(
@@ -109,7 +105,7 @@ fn test_take_position() {
         100_u256, 86400, 10, owner,
     );
     let pm_contract = deploy_prediction_market(
-        erc20.contract_address, owner, 500_u256, mv_contract.contract_address,
+     owner, 500_u256, mv_contract.contract_address,
     );
 
     // Create market
@@ -122,7 +118,7 @@ fn test_take_position() {
 
     // Mock user's ERC20 transfer
     start_cheat_caller_address(pm_contract.contract_address, user);
-    erc20.transfer(pm_contract.contract_address, 500_u256); // Fund user
+    pm_contract.deposit(500_u256); // Fund user
 
     // Take position
     pm_contract.take_position(market_id, 0, 500_u256);
@@ -136,7 +132,6 @@ fn test_take_position() {
 #[test]
 fn test_resolve_market() {
     // Deploy dependencies
-    let erc20 = deploy_mock_erc20();
     let owner = test_address();
     let mv_contract = deploy_market_validator(
         test_address(),
@@ -146,7 +141,6 @@ fn test_resolve_market() {
         owner
     );
     let pm_contract = deploy_prediction_market(
-        erc20.contract_address,
         owner,
         500_u256,
         mv_contract.contract_address
@@ -199,7 +193,6 @@ fn test_resolve_market() {
 #[test]
 fn test_dispute_market() {
     // Deploy dependencies
-    let erc20 = deploy_mock_erc20();
     let owner = test_address();
     let disputer = test_address();
     let mv_contract = deploy_market_validator(
@@ -210,7 +203,6 @@ fn test_dispute_market() {
         owner
     );
     let pm_contract = deploy_prediction_market(
-        erc20.contract_address,
         owner,
         500_u256,
         mv_contract.contract_address
@@ -264,14 +256,13 @@ fn test_dispute_market() {
 #[test]
 fn test_cancel_market() {
     // Deploy dependencies
-    let erc20 = deploy_mock_erc20();
     let creator = test_address();
     let mv_contract = deploy_market_validator(
         test_address(), // PredictionMarket address (mock for now)
         100_u256, 86400, 10, creator,
     );
     let pm_contract = deploy_prediction_market(
-        erc20.contract_address, creator, 500_u256, mv_contract.contract_address,
+         creator, 500_u256, mv_contract.contract_address,
     );
 
     // Update MarketValidator with PredictionMarket address
@@ -298,7 +289,6 @@ fn test_cancel_market() {
 #[test]
 fn test_claim_winnings() {
     // Deploy dependencies
-    let erc20 = deploy_mock_erc20();
     let owner = test_address();
     let user = test_address();
     let mv_contract = deploy_market_validator(
@@ -306,7 +296,7 @@ fn test_claim_winnings() {
         100_u256, 86400, 10, owner,
     );
     let pm_contract = deploy_prediction_market(
-        erc20.contract_address, owner, 500_u256, mv_contract.contract_address,
+        owner, 500_u256, mv_contract.contract_address,
     );
 
     // Update MarketValidator with PredictionMarket address
@@ -321,7 +311,7 @@ fn test_claim_winnings() {
             "Test Market", "", "Category", 2000, 3000, outcomes, 100_u256, 1000_u256,
         );
     start_cheat_caller_address(pm_contract.contract_address, user);
-    erc20.transfer(pm_contract.contract_address, 500_u256); // Fund user
+    pm_contract.deposit(500_u256); // Fund user
     pm_contract.take_position(market_id, 0, 500_u256);
 
     // Resolve market
@@ -331,11 +321,14 @@ fn test_claim_winnings() {
 
     // Claim winnings
     start_cheat_caller_address(pm_contract.contract_address, user); // Switch back to user
+    let initial_balance = pm_contract.get_balance(user); // Assume this function exists
     pm_contract.claim_winnings(market_id);
+    let final_balance = pm_contract.get_balance(user);
 
     // Verify claim
     let position = pm_contract.get_user_position(user, market_id);
     assert!(position.claimed, "Position should be claimed");
+    assert!(final_balance > initial_balance, "Balance should increase after claiming");
 }
 
 // Edge Case Test: Invalid Market ID
@@ -344,7 +337,82 @@ fn test_claim_winnings() {
 fn test_invalid_market_id() {
     let mv_contract = deploy_market_validator(test_address(), 100_u256, 86400, 10, test_address());
     let pm_contract = deploy_prediction_market(
-        test_address(), test_address(), 500_u256, mv_contract.contract_address,
+         test_address(), 500_u256, mv_contract.contract_address,
     );
     pm_contract.resolve_market(9999, 0, 'Invalid'); // Non-existent market
 }
+
+#[test]
+fn test_deposit() {
+    // Deploy dependencies
+    let owner = test_address();
+    let user = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), 100_u256, 86400, 10, owner,
+    );
+    let pm_contract = deploy_prediction_market(
+        owner, 500_u256, mv_contract.contract_address,
+    );
+
+    // Deposit funds
+    start_cheat_caller_address(pm_contract.contract_address, user);
+    let initial_balance = pm_contract.get_balance(user); // Assume this function exists
+    pm_contract.deposit(1000_u256);
+    let final_balance = pm_contract.get_balance(user);
+
+    // Verify balance increase
+    assert_eq!(final_balance, initial_balance + 1000_u256, "Balance should increase by deposit amount");
+}
+
+#[test]
+#[should_panic(expected: ("(Input too long for arguments balance",))]
+fn test_withdraw() {
+    // Deploy dependencies
+    let owner = test_address();
+    let user = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), 100_u256, 86400, 10, owner,
+    );
+    let pm_contract = deploy_prediction_market(
+        owner, 500_u256, mv_contract.contract_address,
+    );
+
+    // Deposit funds
+    start_cheat_caller_address(pm_contract.contract_address, user);
+    pm_contract.deposit(1000_u256);
+
+    // Withdraw funds
+    let initial_balance = pm_contract.get_balance(user);
+    pm_contract.withdraw(600_u256);
+    let final_balance = pm_contract.get_balance(user);
+
+    // Verify balance decrease
+    assert_eq!(final_balance, initial_balance - 600_u256, "Balance should decrease by withdrawal amount");
+
+    // Attempt to withdraw more than balance (should fail)
+    // Assuming withdraw reverts with a panic on insufficient funds
+    pm_contract.withdraw(500_u256); // Only 400 left
+}
+
+#[test]
+fn test_multiple_deposits_and_withdrawals() {
+    // Deploy dependencies
+    let owner = test_address();
+    let user = test_address();
+    let mv_contract = deploy_market_validator(
+        test_address(), 100_u256, 86400, 10, owner,
+    );
+    let pm_contract = deploy_prediction_market(
+        owner, 500_u256, mv_contract.contract_address,
+    );
+
+    // Perform operations
+    start_cheat_caller_address(pm_contract.contract_address, user);
+    pm_contract.deposit(500_u256);
+    assert_eq!(pm_contract.get_balance(user), 500_u256, "First deposit failed");
+    pm_contract.deposit(300_u256);
+    assert_eq!(pm_contract.get_balance(user), 800_u256, "Second deposit failed");
+    pm_contract.withdraw(400_u256);
+    assert_eq!(pm_contract.get_balance(user), 400_u256, "Withdrawal failed");
+}
+

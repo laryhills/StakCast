@@ -212,6 +212,10 @@ pub mod PredictionMarket {
             self.balances.entry(caller).write(current_balance - amount);
         }
 
+        fn get_balance(self: @ContractState, user: ContractAddress) -> u256 {
+            return self.balances.entry(user).read();
+        }
+        
         fn get_market_details(self: @ContractState, market_id: u32) -> IMarketDetails {
             let market = self.markets.entry(market_id).read();
             let status = self.market_status.entry(market_id).read();
