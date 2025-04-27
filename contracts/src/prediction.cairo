@@ -113,6 +113,7 @@ pub mod PredictionMarket {
     // Storage
     #[storage]
     struct Storage {
+        balances: Map<ContractAddress, u256>,
         markets: Map<u32, Market>,
         market_count: u32,
         positions: Map<(u32, ContractAddress), Position>,
@@ -197,8 +198,18 @@ pub mod PredictionMarket {
     #[external(v0)]
     #[abi(embed_v0)]
     impl PredictionMarketImp of IPredictionMarket<ContractState> {
-        fn get_stake_token(self: @ContractState) -> ContractAddress {
-            self.stake_token.read()
+        
+        fn deposit(ref self: ContractState, amount: u256) {
+            let caller = get_caller_address();
+            let current_balance = self.balances.entry(caller).read();
+            self.balances.entry(caller).write(current_balance + amount);
+        }
+
+        fn withdraw(ref self: ContractState, amount: u256) {
+            let caller = get_caller_address();
+            let current_balance = self.balances.entry(caller).read();
+            assert!(current_balance >= amount, "Insufficient balance");
+            self.balances.entry(caller).write(current_balance - amount);
         }
 
         fn get_market_details(self: @ContractState, market_id: u32) -> IMarketDetails {
