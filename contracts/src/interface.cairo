@@ -121,6 +121,9 @@ pub trait IPredictionMarket<TContractState> {
 
     #[external(v0)]
     fn withdraw(ref self: TContractState, amount: u256);
+
+    #[external(v0)]
+    fn get_balance(self: @TContractState, user: ContractAddress) -> u256; // New getter
 }
 
 #[starknet::interface]
