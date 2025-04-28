@@ -7,7 +7,6 @@ pub mod PredictionMarket {
     use starknet::get_contract_address; 
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
-    use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
     use starknet::storage::{
         StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
     };
@@ -308,10 +307,10 @@ pub mod PredictionMarket {
             assert!(current_time >= market.start_time, "Market not started");
             assert!(current_time < market.end_time, "Market ended");
 
-            let stake_token = ERC20ABIDispatcher { contract_address: self.stake_token.read() };
-            let contract_addr = get_contract_address();
-            let success = stake_token.transfer_from(caller, contract_addr, amount);
-            assert!(success, "Token transfer failed");
+            // Deduct from user's internal balance
+            let user_balance = self.balances.entry(caller).read();
+            assert!(user_balance >= amount, "Insufficient balance");
+            self.balances.entry(caller).write(user_balance - amount);
 
             let old_pos = self.positions.entry((market_id, caller)).read();
             let new_pos = Position {
@@ -362,19 +361,15 @@ pub mod PredictionMarket {
                     .read();
                 winnings = (old_pos.amount * market.total_stake) / tot_win_stake;
                 let fee = (winnings * self.platform_fee.read()) / 10000;
-                let stake_token = ERC20ABIDispatcher { contract_address: self.stake_token.read() };
                 if winnings > fee {
-                    stake_token.transfer(caller, winnings - fee);
-                    stake_token.transfer(self.fee_collector.read(), fee);
+                    // Add winnings to user's internal balance
+                    let user_balance = self.balances.entry(caller).read();
+                    self.balances.entry(caller).write(user_balance + (winnings - fee));
+                    // Add fee to fee collector's balance
+                    let fee_collector_balance = self.balances.entry(self.fee_collector.read()).read();
+                    self.balances.entry(self.fee_collector.read()).write(fee_collector_balance + fee);
                 }
             }
-
-            let new_pos = Position {
-                amount: old_pos.amount, outcome_index: old_pos.outcome_index, claimed: true,
-            };
-            self.positions.entry((market_id, caller)).write(new_pos);
-
-            self.emit(WinningsClaimed { market_id: market_id, user: caller, amount: winnings });
         }
 
         fn resolve_market(
