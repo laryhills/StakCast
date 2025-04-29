@@ -1,21 +1,26 @@
+use stakcast::custom_errors::Errors::{
+    ERR_ABOVE_MAX_STAKE, ERR_BELOW_MIN_STAKE, ERR_CANCELLATION_ONLY_BY_MARKET_CREATOR,
+    ERR_INACTIVE_MARKET, ERR_INSUFFICIENT_BALANCE, ERR_INVALID_END_TIME, ERR_INVALID_OUTCOME,
+    ERR_INVALID_START_TIME, ERR_INVALID_WINNING_OUTCOME, ERR_MARKET_ENDED, ERR_MARKET_NOT_ENDED,
+    ERR_MARKET_NOT_STARTED, ERR_MAX_STAKE_LESS_THAN_MIN, ERR_MIN_OUTCOMES_REQUIRED,
+    ERR_MIN_STAKE_ABOVE_ZERO, ERR_NO_CLAIMING_POSITION, ERR_POSITION_CLAIMED,
+    ERR_RESOLUTION_PERIOD_EXP, ERR_RESOLVABLE_BY_ASSIGNED_VALIDATORS, ERR_UNRESOLVED_MARKET,
+};
+
 #[starknet::contract]
 pub mod PredictionMarket {
-    // Imports
-    use starknet::ContractAddress;
-    use starknet::get_caller_address;
-    use starknet::get_block_timestamp;
-    use starknet::get_contract_address;
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
-    use starknet::storage::{
-        StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map,
-    };
     // Additional interface imports
     use stakcast::interface::{
-        IPredictionMarket, IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait,
-        Market as IMarket, Position as IPosition, MarketStatus as IMarketStatus,
-        MarketOutcome as IMarketOutcome, MarketDetails as IMarketDetails,
+        IMarketValidatorDispatcher, IMarketValidatorDispatcherTrait, IPredictionMarket,
+        Market as IMarket, MarketDetails as IMarketDetails, MarketOutcome as IMarketOutcome,
+        MarketStatus as IMarketStatus, Position as IPosition,
     };
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     // Local Data Structures
     #[derive(Drop, Serde, starknet::Store)]
@@ -197,11 +202,11 @@ pub mod PredictionMarket {
     #[external(v0)]
     #[abi(embed_v0)]
     impl PredictionMarketImp of IPredictionMarket<ContractState> {
-        
         fn deposit(ref self: ContractState, amount: u256) {
             let caller = get_caller_address();
             let current_balance = self.balances.entry(caller).read();
-            self.balances.entry(caller).write(current_balance + amount);
+            assert!(current_balance >= amount, "Insufficient balance");
+            self.balances.entry(caller).write(current_balance - amount);
         }
 
         fn withdraw(ref self: ContractState, amount: u256) {
@@ -214,7 +219,7 @@ pub mod PredictionMarket {
         fn get_balance(self: @ContractState, user: ContractAddress) -> u256 {
             return self.balances.entry(user).read();
         }
-        
+
         fn get_market_details(self: @ContractState, market_id: u32) -> IMarketDetails {
             let market = self.markets.entry(market_id).read();
             let status = self.market_status.entry(market_id).read();
@@ -366,8 +371,14 @@ pub mod PredictionMarket {
                     let user_balance = self.balances.entry(caller).read();
                     self.balances.entry(caller).write(user_balance + (winnings - fee));
                     // Add fee to fee collector's balance
-                    let fee_collector_balance = self.balances.entry(self.fee_collector.read()).read();
-                    self.balances.entry(self.fee_collector.read()).write(fee_collector_balance + fee);
+                    let fee_collector_balance = self
+                        .balances
+                        .entry(self.fee_collector.read())
+                        .read();
+                    self
+                        .balances
+                        .entry(self.fee_collector.read())
+                        .write(fee_collector_balance + fee);
                 }
             }
         }
@@ -381,7 +392,7 @@ pub mod PredictionMarket {
             let caller = get_caller_address();
             let market = self.markets.entry(market_id).read();
             let current_time = get_block_timestamp();
-            assert!(caller == market.validator, "Only assigned validator can resolve");
+            assert!(caller == market.validator, "Only assigned validator");
             assert!(current_time >= market.end_time, "Market not yet ended");
             assert!(current_time <= market.resolution_time, "Resolution period expired");
             assert!(winning_outcome < market.num_outcomes, "Invalid winning outcome");
@@ -405,16 +416,17 @@ pub mod PredictionMarket {
                 );
         }
 
+        // Get market stats
         fn get_market_stats(self: @ContractState, market_id: u32) -> (u256, Array<u256>) {
             let market = self.markets.entry(market_id).read();
             let mut stakes: Array<u256> = ArrayTrait::new();
             let outcomes_count = market.num_outcomes;
             let mut i = 0;
-            while i < outcomes_count {
+            while i != outcomes_count {
                 let stake_i = self.stakes_per_outcome.entry((market_id, i)).read();
                 stakes.append(stake_i);
                 i += 1;
-            };
+            }
             (market.total_stake, stakes)
         }
 
@@ -431,7 +443,7 @@ pub mod PredictionMarket {
         fn cancel_market(ref self: ContractState, market_id: u32, reason: felt252) {
             let caller = get_caller_address();
             let market = self.markets.entry(market_id).read();
-            assert!(caller == market.creator, "Only market creator can cancel");
+            assert!(caller == market.creator, "Only creator can cancel");
             assert!(
                 self.market_status.entry(market_id).read() == MarketStatus::Active,
                 "Market not active",
