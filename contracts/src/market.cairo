@@ -1,8 +1,6 @@
 use starknet::ContractAddress;
 use starknet::get_caller_address;
 use starknet::get_block_timestamp;
-use starknet::get_contract_address; // Added missing import.
-use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use openzeppelin::access::accesscontrol::AccessControlComponent;
 use openzeppelin::access::ownable::OwnableComponent;
 use openzeppelin::introspection::src5::SRC5Component;
@@ -146,18 +144,7 @@ pub mod MarketValidator {
             // Ensure the provided stake meets the minimum.
             assert!(stake >= self.min_stake.read(), "Insufficient stake");
 
-            let pm = IPredictionMarketDispatcher {
-                contract_address: self.prediction_market.read(),
-            };
-            let stake_token_addr = pm.get_stake_token();
-
-            let stake_token = IERC20Dispatcher { contract_address: stake_token_addr };
-            // Use get_contract_address from Starknet.
-            assert!(
-                stake_token.transfer_from(caller, get_contract_address(), stake),
-                "Stake transfer failed",
-            );
-
+            
             let mut validator_info = self.validators.entry(caller).read();
             if !validator_info.active {
                 // Initialize the validator info if not already active.
@@ -265,12 +252,6 @@ pub mod MarketValidator {
             }
 
             self.validators.entry(validator).write(validator_info);
-
-            let pm = IPredictionMarketDispatcher {
-                contract_address: self.prediction_market.read(),
-            };
-            let stake_token = IERC20Dispatcher { contract_address: pm.get_stake_token() };
-            stake_token.transfer(self.prediction_market.read(), slash_amount);
 
             self.emit(ValidatorSlashed { validator, amount: slash_amount, reason });
         }
