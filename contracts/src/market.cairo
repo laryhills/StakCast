@@ -1,10 +1,6 @@
 use openzeppelin::access::accesscontrol::AccessControlComponent;
 use openzeppelin::access::ownable::OwnableComponent;
 use openzeppelin::introspection::src5::SRC5Component;
-use stakcast::custom_errors::Errors::{
-    ERR_INSUFFICIENT_STAKE, ERR_INVALID_VALIDATOR_INDEX, ERR_TOO_FREQUENT_RESOLUTION,
-    ERR_UNAUTHORIZED_SLASHING, ERR_VALIDATOR_NOT_FOUND_OR_INACTIVE,
-};
 use stakcast::interface::{
     IMarketValidator, IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait, ValidatorInfo,
 };
