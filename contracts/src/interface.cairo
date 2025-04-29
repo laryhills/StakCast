@@ -23,7 +23,7 @@ struct Storage {
     market_outcomes: Map<(u32, u32), felt252>, // (market_id, outcome_index) -> outcome
     stakes_per_outcome: Map<(u32, u32), u256>, // (market_id, outcome_index) -> stake
     admin: ContractAddress, // Admin address for access control
-    stake_token: ContractAddress // Stake token address
+   
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
@@ -101,11 +101,6 @@ pub trait IPredictionMarket<TContractState> {
     #[external(v0)]
     fn get_market_stats(self: @TContractState, market_id: u32) -> (u256, Array<u256>);
 
-    #[external(v0)]
-    fn get_stake_token(
-        self: @TContractState,
-    ) -> ContractAddress; // New function to get stake token address
-
     // Administration
     fn assign_validator(ref self: TContractState, market_id: u32);
 
@@ -120,6 +115,15 @@ pub trait IPredictionMarket<TContractState> {
     fn cancel_market(ref self: TContractState, market_id: u32, reason: felt252);
 
     fn set_market_validator(ref self: TContractState, market_validator: ContractAddress);
+
+    #[external(v0)]
+    fn deposit(ref self: TContractState, amount: u256);
+
+    #[external(v0)]
+    fn withdraw(ref self: TContractState, amount: u256);
+
+    #[external(v0)]
+    fn get_balance(self: @TContractState, user: ContractAddress) -> u256; // New getter
 }
 
 #[starknet::interface]
