@@ -4,7 +4,7 @@ pub mod PredictionMarket {
     use starknet::ContractAddress;
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
-    use starknet::get_contract_address; 
+    use starknet::get_contract_address;
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
@@ -147,10 +147,10 @@ pub mod PredictionMarket {
 
     #[derive(Drop, starknet::Event)]
     pub struct MarketResolved {
-       pub market_id: u32,
-       pub outcome: u32,
-       pub resolver: ContractAddress,
-       pub resolution_details: felt252,
+        pub market_id: u32,
+        pub outcome: u32,
+        pub resolver: ContractAddress,
+        pub resolution_details: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -162,9 +162,9 @@ pub mod PredictionMarket {
 
     #[derive(Drop, starknet::Event)]
     pub struct MarketDisputed {
-       pub market_id: u32,
-       pub disputer: ContractAddress,
-       pub reason: felt252,
+        pub market_id: u32,
+        pub disputer: ContractAddress,
+        pub reason: felt252,
     }
 
     #[event]
