@@ -30,7 +30,7 @@ class Server {
 			process.on("SIGTERM", shutdown);
 			process.on("SIGINT", shutdown);
 
-			// eslint-disable-next-line no-undef
+			
 			this.server.on("error", (error: NodeJS.ErrnoException) => {
 				if (error.code === "EADDRINUSE") {
 					logger.info(`Port ${this.port} is already in use, trying port ${this.port + 1}...`);
