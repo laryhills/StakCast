@@ -10,34 +10,28 @@ import RecentActivity from "@/app/components/sections/RecentActivity";
 import ChartSection from "@/app/components/sections/ChartSection";
 import MarketContext from "@/app/context/marketContext";
 import PurchaseSection from "@/app/components/sections/PurchaseSection";
+import { Button } from "@/components/ui/button";
 
 import axios from "axios";
-
-
 
 const Page = () => {
   const params = useParams();
   const router = useRouter();
   const [market, setMarket] = useState<DummyMarketType | undefined>(undefined);
 
- const [allMarkets,setAllMarkets]=useState<DummyMarketType[]>([])
+  const [allMarkets, setAllMarkets] = useState<DummyMarketType[]>([]);
 
- 
- useEffect(() => {
-   
-  (async()=>{
-    try {
-      const res=await axios.get('/api/dummy_data/')
-      console.log(res);
-      setAllMarkets(res.data)
-    } catch (error) {
-      console.log(error)
-    }
-   
-    
-  })()
-  
-}, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get("/api/dummy_data/");
+        console.log(res);
+        setAllMarkets(res.data);
+      } catch (error) {
+        console.log(error);
+      }
+    })();
+  }, []);
 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [units, setUnits] = useState<number>(0);
@@ -82,7 +76,7 @@ const Page = () => {
       console.log("Please select an option and enter a valid number of units.");
     }
   };
-console.log(handlePurchase)
+  console.log(handlePurchase);
   if (!market) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -112,17 +106,19 @@ console.log(handlePurchase)
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="flex items-center space-x-4 mb-8">
-            <button
+            <Button
               onClick={() => router.push("/")}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-white" />
-            </button>
+            </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {market.name}
               </h1>
-              <p className="text-gray-500 dark:text-white text-sm">Market ID: {market.id}</p>
+              <p className="text-gray-500 dark:text-white text-sm">
+                Market ID: {market.id}
+              </p>
             </div>
           </div>
 
@@ -146,7 +142,7 @@ console.log(handlePurchase)
               <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-sm p-4">
                 <div className="flex space-x-4 border-b">
                   {tabs.map((tab) => (
-                    <button
+                    <Button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex items-center space-x-2 px-4 py-3 font-medium text-sm transition-colors ${
@@ -157,7 +153,7 @@ console.log(handlePurchase)
                     >
                       <tab.icon className="w-4 h-4" />
                       <span>{tab.label}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
 

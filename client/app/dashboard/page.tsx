@@ -9,8 +9,27 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { DummyMarketType } from "../types";
+import { Button } from "@/components/ui/button";
+// import {
+//   Form,
+//   FormControl,
+//   FormField,
+//   FormItem,
+//   FormLabel,
+//   // Input,
+// } from "@/components/ui/form";
+
+// import { z } from "zod";
+import { Input } from "@/components/ui/input";
 import { useAccount, useBalance } from "@starknet-react/core";
 import Header from "../components/layout/Header";
+
+// const formSchema = z.object({
+//   name: z.string().min(2, {
+//     message: "Market name must be at least 2 characters.",
+//   }),
+//   image: z.string().url({ message: "Invalid URL format." }).optional(),
+// });
 
 const DashboardPage = () => {
   const { address, isConnected } = useAccount();
@@ -60,6 +79,15 @@ const DashboardPage = () => {
       options: [],
     });
   };
+
+  // function CreateMarketForm({ handleAddMarket }: Props) {
+  //   const form = useForm<Market>({
+  //     resolver: zodResolver(formSchema),
+  //     defaultValues: {
+  //       name: "",
+  //       image: "",
+  //     },
+  //   });
 
   if (!isConnected) {
     return (
@@ -117,7 +145,7 @@ const DashboardPage = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Market Name
               </label>
-              <input
+              <Input
                 type="text"
                 name="name"
                 value={newMarket.name}
@@ -130,7 +158,7 @@ const DashboardPage = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Image URL
               </label>
-              <input
+              <Input
                 type="text"
                 name="image"
                 value={newMarket.image}
@@ -138,12 +166,12 @@ const DashboardPage = () => {
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
-            <button
+            <Button
               type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             >
               Create Market
-            </button>
+            </Button>
           </form>
         </DashboardCard>
 
