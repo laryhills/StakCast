@@ -5,6 +5,8 @@ import axios from "axios";
 import { MarketCard } from "./components/ui";
 import { SearchX, Search, X } from "lucide-react";
 import { DummyMarketType } from "./types";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 import Header from "./components/layout/Header";
 import { Providers } from "./provider";
@@ -88,22 +90,22 @@ const Home = () => {
                 } rounded-lg bg-white dark:bg-gray-800 px-3 py-2 transition-all duration-200`}
               >
                 <Search className="w-4 h-4 text-gray-400 dark:text-gray-500 mr-2" />
-                <input
+                <Input
                   type="text"
                   placeholder="Search markets..."
-                  className="flex-1 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200 text-sm"
+                  className="flex-1 bg-transparent fpcus:border-none focus:outline-none text-gray-700 dark:text-gray-200 text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                 />
                 {searchQuery && (
-                  <button
+                  <Button
                     onClick={() => setSearchQuery("")}
                     className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -152,12 +154,12 @@ const Home = () => {
                     : `No markets found in the "${currentCategory}" category.`}
                 </p>
                 {searchQuery && (
-                  <button
+                  <Button
                     onClick={() => setSearchQuery("")}
                     className="mt-4 text-blue-500 hover:text-blue-600 text-sm font-medium"
                   >
                     Clear search
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
