@@ -1,18 +1,19 @@
 "use client";
 import React from "react";
 import { useConnect } from "@starknet-react/core";
+// import { Button } from "@/components/ui/button";
 // import { useAppContext } from "@/app/context/appContext";
 // import { useAccount, useDisconnect } from "@starknet-react/core";
 import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
 import { toast } from "react-toastify";
 
 const WalletModal = () => {
-  const { connectAsync, connectors } = useConnect()
+  const { connectAsync, connectors } = useConnect();
 
   const { starknetkitConnectModal } = useStarknetkitConnectModal({
     connectors: connectors as StarknetkitConnector[],
     modalTheme: "light",
-  })
+  });
   return (
     <div className="p-6 max-w-md mx-auto  rounded-xl shadow-md space-y-4">
       <h2 className="text-xl font-semibold text-center">Connect Your Wallet</h2>
@@ -34,7 +35,7 @@ const WalletModal = () => {
         onClick={async () => {
           const { connector } = await starknetkitConnectModal();
           if (!connector) {
-            console.log("User rejected to connect")
+            console.log("User rejected to connect");
             return;
           }
           await connectAsync({ connector })
@@ -50,7 +51,7 @@ const WalletModal = () => {
             });
         }}
       >
-       connect wallet
+        connect wallet
       </button>
     </div>
   );

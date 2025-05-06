@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { Button } from "./ui/button";
+// import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "./ui/badge";
 import { ArrowRight } from "lucide-react";
 
@@ -65,7 +66,6 @@ export function Hero() {
           <Button
             size="lg"
             className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white border-0 dark:text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
-
           >
             <Link href="https://www.stakcast.com/">
               Visit App
