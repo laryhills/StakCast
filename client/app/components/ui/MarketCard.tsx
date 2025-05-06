@@ -19,7 +19,6 @@ const MarketCard: React.FC<MarketCardProps> = ({
   onClick,
   ...props
 }) => {
-  
   const sortedOptions = [...options].sort((a, b) => {
     // const getNumericValue = (odds: string) => {
     //   const match = odds.match(/(\d+(\.\d+)?)/);
@@ -36,14 +35,12 @@ const MarketCard: React.FC<MarketCardProps> = ({
       onClick={onClick}
       {...props}
     >
-
       <div className="p-5 border-b border-gray-100 dark:border-gray-800">
         <h3 className="font-medium text-gray-900 dark:text-white text-lg leading-tight">
           {name}
         </h3>
       </div>
 
-    
       <div className="p-5 flex-1 flex flex-col">
         {/* Top Option with Prominence */}
         {topOption && (
@@ -62,7 +59,9 @@ const MarketCard: React.FC<MarketCardProps> = ({
                 style={{
                   width: topOption.odds
                     ? topOption.odds
-                    : `${parseFloat(topOption.odds as unknown as string) * 100}%`,
+                    : `${
+                        parseFloat(topOption.odds as unknown as string) * 100
+                      }%`,
                 }}
               ></div>
             </div>
@@ -96,7 +95,6 @@ const MarketCard: React.FC<MarketCardProps> = ({
         </div>
       </div>
 
-  
       <div className="bg-gray-50 dark:bg-gray-800 p-4 flex justify-between items-center">
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">
