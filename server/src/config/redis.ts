@@ -26,7 +26,7 @@ class RedisClient implements RedisService {
 				host: config.db.redis.host,
 				port: config.db.redis.port,
 				...(config.db.redis.password ? { password: config.db.redis.password } : {}),
-				retryStrategy: times => (times > 1 ? null : Math.min(times * 200, 2000)),
+				retryStrategy: (times: number) => (times > 1 ? null : Math.min(times * 200, 2000)),
 				connectTimeout: 10000,
 				maxRetriesPerRequest: 1,
 			});
