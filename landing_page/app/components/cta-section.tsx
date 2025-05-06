@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
+
+// import { Button } from "./ui/button";
 import { ChevronRight } from "lucide-react";
 
 export function CtaSection() {
@@ -23,7 +25,6 @@ export function CtaSection() {
               <Button
                 size="lg"
                 className="bg-white text-slate-900 hover:bg-white/90 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
-           
               >
                 <Link href="https://www.stakcast.com/">
                   Visit App
