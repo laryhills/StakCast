@@ -1,30 +1,28 @@
 [package]
 name = "stakcast"
 version = "0.1.0"
-edition = "2024_07"
+edition = "2023_11"
 
 [dependencies]
-starknet = "2.11.3"
-openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", branch = "main" }
+starknet = "2.11.2"
+openzeppelin = "1.0.0"
+
+[profile.dev.cairo]
+unstable-add-statements-code-locations-debug-info = true
 
 [dev-dependencies]
 snforge_std = "0.40.0"
-assert_macros = "2.9.2"
+assert_macros = "2.11.2"
 
 [[target.starknet-contract]]
+casm = true
 sierra = true
 
-[cairo]
-sierra-replace-ids = true
-
 [scripts]
-test = "snforge test"
-
-[lib]
-path = "contracts/src/lib.cairo"
+test = "SNFORGE_BACKTRACE=1 snforge test"
 
 [tool.scarb]
 allow-prebuilt-plugins = ["snforge_std"]
 
 [tool.snforge]
-contracts-path = "target/dev"
+fuzzer_runs = 10

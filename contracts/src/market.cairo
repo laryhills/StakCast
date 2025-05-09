@@ -1,13 +1,14 @@
 #[starknet::contract]
 mod PredictionMarket {
-    use contracts::interface::IPredictionMarket;
-    use contracts::interfaces::IToken::IERC20;
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
 
     // OpenZeppelin imports
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
+    use stakcast::interfaces::{IMarket, IToken};
+
+    // use stakcast::interfaces::IToken::IERC20;
     use starknet::contract_address::ContractAddress;
     use starknet::{get_block_timestamp, get_caller_address};
     use crate::config::types::Market;
@@ -17,6 +18,8 @@ mod PredictionMarket {
     struct Storage {
         markets: Map<u64, Market>,
         market_count: u64,
+        market_outcomes: Map<(u64, u32), felt252>,
+        outcome_counts: Map<u64, u32>,
         user_positions: Map<(u64, ContractAddress, u32), u128>,
         outcome_totals: Map<(u64, u32), u128>,
         validators: Map<ContractAddress, bool>,

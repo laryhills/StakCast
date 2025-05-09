@@ -1,4 +1,6 @@
+use stakcast::config::types::Market;
 use starknet::contract_address::ContractAddress;
+
 #[starknet::interface]
 pub trait IPredictionMarket<TContractState> {
     fn create_market(

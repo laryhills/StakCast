@@ -1,7 +1,6 @@
-#[derive(Drop, Serde)]
+#[derive(Drop, Serde, starknet::Store)]
 pub struct Market {
     pub question: ByteArray,
-    pub outcomes: Array<felt252>,
     pub start_time: u64,
     pub end_time: u64,
     pub is_resolved: bool,
