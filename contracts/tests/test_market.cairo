@@ -8,8 +8,6 @@ use snforge_std::{
 use stakcast::interfaces::IMarket::{IPredictionMarketDispatcher, IPredictionMarketDispatcherTrait};
 use starknet::{ContractAddress, contract_address_const};
 
-
-#[feature("deprecated-starknet-consts")]
 fn setup() -> (ContractAddress, ContractAddress, IPredictionMarketDispatcher) {
     let sender: ContractAddress = contract_address_const::<'sender'>();
 
