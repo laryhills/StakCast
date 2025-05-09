@@ -1,0 +1,9 @@
+#[derive(Drop, Serde)]
+pub struct Market {
+    pub question: felt252,
+    pub outcomes: Array<felt252>,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub is_resolved: bool,
+    pub winning_outcome_id: u32,
+}

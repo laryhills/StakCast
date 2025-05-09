@@ -1,30 +1,18 @@
 #[starknet::contract]
 mod PredictionMarket {
+    use contracts::interface::IPredictionMarket;
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
-    use starknet::contract_address::ContractAddress;
-    use starknet::get_caller_address;
-    use starknet::get_block_timestamp;
-    use contracts::interface::IPredictionMarket;
 
     // OpenZeppelin imports
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
+    use starknet::contract_address::ContractAddress;
+    use starknet::{get_block_timestamp, get_caller_address};
+    use crate::config::types::Market;
 
-    // ====== TYPES & STRUCTS ======
-    #[derive(Drop, starknet::Store)]
-    pub struct Market {
-        question: felt252,
-        outcomes: Array<felt252>,
-        start_time: u64,
-        end_time: u64,
-        is_resolved: bool,
-        winning_outcome_id: u32,
-    }
-
-    
     // ====== STORAGE ======
-       #[storage]
+    #[storage]
     struct Storage {
         markets: Map<u64, Market>,
         market_count: u64,
@@ -98,7 +86,8 @@ mod PredictionMarket {
 
     // AccessControl impl
     #[abi(embed_v0)]
-    impl AccessControlImpl = AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
 
     // SRC5 impl
     #[abi(embed_v0)]
@@ -122,7 +111,6 @@ mod PredictionMarket {
             end_time: u64,
         ) -> u64 {
             let caller = get_caller_address();
-           
 
             let current_time = get_block_timestamp();
             assert(end_time > current_time, 'End time must be in future');
@@ -146,12 +134,7 @@ mod PredictionMarket {
             return market_id;
         }
 
-        fn purchase_units(
-            ref self: ContractState,
-            market_id: u64,
-            outcome_id: u32,
-            amount: u128,
-        ) {
+        fn purchase_units(ref self: ContractState, market_id: u64, outcome_id: u32, amount: u128) {
             let user = get_caller_address();
 
             let market = self.markets.read(market_id);
@@ -170,11 +153,7 @@ mod PredictionMarket {
             emit(Event::UnitsPurchased(UnitsPurchased { user, market_id, outcome_id, amount }));
         }
 
-        fn resolve_market(
-            ref self: ContractState,
-            market_id: u64,
-            winning_outcome_id: u32,
-        ) {
+        fn resolve_market(ref self: ContractState, market_id: u64, winning_outcome_id: u32) {
             let caller = get_caller_address();
             assert(self.is_validator(caller), 'Caller not authorized');
 
@@ -183,7 +162,9 @@ mod PredictionMarket {
             assert(now > market.end_time, 'Market not ended');
             assert(!market.is_resolved, 'Already resolved');
 
-            assert(winning_outcome_id < market.outcomes.len().try_into().unwrap(), 'Invalid outcome');
+            assert(
+                winning_outcome_id < market.outcomes.len().try_into().unwrap(), 'Invalid outcome',
+            );
 
             market.is_resolved = true;
             market.winning_outcome_id = winning_outcome_id;
@@ -217,19 +198,12 @@ mod PredictionMarket {
         }
 
         fn get_user_position(
-            self: @ContractState,
-            user: ContractAddress,
-            market_id: u64,
-            outcome_id: u32,
+            self: @ContractState, user: ContractAddress, market_id: u64, outcome_id: u32,
         ) -> u128 {
             self.user_positions.read((market_id, user, outcome_id))
         }
 
-        fn get_total_outcome_units(
-            self: @ContractState,
-            market_id: u64,
-            outcome_id: u32,
-        ) -> u128 {
+        fn get_total_outcome_units(self: @ContractState, market_id: u64, outcome_id: u32) -> u128 {
             self.outcome_totals.read((market_id, outcome_id))
         }
 
@@ -264,7 +238,9 @@ mod PredictionMarket {
     // ====== PRIVATE HELPERS ======
     #[generate_trait]
     impl Private of PrivateTrait {
-        fn contains_outcome(self: @ContractState, outcomes: Array<felt252>, target: felt252) -> bool {
+        fn contains_outcome(
+            self: @ContractState, outcomes: Array<felt252>, target: felt252,
+        ) -> bool {
             let mut i = 0;
             while i < outcomes.len() {
                 if outcomes.at(i) == target {
