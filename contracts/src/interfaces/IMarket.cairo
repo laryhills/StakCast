@@ -1,4 +1,3 @@
-use core::array::ArrayTrait;
 use stakcast::config::types::Market;
 use starknet::contract_address::ContractAddress;
 

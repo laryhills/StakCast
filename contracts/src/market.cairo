@@ -54,7 +54,7 @@ mod PredictionMarket {
     #[derive(Drop, starknet::Event)]
     struct MarketCreated {
         market_id: u64,
-        question: felt252,
+        question: ByteArray,
         end_time: u64,
     }
 
@@ -161,13 +161,14 @@ mod PredictionMarket {
             let creator = get_caller_address();
             let current_time = get_block_timestamp();
             assert(end_time > current_time, 'End time must be in future');
-            assert(outcomes.len() > 1, 'Market must have at least 2 outcomes');
+            assert(outcomes.len() > 1, 'Market must have > 1 outcomes');
 
             let market_id = self.market_count.read();
+            let question_for_market = question.clone();
 
             // Store market
             let market = Market {
-                question,
+                question: question_for_market,
                 creator,
                 start_time: current_time,
                 end_time,
