@@ -12,23 +12,13 @@ const WalletModal = () => {
 
   const { starknetkitConnectModal } = useStarknetkitConnectModal({
     connectors: connectors as StarknetkitConnector[],
-    modalTheme: "light",
+    modalTheme: "system",
   });
   return (
     <div className="p-6 max-w-md mx-auto  rounded-xl shadow-md space-y-4">
       <h2 className="text-xl font-semibold text-center">Connect Your Wallet</h2>
       <div className="space-y-2">
-        {/* {connectors.map((connector, index) => (
-          <div
-            key={`connectWalletModal${connector.id}${index}`}
-            onClick={() => connectWallet(connector)}
-            className="p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-300 hover:border-gray-400 transition"
-          >
-            <p className="text-center font-medium">
-              {connector.id.charAt(0).toUpperCase() + connector.id.slice(1)}
-            </p>
-          </div>
-        ))} */}
+
       </div>
       <button
         className="w-full justify-center"
