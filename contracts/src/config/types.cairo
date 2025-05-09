@@ -6,3 +6,4 @@ pub struct Market {
     pub is_resolved: bool,
     pub winning_outcome_id: u32,
 }
+

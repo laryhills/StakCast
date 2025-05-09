@@ -1,3 +1,4 @@
+use core::array::ArrayTrait;
 use stakcast::config::types::Market;
 use starknet::contract_address::ContractAddress;
 
@@ -7,7 +8,7 @@ pub trait IPredictionMarket<TContractState> {
         ref self: TContractState,
         question: felt252,
         outcomes: Array<felt252>,
-        startime: u64,
+        start_time: u64,
         end_time: u64,
     ) -> u64;
 
@@ -18,6 +19,7 @@ pub trait IPredictionMarket<TContractState> {
     fn claim_rewards(ref self: TContractState, market_id: u64);
 
     fn get_market(self: @TContractState, market_id: u64) -> Market;
+    fn get_market_outcomes(self: @TContractState, market_id: u64) -> Array<felt252>;
     fn get_user_position(
         self: @TContractState, user: ContractAddress, market_id: u64, outcome_id: u32,
     ) -> u128;

@@ -6,12 +6,18 @@ mod PredictionMarket {
     // OpenZeppelin imports
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use stakcast::interfaces::IMarket::IPredictionMarket;
     use stakcast::interfaces::{IMarket, IToken};
-
     // use stakcast::interfaces::IToken::IERC20;
     use starknet::contract_address::ContractAddress;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
+        StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use starknet::{get_block_timestamp, get_caller_address};
     use crate::config::types::Market;
+
 
     // ====== STORAGE ======
     #[storage]
@@ -108,7 +114,7 @@ mod PredictionMarket {
 
     // ====== CONTRACT IMPLEMENTATION ======
     #[abi(embed_v0)]
-    impl PredicitionMarketImpl of IPredictionMarket<ContractState> {
+    impl MarketImpl of IPredictionMarket<ContractState> {
         /// Creates a new prediction market
         ///
         /// Best Practices for Market Creation:
@@ -147,30 +153,37 @@ mod PredictionMarket {
         /// @param end_time When the market closes for participation
         /// @return market_id The unique identifier for the created market
         fn create_market(
-            ref self: TContractState,
+            ref self: ContractState,
             question: felt252,
             mut outcomes: Array<felt252>,
             start_time: u64,
             end_time: u64,
         ) -> u64 {
             let caller = get_caller_address();
-
             let current_time = get_block_timestamp();
             assert(end_time > current_time, 'End time must be in future');
             assert(outcomes.len() > 1, 'Market must have at least 2 outcomes');
 
             let market_id = self.market_count.read();
 
+            // Store market
             let market = Market {
-                question,
-                outcomes: outcomes.clone(),
+                question: ByteArray::from(question),
                 start_time: current_time,
                 end_time,
                 is_resolved: false,
                 winning_outcome_id: 0_u32,
             };
-
             self.markets.write(market_id, market);
+
+            // Store outcomes
+            let mut i = 0_u32;
+            while i < outcomes.len().try_into().unwrap() {
+                self.market_outcomes.write((market_id, i), outcomes.at(i));
+                i += 1;
+            }
+            self.outcome_counts.write(market_id, outcomes.len().try_into().unwrap());
+
             self.market_count.write(market_id + 1);
 
             emit(Event::MarketCreated(MarketCreated { market_id, question, end_time }));
@@ -421,6 +434,17 @@ mod PredictionMarket {
 
             // Return original stake plus potential share of losing pool
             user_units + ((losing_pool * user_share) / 10000)
+        }
+
+        fn get_market_outcomes(self: @ContractState, market_id: u64) -> Array<felt252> {
+            let count = self.outcome_counts.read(market_id);
+            let mut outcomes = ArrayTrait::new();
+            let mut i = 0_u32;
+            while i < count {
+                outcomes.append(self.market_outcomes.read((market_id, i)));
+                i += 1;
+            }
+            outcomes
         }
     }
 
