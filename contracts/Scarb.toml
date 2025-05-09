@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2024_07"
 
 [dependencies]
-starknet = "2.9.2"
+starknet = "2.11.3"
 openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", branch = "main" }
 
 [dev-dependencies]
-snforge_std = "0.37.0"
+snforge_std = "0.40.0"
 assert_macros = "2.9.2"
 
 [[target.starknet-contract]]
