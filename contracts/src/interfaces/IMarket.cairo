@@ -24,5 +24,7 @@ pub trait IPredictionMarket<TContractState> {
     fn get_resolved_outcome_id(self: @TContractState, market_id: u64) -> u32;
     fn get_market_count(self: @TContractState) -> u64;
     fn is_validator(self: @TContractState, address: ContractAddress) -> bool;
+    fn add_validator(ref self: TContractState, account: ContractAddress);
+    fn remove_validator(ref self: TContractState, account: ContractAddress);
 }
 
