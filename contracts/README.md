@@ -107,21 +107,6 @@ scarb test
 2. Deploy PredictionMarket contract with SKToken address
 3. Set up initial validators
 
-## Security Considerations
-
-- All token transfers use OpenZeppelin's safe implementations
-- Access control for critical functions
-- No fees or complex logic in MVP
-- Upgradeable contract design
-
-## Future Improvements
-
-- Early market exit functionality
-- Partial reward claims
-- Market cancellation mechanism
-- Decentralized validator system
-- Token incentives for validators
-
 ## License
 
 MIT License
