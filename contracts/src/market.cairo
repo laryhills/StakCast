@@ -153,7 +153,7 @@ mod PredictionMarket {
         /// @return market_id The unique identifier for the created market
         fn create_market(
             ref self: ContractState,
-            question: felt252,
+            question: ByteArray,
             mut outcomes: Array<felt252>,
             start_time: u64,
             end_time: u64,
@@ -167,7 +167,7 @@ mod PredictionMarket {
 
             // Store market
             let market = Market {
-                question: question.into(),
+                question,
                 creator,
                 start_time: current_time,
                 end_time,
