@@ -30,5 +30,13 @@ pub trait IPredictionMarket<TContractState> {
     fn is_validator(self: @TContractState, address: ContractAddress) -> bool;
     fn add_validator(ref self: TContractState, account: ContractAddress);
     fn remove_validator(ref self: TContractState, account: ContractAddress);
+    fn get_losing_pool(self: @TContractState, market_id: u64, winning_outcome_id: u32) -> u128;
+    fn get_market_volume_by_outcome(self: @TContractState, market_id: u64, outcome_id: u32) -> u128;
+    fn get_user_share_percentage(
+        self: @TContractState, user: ContractAddress, market_id: u64, outcome_id: u32,
+    ) -> u128;
+    fn get_potential_reward(
+        self: @TContractState, user: ContractAddress, market_id: u64, outcome_id: u32,
+    ) -> u128;
 }
 

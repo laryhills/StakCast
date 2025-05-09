@@ -2,20 +2,19 @@
 mod PredictionMarket {
     use core::array::ArrayTrait;
     use core::option::OptionTrait;
+    use openzeppelin::access::accesscontrol::AccessControlComponent::InternalTrait;
 
     // OpenZeppelin imports
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use stakcast::interfaces::IMarket::IPredictionMarket;
-    use stakcast::interfaces::{IMarket, IToken};
-    // use stakcast::interfaces::IToken::IERC20;
+    use stakcast::interfaces::IMarket::IPredictionMarket; // use stakcast::interfaces::IToken::IERC20;
     use starknet::contract_address::ContractAddress;
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
-        StoragePointerReadAccess, StoragePointerWriteAccess,
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
     };
-    use starknet::{get_block_timestamp, get_caller_address};
+    use starknet::{get_block_timestamp, get_caller_address, get_contract_address};
     use crate::config::types::Market;
 
 
@@ -159,7 +158,7 @@ mod PredictionMarket {
             start_time: u64,
             end_time: u64,
         ) -> u64 {
-            let caller = get_caller_address();
+            let creator = get_caller_address();
             let current_time = get_block_timestamp();
             assert(end_time > current_time, 'End time must be in future');
             assert(outcomes.len() > 1, 'Market must have at least 2 outcomes');
@@ -168,7 +167,8 @@ mod PredictionMarket {
 
             // Store market
             let market = Market {
-                question: ByteArray::from(question),
+                question: question.into(),
+                creator,
                 start_time: current_time,
                 end_time,
                 is_resolved: false,
@@ -178,15 +178,16 @@ mod PredictionMarket {
 
             // Store outcomes
             let mut i = 0_u32;
-            while i < outcomes.len().try_into().unwrap() {
-                self.market_outcomes.write((market_id, i), outcomes.at(i));
+            let len = outcomes.len().try_into().unwrap();
+            while i != len {
+                self.market_outcomes.write((market_id, i), *outcomes.at(i));
                 i += 1;
             }
             self.outcome_counts.write(market_id, outcomes.len().try_into().unwrap());
 
             self.market_count.write(market_id + 1);
 
-            emit(Event::MarketCreated(MarketCreated { market_id, question, end_time }));
+            self.emit(Event::MarketCreated(MarketCreated { market_id, question, end_time }));
 
             return market_id;
         }
@@ -223,14 +224,15 @@ mod PredictionMarket {
 
             // Transfer tokens from user to contract (escrow)
             // This requires prior approval from the user
-            IERC20::transfer_from(token, user, get_contract_address(), amount);
+            let dispatcher = IERC20Dispatcher { contract_address: token };
+            dispatcher.transfer_from(user, get_contract_address(), amount.into());
 
             let market = self.markets.read(market_id);
             assert(!market.is_resolved, 'Market resolved');
             let now = get_block_timestamp();
             assert(now <= market.end_time, 'Market closed');
 
-            assert(outcome_id < market.outcomes.len().try_into().unwrap(), 'Invalid outcome');
+            assert(outcome_id < self.outcome_counts.read(market_id), 'Invalid outcome');
 
             // Track user's position in this outcome
             let key = (market_id, user, outcome_id);
@@ -240,7 +242,10 @@ mod PredictionMarket {
             let total_key = (market_id, outcome_id);
             self.outcome_totals.write(total_key, self.outcome_totals.read(total_key) + amount);
 
-            emit(Event::UnitsPurchased(UnitsPurchased { user, market_id, outcome_id, amount }));
+            self
+                .emit(
+                    Event::UnitsPurchased(UnitsPurchased { user, market_id, outcome_id, amount }),
+                );
         }
 
         fn resolve_market(ref self: ContractState, market_id: u64, winning_outcome_id: u32) {
@@ -252,15 +257,13 @@ mod PredictionMarket {
             assert(now > market.end_time, 'Market not ended');
             assert(!market.is_resolved, 'Already resolved');
 
-            assert(
-                winning_outcome_id < market.outcomes.len().try_into().unwrap(), 'Invalid outcome',
-            );
+            assert(winning_outcome_id < self.outcome_counts.read(market_id), 'Invalid outcome');
 
             market.is_resolved = true;
             market.winning_outcome_id = winning_outcome_id;
             self.markets.write(market_id, market);
 
-            emit(Event::MarketResolved(MarketResolved { market_id, winning_outcome_id }));
+            self.emit(Event::MarketResolved(MarketResolved { market_id, winning_outcome_id }));
         }
 
         /// Calculates the total amount staked on losing outcomes
@@ -323,9 +326,10 @@ mod PredictionMarket {
             self.user_positions.write(user_key, 0_u128);
 
             // Transfer rewards to user
-            IERC20::transfer(token, user, reward);
+            let dispatcher = IERC20Dispatcher { contract_address: token };
+            dispatcher.transfer(user, reward.into());
 
-            emit(Event::RewardsClaimed(RewardsClaimed { user, amount: reward }));
+            self.emit(Event::RewardsClaimed(RewardsClaimed { user, amount: reward }));
         }
 
         fn get_market(self: @ContractState, market_id: u64) -> Market {
@@ -343,12 +347,11 @@ mod PredictionMarket {
         }
 
         fn get_market_total_volume(self: @ContractState, market_id: u64) -> u128 {
-            let market = self.markets.read(market_id);
             let mut i = 0_u32;
             let mut total = 0_u128;
-            let len = market.outcomes.len().try_into().unwrap();
+            let len = self.outcome_counts.read(market_id).try_into().unwrap();
 
-            while i < len {
+            while i != len {
                 total += self.get_total_outcome_units(market_id, i);
                 i += 1;
             }
@@ -373,21 +376,20 @@ mod PredictionMarket {
             let caller = get_caller_address();
             assert(self.accesscontrol.has_role(DEFAULT_ADMIN_ROLE, caller), 'Caller not admin');
             self.validators.write(account, true);
-            emit(Event::ValidatorAdded(ValidatorAdded { account, caller }));
+            self.emit(Event::ValidatorAdded(ValidatorAdded { account, caller }));
         }
 
         fn remove_validator(ref self: ContractState, account: ContractAddress) {
             let caller = get_caller_address();
             assert(self.accesscontrol.has_role(DEFAULT_ADMIN_ROLE, caller), 'Caller not admin');
             self.validators.write(account, false);
-            emit(Event::ValidatorRemoved(ValidatorRemoved { account, caller }));
+            self.emit(Event::ValidatorRemoved(ValidatorRemoved { account, caller }));
         }
 
         fn get_market_volume_by_outcome(
             self: @ContractState, market_id: u64, outcome_id: u32,
         ) -> u128 {
-            let market = self.markets.read(market_id);
-            assert(outcome_id < market.outcomes.len().try_into().unwrap(), 'Invalid outcome');
+            assert(outcome_id < self.outcome_counts.read(market_id), 'Invalid outcome');
             self.outcome_totals.read((market_id, outcome_id))
         }
 
@@ -440,7 +442,7 @@ mod PredictionMarket {
             let count = self.outcome_counts.read(market_id);
             let mut outcomes = ArrayTrait::new();
             let mut i = 0_u32;
-            while i < count {
+            while i != count {
                 outcomes.append(self.market_outcomes.read((market_id, i)));
                 i += 1;
             }
@@ -455,8 +457,8 @@ mod PredictionMarket {
             self: @ContractState, outcomes: Array<felt252>, target: felt252,
         ) -> bool {
             let mut i = 0;
-            while i < outcomes.len() {
-                if outcomes.at(i) == target {
+            while i != outcomes.len() {
+                if *outcomes.at(i) == target {
                     return true;
                 }
                 i += 1;
