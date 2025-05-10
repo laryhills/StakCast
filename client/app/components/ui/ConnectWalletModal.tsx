@@ -4,19 +4,22 @@ import { toast } from "react-toastify";
 import { useConnect } from "@starknet-react/core";
 import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
 import { X, Wallet, Mail } from "lucide-react";
+import { useArgentSdk } from "../utils/invisible-sdk";
+
 
 interface WalletModalProps {
   onClose: () => void;
 }
 
 const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
+
   const modalRef = useRef<HTMLDivElement>(null);
   const { connectAsync, connectors } = useConnect();
   const { starknetkitConnectModal } = useStarknetkitConnectModal({
     connectors: connectors as StarknetkitConnector[],
     modalTheme: "system",
   });
-
+const {connect}=useArgentSdk()
   const authWalletHandler = async () => {
     const { connector } = await starknetkitConnectModal();
     if (!connector) return;
@@ -118,7 +121,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
           </div>
 
           <button
-            onClick={() => console.log("Continue with Email clicked")}
+            onClick={connect}
             className="w-full py-4 px-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2"
           >
             <Mail className="w-5 h-5" />

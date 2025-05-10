@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { useAccount, useDisconnect } from "@starknet-react/core";
+import { useDisconnect } from "@starknet-react/core";
 import ThemeToggle from "../utils/ThemeToggle";
 import Categories from "../sections/Categories";
 import {
@@ -17,6 +17,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import ConnectModal from "../ui/ConnectWalletModal";
+import { useAppContext } from "@/app/context/appContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -24,7 +25,7 @@ const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isConnectModal, setIsConnectModal] = useState(false);
-  const { address, status } = useAccount();
+  const { address, status } = useAppContext();
 
   const { disconnect } = useDisconnect();
   const router = useRouter();
@@ -51,7 +52,6 @@ const Header = () => {
   const connectWalletModal = () => {
     setIsConnectModal(!isConnectModal);
   };
-
 
   const handleDisconnect = () => {
     disconnect();
