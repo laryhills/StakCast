@@ -19,3 +19,4 @@ export interface DummyMarketType {
 export type BaseProps = {
   className?: string;
 };
+

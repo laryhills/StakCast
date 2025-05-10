@@ -15,12 +15,11 @@ import { mainnet, sepolia } from "@starknet-react/chains";
 import "./globals.css";
 import { connectors } from "./components/utils/connectors";
 import { Bounce, ToastContainer } from "react-toastify";
-import { ThemeProvider } from "./context/ThemeContext";
+import Providers from "./Providers";
 
 const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
-  
 });
 
 export default function RootLayout({
@@ -37,25 +36,25 @@ export default function RootLayout({
         className={`${manrope.className} antialiased bg-[white] text-gray-600`}
       >
         <Suspense>
-        <ToastContainer
-        position="bottom-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick={false}
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-        transition={Bounce}
-      />
+          <ToastContainer
+            position="bottom-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick={false}
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+            transition={Bounce}
+          />
           <StarknetConfig
             chains={chains}
             provider={providers}
             connectors={connectors}
           >
-            <ThemeProvider>{children}</ThemeProvider>
+            <Providers> {children}</Providers>
           </StarknetConfig>
         </Suspense>
       </body>
