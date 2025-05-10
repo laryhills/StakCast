@@ -6,6 +6,7 @@ pub trait IPredictionMarket<TContractState> {
     fn create_market(
         ref self: TContractState,
         question: ByteArray,
+        category: felt252,
         outcomes: Array<felt252>,
         start_time: u64,
         end_time: u64,

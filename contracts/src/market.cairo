@@ -154,6 +154,7 @@ mod PredictionMarket {
         fn create_market(
             ref self: ContractState,
             question: ByteArray,
+            category: felt252,
             mut outcomes: Array<felt252>,
             start_time: u64,
             end_time: u64,
@@ -169,6 +170,7 @@ mod PredictionMarket {
             // Store market
             let market = Market {
                 question: question_for_market,
+                category,
                 creator,
                 start_time: current_time,
                 end_time,
