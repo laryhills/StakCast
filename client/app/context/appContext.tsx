@@ -3,34 +3,53 @@ import {
   createContext,
   useContext,
   useState,
+
   ReactNode,
   SetStateAction,
   Dispatch,
 } from "react";
 import { useAccount, useBalance } from "@starknet-react/core";
 import { SessionAccountInterface } from "@argent/invisible-sdk";
+import { STRKTokenAddress } from "../components/utils/constants";
+
 interface AppContextType {
   balance: string;
   address: `0x${string}` | undefined;
   sessionAccount: SessionAccountInterface | undefined;
   status: string;
   setAccount: Dispatch<SetStateAction<SessionAccountInterface | undefined>>;
+  setConnectionMode: (mode: "email" | "wallet") => void;
+  connectionMode: "email" | "wallet";
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const getInitialConnectionMode = (): "email" | "wallet" => {
+  if (typeof window === "undefined") return "wallet";
+  const stored = localStorage.getItem("connectionMode");
+  return stored === "email" ? "email" : "wallet";
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
   let { address } = useAccount();
-  //const { status } = useAccount();
+
+  const [connectionModeState, setConnectionModeState] = useState<
+    "email" | "wallet"
+  >(getInitialConnectionMode());
+
+  const setConnectionMode = (mode: "email" | "wallet") => {
+    localStorage.setItem("connectionMode", mode);
+    setConnectionModeState(mode);
+  };
 
   const [sessionAccount, setAccount] = useState<
     SessionAccountInterface | undefined
   >();
 
   address = sessionAccount ? sessionAccount.address : address;
-  sessionAccount?.getSessionStatus();
+  console.log(sessionAccount);
   const { data, isFetching } = useBalance({
-    token: "0x04718f5a0Fc34cC1AF16A1cdee98fFB20C31f5cD61D6Ab07201858f4287c938D",
+    token: STRKTokenAddress,
     address: address as "0x",
   });
 
@@ -39,7 +58,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     : data?.formatted
     ? `${parseFloat(data.formatted).toFixed(2)} ${data.symbol}`
     : "";
+
   const status = address ? "connected" : "disconnected";
+
   return (
     <AppContext.Provider
       value={{
@@ -48,6 +69,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sessionAccount,
         balance,
         setAccount,
+        connectionMode: connectionModeState,
+        setConnectionMode,
       }}
     >
       {children}
