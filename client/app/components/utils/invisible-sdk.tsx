@@ -6,7 +6,6 @@ export const useArgentSdk = () => {
   //const [account, setAccount] = useState<SessionAccountInterface | undefined>();
   const { sessionAccount: account, setAccount } = useAppContext();
   const [isConnecting, setIsConnecting] = useState(false);
-
   const initWallet = async () => {
     const { ArgentWebWallet } = await import("@argent/invisible-sdk");
     return ArgentWebWallet.init({
@@ -44,8 +43,12 @@ export const useArgentSdk = () => {
       if (!response || response.account.getSessionStatus() !== "VALID") {
         throw new Error("Invalid session");
       }
-
+      console.log(response.account,'hh');
       setAccount(response.account);
+      const isConnected = argentWebWallet.isConnected();
+      console.log(response);
+      console.log(isConnected);
+      localStorage.setItem("sessionItem", JSON.stringify(response.account));
       return response.account;
     } catch (error) {
       console.error("Failed to connect:", error);
