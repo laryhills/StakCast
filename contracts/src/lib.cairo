@@ -1,3 +1,3 @@
-pub mod predictionMarket;
-pub mod interface;
-pub mod utils;
+pub mod config;
+pub mod interfaces;
+pub mod market;
