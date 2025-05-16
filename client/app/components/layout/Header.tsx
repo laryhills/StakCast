@@ -4,8 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
-import { StarknetkitConnector, useStarknetkitConnectModal } from "starknetkit";
+import { useDisconnect } from "@starknet-react/core";
 import ThemeToggle from "../utils/ThemeToggle";
 import Categories from "../sections/Categories";
 import {
@@ -17,15 +16,17 @@ import {
   Settings,
   BarChart3,
 } from "lucide-react";
+import ConnectModal from "../ui/ConnectWalletModal";
+import { useAppContext } from "@/app/context/appContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isConnectModal, setIsConnectModal] = useState(false);
+  const { address, status } = useAppContext();
 
-  const { address, status } = useAccount();
-  const { connectAsync, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const router = useRouter();
 
@@ -48,23 +49,8 @@ const Header = () => {
     setIsDropdownOpen((prev) => !prev);
   };
 
-  const { starknetkitConnectModal } = useStarknetkitConnectModal({
-    connectors: connectors as StarknetkitConnector[],
-    modalTheme: "system",
-  });
-
-  const authWalletHandler = async () => {
-    const { connector } = await starknetkitConnectModal();
-    if (!connector) return;
-
-    try {
-      await connectAsync({ connector });
-      toast.success("Wallet connected");
-      localStorage.setItem("connector", connector.id);
-    } catch (_e) {
-      console.log(_e)
-      toast.error("Connection rejected");
-    }
+  const connectWalletModal = () => {
+    setIsConnectModal(!isConnectModal);
   };
 
   const handleDisconnect = () => {
@@ -193,7 +179,7 @@ const Header = () => {
                 ) : (
                   <button
                     className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow"
-                    onClick={authWalletHandler}
+                    onClick={connectWalletModal}
                   >
                     Connect Wallet
                   </button>
@@ -248,7 +234,7 @@ const Header = () => {
                   <button
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
                     onClick={() => {
-                      authWalletHandler();
+                      connectWalletModal();
                       setIsMenuOpen(false);
                     }}
                   >
@@ -283,8 +269,15 @@ const Header = () => {
 
         <Categories />
       </header>
-
+      {isConnectModal && (
+        <ConnectModal
+          onClose={() => {
+            setIsConnectModal(false);
+          }}
+        />
+      )}
       {/* This div creates space for the fixed header so content doesn't hide behind it */}
+
       <div className="h-[80px]"></div>
     </>
   );

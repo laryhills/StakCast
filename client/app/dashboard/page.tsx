@@ -21,8 +21,9 @@ import { Button } from "@/components/ui/button";
 
 // import { z } from "zod";
 import { Input } from "@/components/ui/input";
-import { useAccount, useBalance } from "@starknet-react/core";
+import { useAccount } from "@starknet-react/core";
 import Header from "../components/layout/Header";
+import { useAppContext } from "../context/appContext";
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -32,19 +33,8 @@ import Header from "../components/layout/Header";
 // });
 
 const DashboardPage = () => {
-  const { address, isConnected } = useAccount();
+  const { address } = useAccount();
 
-  const { data, isFetching } = useBalance({
-    token: "0x04718f5a0Fc34cC1AF16A1cdee98fFB20C31f5cD61D6Ab07201858f4287c938D",
-    address: address as "0x",
-  });
-  console.log(data);
-
-  const balance = isFetching
-    ? "loading..."
-    : data?.formatted
-    ? `${parseFloat(data.formatted).toFixed(2)} ${data.symbol}`
-    : "";
   const [_markets, setMarkets] = useState<DummyMarketType[]>([]);
   console.log(_markets);
   const [newMarket, setNewMarket] = useState<Omit<DummyMarketType, "id">>({
@@ -58,7 +48,7 @@ const DashboardPage = () => {
     createdBy: address || "",
     options: [],
   });
-
+  const { status, balance } = useAppContext();
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewMarket((prev) => ({ ...prev, [name]: value }));
@@ -88,8 +78,8 @@ const DashboardPage = () => {
   //       image: "",
   //     },
   //   });
-
-  if (!isConnected) {
+  console.log(status);
+  if (status !== "connected") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
         <Header />
