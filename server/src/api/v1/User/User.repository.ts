@@ -1,26 +1,32 @@
 import { injectable } from "tsyringe";
-import User, { IUser } from "./User.model";
+import { Repository, QueryRunner } from "typeorm";
+import AppDataSource from "../../../config/DataSource";
+import User from "./user.entity";
 
-
+@injectable()
 export default class UserRepository {
-	private constructor() {}
+	private userRepository: Repository<User>;
 
-	async createUser(userData: Partial<IUser>): Promise<IUser> {
-		const user = new User(userData);
-		return await user.save();
+	constructor() {
+		this.userRepository = AppDataSource.getRepository(User);
 	}
 
-	async findByUsername(username: string): Promise<IUser | null> {
-		return await User.findOne({ username });
+	async createUser(userData: Partial<User>, queryRunner?: QueryRunner): Promise<User> {
+		const repository = queryRunner ? queryRunner.manager.getRepository(User) : this.userRepository;
+		const user = repository.create(userData);
+		return repository.save(user);
 	}
 
-	async findById(userId: string): Promise<IUser | null> {
-		return await User.findById(userId);
+	async findByEmail(email: string): Promise<User | null> {
+		return this.userRepository.findOne({ where: { email } });
 	}
 
-	async findByIdentifier(identifier: string): Promise<IUser | null> {
-		return User.findOne({
-			$or: [{ email: identifier }, { username: identifier }],
-		});
+	async findById(userId: string): Promise<User | null> {
+		return this.userRepository.findOne({ where: { id: userId } });
+	}
+
+	async updateUser(userId: string, userData: Partial<User>): Promise<User | null> {
+		await this.userRepository.update(userId, userData);
+		return this.findById(userId);
 	}
 }
