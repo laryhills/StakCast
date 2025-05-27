@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from "typeorm";
 import { User } from "../User/user.entity";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 @Entity("auth")
 export class Auth {
