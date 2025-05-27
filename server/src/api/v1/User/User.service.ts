@@ -1,42 +1,60 @@
 // src/services/UserService.ts
-import { injectable, inject } from "tsyringe";
-import AuthRepository from "../Auth/AuthRepository";
-import bcrypt from "bcrypt";
-import { IUser } from "./User.model";
-import { ApplicationError } from "../../../utils/errorHandler";
-import HttpStatusCodes from "../../../constants/HttpStatusCodes";
-import  UserRepository from "./User.repository";
+import { injectable } from "tsyringe";
+import { DataSource } from "typeorm";
+import UserRepository from "./user.repository";
+import User from "./user.entity";
+import AppDataSource from "../../../config/DataSource";
 
 @injectable()
-class UserService {
-	constructor(
-		@inject("UserRepository") private userRepository: UserRepository,
-		@inject("AuthRepository") private authRepository: AuthRepository
-	) {}
+export default class UserService {
+	constructor(private userRepository: UserRepository) {}
 
-	async register(userDetails: Partial<IUser>): Promise<IUser> {
-		const { email, username, password } = userDetails;
-		
-		if (!email || !password || !username) {
-			throw new ApplicationError(
-				"Email, username and password are required",
-				HttpStatusCodes.UNPROCESSABLE_ENTITY
-			);
-		}
-
-		// Check for existing user by email or username
-		const existingUser = await this.userRepository.findByIdentifier(email) 
-			|| await this.userRepository.findByIdentifier(username);
-			
+	async createUser(userData: { email: string; firstName: string; lastName: string }): Promise<User> {
+		const existingUser = await this.userRepository.findByEmail(userData.email);
 		if (existingUser) {
-			throw new ApplicationError(
-				"User with this email or username already exists",
-				HttpStatusCodes.CONFLICT
-			);
+			throw new Error("User already exists");
 		}
+		return this.userRepository.createUser(userData);
+	}
 
-		return this.userRepository.createUser(userDetails);
+	async getUserById(userId: string): Promise<User> {
+		const user = await this.userRepository.findById(userId);
+		if (!user) {
+			throw new Error("User not found");
+		}
+		return user;
+	}
+
+	async getUserByEmail(email: string): Promise<User> {
+		const user = await this.userRepository.findByEmail(email);
+		if (!user) {
+			throw new Error("User not found");
+		}
+		return user;
+	}
+
+	async updateUser(userId: string, userData: Partial<User>): Promise<User> {
+		const user = await this.userRepository.updateUser(userId, userData);
+		if (!user) {
+			throw new Error("User not found");
+		}
+		return user;
+	}
+
+	async createUserWithTransaction(userData: { email: string; firstName: string; lastName: string }): Promise<User> {
+		const queryRunner = AppDataSource.createQueryRunner();
+		await queryRunner.connect();
+		await queryRunner.startTransaction();
+
+		try {
+			const user = await this.userRepository.createUser(userData, queryRunner);
+			await queryRunner.commitTransaction();
+			return user;
+		} catch (error) {
+			await queryRunner.rollbackTransaction();
+			throw error;
+		} finally {
+			await queryRunner.release();
+		}
 	}
 }
-
-export default UserService;
