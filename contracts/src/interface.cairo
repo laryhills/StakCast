@@ -1,4 +1,4 @@
-use starknet::{ContractAddress};
+use starknet::ContractAddress;
 use starknet::class_hash::ClassHash;
 
 // ================ Market Types ================
@@ -266,5 +266,4 @@ pub trait IPredictionHub<TContractState> {
 
     /// Upgrades the contract implementation (admin only)
     fn upgrade(ref self: TContractState, impl_hash: ClassHash);
-
 }

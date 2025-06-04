@@ -1,18 +1,14 @@
-use starknet::{
-    ContractAddress, get_caller_address, get_block_timestamp,
-    storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map}
-};
-use starknet::class_hash::ClassHash;
 use core::num::traits::Zero;
-use pragma_lib::types::{DataType};
-use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-
-use super::interface::{
-    IPredictionHub, PredictionMarket, CryptoPrediction, SportsPrediction, Choice, UserStake,
-    UserBet
+use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
+use pragma_lib::types::DataType;
+use stakcast::admin_interface::IAdditionalAdmin;
+use stakcast::interface::{
+    Choice, CryptoPrediction, IPredictionHub, PredictionMarket, SportsPrediction, UserBet,
+    UserStake,
 };
-use super::admin_interface::{IAdditionalAdmin};
+use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
+use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
 // ================ Security Events ================
 
@@ -94,49 +90,39 @@ pub mod PredictionHub {
         admin: ContractAddress,
         moderators: Map<ContractAddress, bool>,
         moderator_count: u32,
-        
         // Market data
         prediction_count: u256,
         predictions: Map<u256, PredictionMarket>,
         crypto_predictions: Map<u256, CryptoPrediction>,
         sports_predictions: Map<u256, SportsPrediction>,
-        
         // User bets mapping: (user, market_id, market_type, bet_index) -> UserBet
         user_bets: Map<(ContractAddress, u256, u8, u8), UserBet>,
         user_bet_counts: Map<(ContractAddress, u256, u8), u8>,
-        
         // Fee management
         fee_recipient: ContractAddress,
         platform_fee_percentage: u256, // Basis points (e.g., 250 = 2.5%)
         collected_fees: Map<u256, u256>, // market_id -> total_fees_collected
         total_fees_collected: u256,
-        
         // Token integration
         betting_token: ContractAddress, // ERC20 token used for betting
-        
         // Oracle integration
         pragma_oracle: ContractAddress,
-        
         // Emergency controls
         emergency_pause_reason: ByteArray,
         is_paused: bool,
         market_creation_paused: bool,
         betting_paused: bool,
         resolution_paused: bool,
-        
         // Time-based restrictions
         min_market_duration: u64, // Minimum time a market must be open
         max_market_duration: u64, // Maximum time a market can be open
-        resolution_window: u64,   // Time window after market end for resolution
-        
+        resolution_window: u64, // Time window after market end for resolution
         // Betting restrictions
         min_bet_amount: u256, // Minimum bet amount
         max_bet_amount: u256, // Maximum bet amount per user per market
-        
         // Pool management
         market_liquidity: Map<u256, u256>, // market_id -> available_liquidity
         total_value_locked: u256,
-        
         // Reentrancy protection
         reentrancy_guard: bool,
     }
@@ -169,21 +155,22 @@ pub mod PredictionHub {
         self.fee_recipient.write(fee_recipient);
         self.platform_fee_percentage.write(250); // 2.5% default fee
         self.pragma_oracle.write(pragma_oracle);
+
         self.betting_token.write(betting_token);
-        
+
         // Set default time restrictions
         self.min_market_duration.write(3600); // 1 hour minimum
         self.max_market_duration.write(31536000); // 1 year maximum
         self.resolution_window.write(604800); // 1 week resolution window
-        
+
         // Set default betting restrictions
         self.min_bet_amount.write(1000000000000000000); // 1 token (18 decimals)
         self.max_bet_amount.write(1000000000000000000000000); // 1M tokens
-        
+
         // Initialize tracking
         self.total_fees_collected.write(0);
         self.total_value_locked.write(0);
-        
+
         // Initialize security states
         self.is_paused.write(false);
         self.market_creation_paused.write(false);
@@ -209,7 +196,7 @@ pub mod PredictionHub {
             let caller = get_caller_address();
             let is_admin = self.admin.read() == caller;
             let is_moderator = self.moderators.entry(caller).read();
-            
+
             assert(is_admin || is_moderator, 'Only admin or moderator');
         }
 
@@ -229,15 +216,18 @@ pub mod PredictionHub {
             let current_time = get_block_timestamp();
             let min_duration = self.min_market_duration.read();
             let max_duration = self.max_market_duration.read();
-            
+
+            // Check that end_time is in the future first to avoid overflow in subtraction
             assert(end_time > current_time, 'End time must be in future');
-            assert(end_time - current_time >= min_duration, 'Market duration too short');
-            assert(end_time - current_time <= max_duration, 'Market duration too long');
+
+            let duration = end_time - current_time;
+            assert(duration >= min_duration, 'Market duration too short');
+            assert(duration <= max_duration, 'Market duration too long');
         }
 
         fn assert_market_open(self: @ContractState, market_id: u256, market_type: u8) {
             let current_time = get_block_timestamp();
-            
+
             if market_type == 0 { // General prediction
                 let market = self.predictions.entry(market_id).read();
                 assert(market.is_open, 'Market is closed');
@@ -285,7 +275,9 @@ pub mod PredictionHub {
             assert(amount <= max_bet, 'Amount above maximum');
         }
 
-        fn assert_sufficient_token_balance(self: @ContractState, user: ContractAddress, amount: u256) {
+        fn assert_sufficient_token_balance(
+            self: @ContractState, user: ContractAddress, amount: u256,
+        ) {
             let token = IERC20Dispatcher { contract_address: self.betting_token.read() };
             let balance = token.balance_of(user);
             assert(balance >= amount, 'Insufficient token balance');
@@ -311,7 +303,6 @@ pub mod PredictionHub {
 
     #[abi(embed_v0)]
     impl PredictionHubImpl of IPredictionHub<ContractState> {
-        
         // ================ Market Creation ================
 
         fn create_prediction(
@@ -352,11 +343,7 @@ pub mod PredictionHub {
 
             self.predictions.entry(market_id).write(market);
 
-            self.emit(MarketCreated {
-                market_id,
-                creator: get_caller_address(),
-                market_type: 0,
-            });
+            self.emit(MarketCreated { market_id, creator: get_caller_address(), market_type: 0 });
 
             self.end_reentrancy_guard();
         }
@@ -406,11 +393,7 @@ pub mod PredictionHub {
 
             self.crypto_predictions.entry(market_id).write(market);
 
-            self.emit(MarketCreated {
-                market_id,
-                creator: get_caller_address(),
-                market_type: 1,
-            });
+            self.emit(MarketCreated { market_id, creator: get_caller_address(), market_type: 1 });
 
             self.end_reentrancy_guard();
         }
@@ -457,11 +440,7 @@ pub mod PredictionHub {
 
             self.sports_predictions.entry(market_id).write(market);
 
-            self.emit(MarketCreated {
-                market_id,
-                creator: get_caller_address(),
-                market_type: 2,
-            });
+            self.emit(MarketCreated { market_id, creator: get_caller_address(), market_type: 2 });
 
             self.end_reentrancy_guard();
         }
@@ -481,15 +460,15 @@ pub mod PredictionHub {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut i = 1;
-            
+
             while i <= count {
                 let market = self.predictions.entry(i).read();
                 if market.market_id != 0 { // Check if market exists
                     predictions.append(market);
                 }
                 i += 1;
-            };
-            
+            }
+
             predictions
         }
 
@@ -502,15 +481,15 @@ pub mod PredictionHub {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut i = 1;
-            
+
             while i <= count {
                 let market = self.crypto_predictions.entry(i).read();
                 if market.market_id != 0 { // Check if market exists
                     predictions.append(market);
                 }
                 i += 1;
-            };
-            
+            }
+
             predictions
         }
 
@@ -523,36 +502,28 @@ pub mod PredictionHub {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut i = 1;
-            
+
             while i <= count {
                 let market = self.sports_predictions.entry(i).read();
                 if market.market_id != 0 { // Check if market exists
                     predictions.append(market);
                 }
                 i += 1;
-            };
-            
+            }
+
             predictions
         }
 
         // ================ Betting Functions ================
 
         fn place_bet(
-            ref self: ContractState,
-            market_id: u256,
-            choice_idx: u8,
-            amount: u256,
-            market_type: u8,
+            ref self: ContractState, market_id: u256, choice_idx: u8, amount: u256, market_type: u8,
         ) -> bool {
             self.place_wager(market_id, choice_idx, amount, market_type)
         }
 
         fn place_wager(
-            ref self: ContractState,
-            market_id: u256,
-            choice_idx: u8,
-            amount: u256,
-            market_type: u8,
+            ref self: ContractState, market_id: u256, choice_idx: u8, amount: u256, market_type: u8,
         ) -> bool {
             self.assert_not_paused();
             self.assert_betting_not_paused();
@@ -580,17 +551,18 @@ pub mod PredictionHub {
             if fee_amount > 0 {
                 let fee_success = token.transfer(self.fee_recipient.read(), fee_amount);
                 assert(fee_success, 'Fee transfer failed');
-                
+
                 // Track fees
                 let current_market_fees = self.collected_fees.entry(market_id).read();
                 self.collected_fees.entry(market_id).write(current_market_fees + fee_amount);
                 self.total_fees_collected.write(self.total_fees_collected.read() + fee_amount);
 
-                self.emit(FeesCollected {
-                    market_id,
-                    fee_amount,
-                    fee_recipient: self.fee_recipient.read(),
-                });
+                self
+                    .emit(
+                        FeesCollected {
+                            market_id, fee_amount, fee_recipient: self.fee_recipient.read(),
+                        },
+                    );
             }
 
             // Create user bet with net amount
@@ -602,45 +574,38 @@ pub mod PredictionHub {
             let count_key = (caller, market_id, market_type);
             let current_count = self.user_bet_counts.entry(count_key).read();
             let bet_key = (caller, market_id, market_type, current_count);
-            
+
             self.user_bets.entry(bet_key).write(user_bet);
             self.user_bet_counts.entry(count_key).write(current_count + 1);
 
             // Update market totals with net amount
             self._update_market_totals(market_id, market_type, choice_idx, net_amount);
-            
+
             // Update liquidity tracking
             let current_liquidity = self.market_liquidity.entry(market_id).read();
             self.market_liquidity.entry(market_id).write(current_liquidity + net_amount);
             self.total_value_locked.write(self.total_value_locked.read() + net_amount);
 
             // Emit comprehensive wager event
-            self.emit(WagerPlaced {
-                market_id,
-                user: caller,
-                choice: choice_idx,
-                amount,
-                fee_amount,
-                net_amount,
-                wager_index: current_count,
-            });
-
-            self.emit(BetPlaced {
-                market_id,
-                user: caller,
-                choice: choice_idx,
-                amount: net_amount,
-            });
+            self
+                .emit(
+                    WagerPlaced {
+                        market_id,
+                        user: caller,
+                        choice: choice_idx,
+                        amount,
+                        fee_amount,
+                        net_amount,
+                        wager_index: current_count,
+                    },
+                );
 
             self.end_reentrancy_guard();
             true
         }
 
         fn get_bet_count_for_market(
-            self: @ContractState,
-            user: ContractAddress,
-            market_id: u256,
-            market_type: u8,
+            self: @ContractState, user: ContractAddress, market_id: u256, market_type: u8,
         ) -> u8 {
             self.user_bet_counts.entry((user, market_id, market_type)).read()
         }
@@ -655,7 +620,7 @@ pub mod PredictionHub {
             let count_key = (user, market_id, market_type);
             let bet_count = self.user_bet_counts.entry(count_key).read();
             assert(bet_idx < bet_count, 'Bet index out of bounds');
-            
+
             let bet_key = (user, market_id, market_type, bet_idx);
             self.user_bets.entry(bet_key).read()
         }
@@ -672,16 +637,16 @@ pub mod PredictionHub {
 
             let mut market = self.predictions.entry(market_id).read();
             assert(!market.is_resolved, 'Market already resolved');
-            
+
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
-            
+
             let resolution_deadline = market.end_time + self.resolution_window.read();
             assert(current_time <= resolution_deadline, 'Resolution window expired');
 
             market.is_resolved = true;
             market.is_open = false;
-            
+
             let winning_choice_struct = if winning_choice == 0 {
                 let (choice_0, _choice_1) = market.choices;
                 choice_0
@@ -689,23 +654,17 @@ pub mod PredictionHub {
                 let (_choice_0, choice_1) = market.choices;
                 choice_1
             };
-            
+
             market.winning_choice = Option::Some(winning_choice_struct);
             self.predictions.entry(market_id).write(market);
 
-            self.emit(MarketResolved {
-                market_id,
-                resolver: get_caller_address(),
-                winning_choice,
-            });
+            self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
 
             self.end_reentrancy_guard();
         }
 
         fn resolve_crypto_prediction_manually(
-            ref self: ContractState,
-            market_id: u256,
-            winning_choice: u8,
+            ref self: ContractState, market_id: u256, winning_choice: u8,
         ) {
             self.assert_not_paused();
             self.assert_resolution_not_paused();
@@ -716,13 +675,13 @@ pub mod PredictionHub {
 
             let mut market = self.crypto_predictions.entry(market_id).read();
             assert(!market.is_resolved, 'Market already resolved');
-            
+
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
 
             market.is_resolved = true;
             market.is_open = false;
-            
+
             let winning_choice_struct = if winning_choice == 0 {
                 let (choice_0, _choice_1) = market.choices;
                 choice_0
@@ -730,23 +689,17 @@ pub mod PredictionHub {
                 let (_choice_0, choice_1) = market.choices;
                 choice_1
             };
-            
+
             market.winning_choice = Option::Some(winning_choice_struct);
             self.crypto_predictions.entry(market_id).write(market);
 
-            self.emit(MarketResolved {
-                market_id,
-                resolver: get_caller_address(),
-                winning_choice,
-            });
+            self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
 
             self.end_reentrancy_guard();
         }
 
         fn resolve_sports_prediction_manually(
-            ref self: ContractState,
-            market_id: u256,
-            winning_choice: u8,
+            ref self: ContractState, market_id: u256, winning_choice: u8,
         ) {
             self.assert_not_paused();
             self.assert_resolution_not_paused();
@@ -757,13 +710,13 @@ pub mod PredictionHub {
 
             let mut market = self.sports_predictions.entry(market_id).read();
             assert(!market.is_resolved, 'Market already resolved');
-            
+
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
 
             market.is_resolved = true;
             market.is_open = false;
-            
+
             let winning_choice_struct = if winning_choice == 0 {
                 let (choice_0, _choice_1) = market.choices;
                 choice_0
@@ -771,15 +724,11 @@ pub mod PredictionHub {
                 let (_choice_0, choice_1) = market.choices;
                 choice_1
             };
-            
+
             market.winning_choice = Option::Some(winning_choice_struct);
             self.sports_predictions.entry(market_id).write(market);
 
-            self.emit(MarketResolved {
-                market_id,
-                resolver: get_caller_address(),
-                winning_choice,
-            });
+            self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
 
             self.end_reentrancy_guard();
         }
@@ -793,7 +742,7 @@ pub mod PredictionHub {
 
             let mut market = self.crypto_predictions.entry(market_id).read();
             assert(!market.is_resolved, 'Market already resolved');
-            
+
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
 
@@ -805,15 +754,23 @@ pub mod PredictionHub {
             // Determine winning choice based on comparison
             let winning_choice = if market.comparison_type == 0 {
                 // Less than target
-                if current_price < market.target_value.into() { 0 } else { 1 }
+                if current_price < market.target_value.into() {
+                    0
+                } else {
+                    1
+                }
             } else {
                 // Greater than target
-                if current_price > market.target_value.into() { 0 } else { 1 }
+                if current_price > market.target_value.into() {
+                    0
+                } else {
+                    1
+                }
             };
 
             market.is_resolved = true;
             market.is_open = false;
-            
+
             let winning_choice_struct = if winning_choice == 0 {
                 let (choice_0, _choice_1) = market.choices;
                 choice_0
@@ -821,24 +778,16 @@ pub mod PredictionHub {
                 let (_choice_0, choice_1) = market.choices;
                 choice_1
             };
-            
+
             market.winning_choice = Option::Some(winning_choice_struct);
             self.crypto_predictions.entry(market_id).write(market);
 
-            self.emit(MarketResolved {
-                market_id,
-                resolver: get_caller_address(),
-                winning_choice,
-            });
+            self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
 
             self.end_reentrancy_guard();
         }
 
-        fn resolve_sports_prediction(
-            ref self: ContractState,
-            market_id: u256,
-            winning_choice: u8,
-        ) {
+        fn resolve_sports_prediction(ref self: ContractState, market_id: u256, winning_choice: u8) {
             // This would integrate with sports data API in production
             self.resolve_sports_prediction_manually(market_id, winning_choice);
         }
@@ -846,10 +795,7 @@ pub mod PredictionHub {
         // ================ Winnings Management ================
 
         fn collect_winnings(
-            ref self: ContractState,
-            market_id: u256,
-            market_type: u8,
-            bet_idx: u8,
+            ref self: ContractState, market_id: u256, market_type: u8, bet_idx: u8,
         ) {
             self.assert_not_paused();
             self.assert_market_exists(market_id, market_type);
@@ -857,17 +803,18 @@ pub mod PredictionHub {
 
             let caller = get_caller_address();
             let bet_key = (caller, market_id, market_type, bet_idx);
-            
+
             // Get user's bet
             let count_key = (caller, market_id, market_type);
             let bet_count = self.user_bet_counts.entry(count_key).read();
             assert(bet_idx < bet_count, 'Bet index out of bounds');
-            
+
             let mut user_bet = self.user_bets.entry(bet_key).read();
             assert(!user_bet.stake.claimed, 'Winnings already claimed');
 
             // Check if market is resolved and user won
-            let (is_resolved, winning_choice, total_pool, winning_pool) = self._get_market_resolution_info(market_id, market_type);
+            let (is_resolved, winning_choice, total_pool, winning_pool) = self
+                ._get_market_resolution_info(market_id, market_type);
             assert(is_resolved, 'Market not resolved');
 
             let user_won = user_bet.choice.label == winning_choice.label;
@@ -893,16 +840,16 @@ pub mod PredictionHub {
 
             // Mark as claimed
             user_bet.stake.claimed = true;
-            
+
             // Update the bet in storage
             self.user_bets.entry(bet_key).write(user_bet);
 
-            self.emit(WinningsCollected {
-                market_id,
-                user: caller,
-                amount: winnings,
-                wager_index: bet_idx,
-            });
+            self
+                .emit(
+                    WinningsCollected {
+                        market_id, user: caller, amount: winnings, wager_index: bet_idx,
+                    },
+                );
 
             self.end_reentrancy_guard();
         }
@@ -918,18 +865,18 @@ pub mod PredictionHub {
                 while market_type < 3 {
                     let count_key = (user, market_id, market_type);
                     let bet_count = self.user_bet_counts.entry(count_key).read();
-                    
+
                     if bet_count > 0 {
                         let mut bet_idx = 0;
-                        
+
                         while bet_idx < bet_count {
                             let bet_key = (user, market_id, market_type, bet_idx);
                             let user_bet = self.user_bets.entry(bet_key).read();
-                            
+
                             if !user_bet.stake.claimed {
-                                let (is_resolved, winning_choice, total_pool, winning_pool) = 
-                                    self._get_market_resolution_info(market_id, market_type);
-                                
+                                let (is_resolved, winning_choice, total_pool, winning_pool) = self
+                                    ._get_market_resolution_info(market_id, market_type);
+
                                 if is_resolved && user_bet.choice.label == winning_choice.label {
                                     let user_stake = user_bet.stake.amount;
                                     let winnings = if winning_pool > 0 {
@@ -944,16 +891,18 @@ pub mod PredictionHub {
                         };
                     }
                     market_type += 1;
-                };
+                }
                 market_id += 1;
-            };
+            }
 
             total_claimable
         }
 
         // ================ User Queries ================
 
-        fn get_user_predictions(self: @ContractState, user: ContractAddress) -> Array<PredictionMarket> {
+        fn get_user_predictions(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<PredictionMarket> {
             let mut user_markets = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut market_id = 1;
@@ -961,7 +910,7 @@ pub mod PredictionHub {
             while market_id <= count {
                 let key = (user, market_id, 0_u8);
                 let bet_count = self.user_bet_counts.entry(key).read();
-                
+
                 if bet_count > 0 {
                     let market = self.predictions.entry(market_id).read();
                     if market.market_id != 0 {
@@ -969,12 +918,14 @@ pub mod PredictionHub {
                     }
                 }
                 market_id += 1;
-            };
+            }
 
             user_markets
         }
 
-        fn get_user_crypto_predictions(self: @ContractState, user: ContractAddress) -> Array<CryptoPrediction> {
+        fn get_user_crypto_predictions(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<CryptoPrediction> {
             let mut user_markets = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut market_id = 1;
@@ -982,7 +933,7 @@ pub mod PredictionHub {
             while market_id <= count {
                 let key = (user, market_id, 1_u8);
                 let bet_count = self.user_bet_counts.entry(key).read();
-                
+
                 if bet_count > 0 {
                     let market = self.crypto_predictions.entry(market_id).read();
                     if market.market_id != 0 {
@@ -990,12 +941,14 @@ pub mod PredictionHub {
                     }
                 }
                 market_id += 1;
-            };
+            }
 
             user_markets
         }
 
-        fn get_user_sports_predictions(self: @ContractState, user: ContractAddress) -> Array<SportsPrediction> {
+        fn get_user_sports_predictions(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<SportsPrediction> {
             let mut user_markets = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut market_id = 1;
@@ -1003,7 +956,7 @@ pub mod PredictionHub {
             while market_id <= count {
                 let key = (user, market_id, 2_u8);
                 let bet_count = self.user_bet_counts.entry(key).read();
-                
+
                 if bet_count > 0 {
                     let market = self.sports_predictions.entry(market_id).read();
                     if market.market_id != 0 {
@@ -1011,7 +964,7 @@ pub mod PredictionHub {
                     }
                 }
                 market_id += 1;
-            };
+            }
 
             user_markets
         }
@@ -1053,15 +1006,12 @@ pub mod PredictionHub {
         fn add_moderator(ref self: ContractState, moderator: ContractAddress) {
             self.assert_only_admin();
             assert(!self.moderators.entry(moderator).read(), 'Already a moderator');
-            
+
             self.moderators.entry(moderator).write(true);
             let current_count = self.moderator_count.read();
             self.moderator_count.write(current_count + 1);
 
-            self.emit(ModeratorAdded {
-                moderator,
-                added_by: get_caller_address(),
-            });
+            self.emit(ModeratorAdded { moderator, added_by: get_caller_address() });
         }
 
         fn remove_all_predictions(ref self: ContractState) {
@@ -1111,15 +1061,12 @@ pub mod PredictionHub {
         fn remove_moderator(ref self: ContractState, moderator: ContractAddress) {
             self.assert_only_admin();
             assert(self.moderators.entry(moderator).read(), 'Not a moderator');
-            
+
             self.moderators.entry(moderator).write(false);
             let current_count = self.moderator_count.read();
             self.moderator_count.write(current_count - 1);
 
-            self.emit(ModeratorRemoved {
-                moderator,
-                removed_by: get_caller_address(),
-            });
+            self.emit(ModeratorRemoved { moderator, removed_by: get_caller_address() });
         }
 
         fn is_moderator(self: @ContractState, address: ContractAddress) -> bool {
@@ -1135,10 +1082,7 @@ pub mod PredictionHub {
             self.is_paused.write(true);
             self.emergency_pause_reason.write(reason.clone());
 
-            self.emit(EmergencyPaused {
-                paused_by: get_caller_address(),
-                reason,
-            });
+            self.emit(EmergencyPaused { paused_by: get_caller_address(), reason });
         }
 
         fn emergency_unpause(ref self: ContractState) {
@@ -1178,16 +1122,13 @@ pub mod PredictionHub {
         }
 
         fn set_time_restrictions(
-            ref self: ContractState,
-            min_duration: u64,
-            max_duration: u64,
-            resolution_window: u64,
+            ref self: ContractState, min_duration: u64, max_duration: u64, resolution_window: u64,
         ) {
             self.assert_only_admin();
             assert(min_duration > 0, 'Min duration must be positive');
             assert(max_duration > min_duration, 'Max must be greater than min');
             assert(resolution_window > 0, 'Resolution window positive');
-            
+
             self.min_market_duration.write(min_duration);
             self.max_market_duration.write(max_duration);
             self.resolution_window.write(resolution_window);
@@ -1278,9 +1219,9 @@ pub mod PredictionHub {
                         }
                     }
                     market_type += 1;
-                };
+                }
                 i += 1;
-            };
+            }
 
             (total_markets, active_markets, resolved_markets)
         }
@@ -1305,13 +1246,11 @@ pub mod PredictionHub {
         }
 
         fn emergency_close_multiple_markets(
-            ref self: ContractState,
-            market_ids: Array<u256>,
-            market_types: Array<u8>,
+            ref self: ContractState, market_ids: Array<u256>, market_types: Array<u8>,
         ) {
             self.assert_only_admin();
             assert(market_ids.len() == market_types.len(), 'Arrays length mismatch');
-            
+
             let mut i = 0;
             while i < market_ids.len() {
                 let market_id = *market_ids.at(i);
@@ -1330,15 +1269,17 @@ pub mod PredictionHub {
             self.assert_only_admin();
             assert(min_amount > 0, 'Min amount must be positive');
             assert(max_amount > min_amount, 'Max must be greater than min');
-            
+
             self.min_bet_amount.write(min_amount);
             self.max_bet_amount.write(max_amount);
         }
 
-        fn emergency_withdraw_tokens(ref self: ContractState, amount: u256, recipient: ContractAddress) {
+        fn emergency_withdraw_tokens(
+            ref self: ContractState, amount: u256, recipient: ContractAddress,
+        ) {
             self.assert_only_admin();
             assert(amount > 0, 'Amount must be positive');
-            
+
             let token = IERC20Dispatcher { contract_address: self.betting_token.read() };
             let success = token.transfer(recipient, amount);
             assert(success, 'Emergency withdrawal failed');
@@ -1350,16 +1291,12 @@ pub mod PredictionHub {
     #[generate_trait]
     impl HelperImpl of HelperTrait {
         fn _update_market_totals(
-            ref self: ContractState,
-            market_id: u256,
-            market_type: u8,
-            choice_idx: u8,
-            amount: u256,
+            ref self: ContractState, market_id: u256, market_type: u8, choice_idx: u8, amount: u256,
         ) {
             if market_type == 0 {
                 let mut market = self.predictions.entry(market_id).read();
                 market.total_pool += amount;
-                
+
                 let (mut choice_0, mut choice_1) = market.choices;
                 if choice_idx == 0 {
                     choice_0.staked_amount += amount;
@@ -1367,12 +1304,12 @@ pub mod PredictionHub {
                     choice_1.staked_amount += amount;
                 }
                 market.choices = (choice_0, choice_1);
-                
+
                 self.predictions.entry(market_id).write(market);
             } else if market_type == 1 {
                 let mut market = self.crypto_predictions.entry(market_id).read();
                 market.total_pool += amount;
-                
+
                 let (mut choice_0, mut choice_1) = market.choices;
                 if choice_idx == 0 {
                     choice_0.staked_amount += amount;
@@ -1380,12 +1317,12 @@ pub mod PredictionHub {
                     choice_1.staked_amount += amount;
                 }
                 market.choices = (choice_0, choice_1);
-                
+
                 self.crypto_predictions.entry(market_id).write(market);
             } else if market_type == 2 {
                 let mut market = self.sports_predictions.entry(market_id).read();
                 market.total_pool += amount;
-                
+
                 let (mut choice_0, mut choice_1) = market.choices;
                 if choice_idx == 0 {
                     choice_0.staked_amount += amount;
@@ -1393,15 +1330,13 @@ pub mod PredictionHub {
                     choice_1.staked_amount += amount;
                 }
                 market.choices = (choice_0, choice_1);
-                
+
                 self.sports_predictions.entry(market_id).write(market);
             }
         }
 
         fn _get_market_resolution_info(
-            self: @ContractState,
-            market_id: u256,
-            market_type: u8,
+            self: @ContractState, market_id: u256, market_type: u8,
         ) -> (bool, Choice, u256, u256) {
             if market_type == 0 {
                 let market = self.predictions.entry(market_id).read();
@@ -1431,10 +1366,7 @@ pub mod PredictionHub {
         }
 
         fn _get_choice_struct(
-            self: @ContractState,
-            market_id: u256,
-            market_type: u8,
-            choice_idx: u8,
+            self: @ContractState, market_id: u256, market_type: u8, choice_idx: u8,
         ) -> Choice {
             if choice_idx == 0 {
                 if market_type == 0 {
