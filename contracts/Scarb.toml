@@ -10,6 +10,7 @@ pragma_lib = { git = "https://github.com/astraly-labs/pragma-lib", branch = "mai
 
 [profile.dev.cairo]
 unstable-add-statements-code-locations-debug-info = true
+unstable-add-statements-functions-debug-info = true
 
 [dev-dependencies]
 snforge_std = "0.44.0"
