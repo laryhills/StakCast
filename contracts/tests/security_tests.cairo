@@ -1,7 +1,7 @@
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
+    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
 use starknet::{ClassHash, ContractAddress, get_block_timestamp};
@@ -65,6 +65,28 @@ fn deploy_contract() -> (IPredictionHubDispatcher, IERC20Dispatcher) {
     ];
     let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
     (IPredictionHubDispatcher { contract_address }, token)
+}
+
+fn create_market_and_get_id(
+    contract: IPredictionHubDispatcher, caller: ContractAddress, future_time: u64,
+) -> u256 {
+    let mut spy = spy_events();
+    start_cheat_caller_address(contract.contract_address, caller);
+    contract
+        .create_prediction(
+            "Test Market",
+            "Test Description",
+            ('Yes', 'No'),
+            'general',
+            "https://example.com/image.png",
+            future_time,
+        );
+    let market_id = match spy.get_events().events.into_iter().last() {
+        Option::Some((_, event)) => (*event.data.at(0)).into(),
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+    stop_cheat_caller_address(contract.contract_address);
+    market_id
 }
 
 // ================ Access Control Tests ================
@@ -257,52 +279,26 @@ fn test_valid_market_duration() {
 fn test_cannot_bet_on_ended_market() {
     let (contract, _) = deploy_contract();
 
-    // Create market as admin
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    // Create market as admin and get market_id
     let future_time = get_block_timestamp() + 3600; // 1 hour from now
-
-    contract
-        .create_prediction(
-            "Test Market",
-            "Test Description",
-            ('Yes', 'No'),
-            'general',
-            "https://example.com/image.png",
-            future_time,
-        );
-    stop_cheat_caller_address(contract.contract_address);
+    let market_id = create_market_and_get_id(contract, ADMIN_ADDR(), future_time);
 
     // Fast forward time past market end
     start_cheat_block_timestamp(contract.contract_address, future_time + 1);
 
     // Try to place bet after market ended
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.place_bet(1, 0, 1000, 0);
+    contract.place_bet(market_id, 0, 1000, 0);
 }
 
 #[test]
 #[should_panic(expected: ('Amount must be positive',))]
 fn test_cannot_bet_zero_amount() {
     let (contract, _) = deploy_contract();
-
-    // Create market as admin
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
     let future_time = get_block_timestamp() + 86400;
-
-    contract
-        .create_prediction(
-            "Test Market",
-            "Test Description",
-            ('Yes', 'No'),
-            'general',
-            "https://example.com/image.png",
-            future_time,
-        );
-    stop_cheat_caller_address(contract.contract_address);
-
-    // Try to place bet with zero amount
+    let market_id = create_market_and_get_id(contract, ADMIN_ADDR(), future_time);
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.place_bet(1, 0, 0, 0); // amount = 0
+    contract.place_bet(market_id, 0, 0, 0);
 }
 
 #[test]
@@ -310,24 +306,13 @@ fn test_cannot_bet_zero_amount() {
 fn test_cannot_bet_invalid_choice() {
     let (contract, _) = deploy_contract();
 
-    // Create market as admin
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    // Create market as admin and get market_id
     let future_time = get_block_timestamp() + 86400;
-
-    contract
-        .create_prediction(
-            "Test Market",
-            "Test Description",
-            ('Yes', 'No'),
-            'general',
-            "https://example.com/image.png",
-            future_time,
-        );
-    stop_cheat_caller_address(contract.contract_address);
+    let market_id = create_market_and_get_id(contract, ADMIN_ADDR(), future_time);
 
     // Try to place bet with invalid choice index
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.place_bet(1, 2, 1000, 0); // choice_idx = 2 (invalid, should be 0 or 1)
+    contract.place_bet(market_id, 2, 1000, 0); // choice_idx = 2 (invalid, should be 0 or 1)
 }
 
 // ================ Emergency Pause Tests ================
@@ -353,31 +338,25 @@ fn test_emergency_pause_functionality() {
 fn test_market_resolution_by_moderator() {
     let (contract, _) = deploy_contract();
 
-    // Add moderator and create market
+    // Add moderator
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
     contract.add_moderator(MODERATOR_ADDR());
-
-    let future_time = get_block_timestamp() + 3600; // 1 hour
-    contract
-        .create_prediction(
-            "Test Market",
-            "Test Description",
-            ('Yes', 'No'),
-            'general',
-            "https://example.com/image.png",
-            future_time,
-        );
     stop_cheat_caller_address(contract.contract_address);
 
-    // Fast forward past market end time
+    // Create market and get market_id
+    let future_time = get_block_timestamp() + 3600;
+    let market_id = create_market_and_get_id(contract, MODERATOR_ADDR(), future_time);
+
+    // Fast-forward time
     start_cheat_block_timestamp(contract.contract_address, future_time + 1);
 
-    // Moderator can resolve market
+    // Resolve market
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
-    contract.resolve_prediction(1, 0); // market_id=1, winning_choice=0
+    contract.resolve_prediction(market_id, 0);
+    stop_cheat_caller_address(contract.contract_address);
 
-    // Verify market is resolved
-    let market = contract.get_prediction(1);
+    // Verify market state
+    let market = contract.get_prediction(market_id);
     assert(market.is_resolved == true, 'Market should be resolved');
 }
 
@@ -386,22 +365,13 @@ fn test_market_resolution_by_moderator() {
 fn test_cannot_resolve_market_before_end_time() {
     let (contract, _) = deploy_contract();
 
-    // Create market as admin
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    // Create market as admin and get market_id
     let future_time = get_block_timestamp() + 86400; // 1 day
-
-    contract
-        .create_prediction(
-            "Test Market",
-            "Test Description",
-            ('Yes', 'No'),
-            'general',
-            "https://example.com/image.png",
-            future_time,
-        );
+    let market_id = create_market_and_get_id(contract, ADMIN_ADDR(), future_time);
 
     // Try to resolve before end time
-    contract.resolve_prediction(1, 0);
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    contract.resolve_prediction(market_id, 0);
 }
 
 #[test]
@@ -532,10 +502,10 @@ fn test_complete_market_lifecycle() {
     contract.add_moderator(MODERATOR_ADDR());
     stop_cheat_caller_address(contract.contract_address);
 
-    // 2. Moderator creates market
+    // 2. Moderator creates market and captures market_id
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let future_time = get_block_timestamp() + 3600;
-
+    let mut spy = spy_events();
     contract
         .create_prediction(
             "Test Market",
@@ -545,6 +515,10 @@ fn test_complete_market_lifecycle() {
             "https://example.com/image.png",
             future_time,
         );
+    let market_id = match spy.get_events().events.into_iter().last() {
+        Option::Some((_, event)) => (*event.data.at(0)).into(),
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
     stop_cheat_caller_address(contract.contract_address);
 
     // 3. Distribute tokens to USER2
@@ -562,11 +536,11 @@ fn test_complete_market_lifecycle() {
     stop_cheat_caller_address(token.contract_address);
 
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.place_bet(1, 0, 1000000000000000000, 0);
+    contract.place_bet(market_id, 0, 1000000000000000000, 0);
     stop_cheat_caller_address(contract.contract_address);
 
     start_cheat_caller_address(contract.contract_address, USER2_ADDR());
-    contract.place_bet(1, 1, 1000000000000000000, 0);
+    contract.place_bet(market_id, 1, 1000000000000000000, 0);
     stop_cheat_caller_address(contract.contract_address);
 
     // 5. Time passes and market ends
@@ -574,15 +548,15 @@ fn test_complete_market_lifecycle() {
 
     // 6. Moderator resolves market
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
-    contract.resolve_prediction(1, 0); // USER1 wins
+    contract.resolve_prediction(market_id, 0); // USER1 wins
     stop_cheat_caller_address(contract.contract_address);
 
     // 7. Winner collects winnings
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.collect_winnings(1, 0, 0); // market_id=1, market_type=0, bet_idx=0
+    contract.collect_winnings(market_id, 0, 0); // market_id, market_type=0, bet_idx=0
 
     // Verify market state
-    let market = contract.get_prediction(1);
+    let market = contract.get_prediction(market_id);
     assert(market.is_resolved == true, 'Market should be resolved');
     assert(market.is_open == false, 'Market should be closed');
 }

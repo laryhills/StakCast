@@ -94,6 +94,7 @@ fn setup_test_environment() -> (
 }
 
 fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
+    let mut spy = spy_events();
     start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
 
     let future_time = get_block_timestamp() + 86400; // 1 day from now
@@ -108,7 +109,23 @@ fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
         );
 
     stop_cheat_caller_address(prediction_hub.contract_address);
-    1
+
+    // Fetch the MarketCreated event
+    let events = spy.get_events();
+
+    let market_id = match events.events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            // event is of type snforge_std::cheatcodes::events::Event
+            // data is Array<felt252>, where data[0] is market_id (u256)
+            let market_id_felt = *event.data.at(0); // Access first element
+            market_id_felt.into() // Convert felt252 to u256
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+
+    market_id
 }
 
 // ================ Basic Wager Placement Tests ================
