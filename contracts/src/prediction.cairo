@@ -1215,11 +1215,13 @@ pub mod PredictionHub {
                 // Check all market types
                 let mut market_type: u8 = 0;
                 while market_type < 3_u8 {
+                    println!("resolved_markets------2-: {}", resolved_markets);
                     if market_type == 0 {
                         let market = self.predictions.entry(i).read();
                         if market.market_id != 0 {
                             if market.is_resolved {
                                 resolved_markets += 1;
+                                println!("resolved_markets-------: {}", resolved_markets);
                             } else if market.is_open {
                                 active_markets += 1;
                             }
