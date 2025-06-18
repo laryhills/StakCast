@@ -249,9 +249,11 @@ pub mod PredictionHub {
                 assert(market.is_open, 'Market is closed');
                 assert(!market.is_resolved, 'Market already resolved');
                 assert(current_time < market.end_time, 'Market has ended');
-            } else if market_type == 3 {
+            } else if market_type == 3 { // Business prediction
                 let market = self.business_predictions.entry(market_id).read();
-                assert(market.market_id == market_id, 'Market does not exist');
+                assert(market.is_open, 'Market is closed');
+                assert(!market.is_resolved, 'Market already resolved');
+                assert(current_time < market.end_time, 'Market has ended');
             } else {
                 panic!("Invalid market type");
             }
@@ -266,6 +268,9 @@ pub mod PredictionHub {
                 assert(market.market_id == market_id, 'Market does not exist');
             } else if market_type == 2 {
                 let market = self.sports_predictions.entry(market_id).read();
+                assert(market.market_id == market_id, 'Market does not exist');
+            } else if market_type == 3 {
+                let market = self.business_predictions.entry(market_id).read();
                 assert(market.market_id == market_id, 'Market does not exist');
             } else {
                 panic!("Invalid market type");

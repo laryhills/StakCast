@@ -149,7 +149,7 @@ pub trait IPredictionHub<TContractState> {
         team_flag: bool,
     );
 
-    /// Creates a new general prediction market with binary (yes/no) choicesAdd commentMore actions
+    /// Creates a new business prediction market with binary (yes/no) choicesAdd commentMore actions
     fn create_business_prediction(
         ref self: TContractState,
         title: ByteArray,
