@@ -48,8 +48,8 @@ fn PRAGMA_ORACLE_ADDR() -> ContractAddress {
 
 fn deploy_contract() -> (IPredictionHubDispatcher, IAdditionalAdminDispatcher) {
     // Deploy mock ERC20 token
-    let token_contract = declare("MockERC20").unwrap().contract_class();
-    let token_calldata = array![USER1_ADDR().into()];
+    let token_contract = declare("strktoken").unwrap().contract_class();
+    let token_calldata = array![USER1_ADDR().into(), ADMIN_ADDR().into(), 18];
     let (token_address, _) = token_contract.deploy(@token_calldata).unwrap();
 
     let contract = declare("PredictionHub").unwrap().contract_class();

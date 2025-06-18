@@ -50,8 +50,8 @@ fn PRAGMA_ORACLE_ADDR() -> ContractAddress {
 // ================ Mock Token Setup ================
 
 fn deploy_mock_token(recipient: ContractAddress, symbol: ByteArray) -> IERC20Dispatcher {
-    let contract = declare("MockERC20").unwrap().contract_class();
-    let constructor_calldata = array![recipient.into()];
+    let contract = declare("strktoken").unwrap().contract_class();
+    let constructor_calldata = array![recipient.into(), ADMIN_ADDR().into(), 18];
 
     let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
     IERC20Dispatcher { contract_address }
