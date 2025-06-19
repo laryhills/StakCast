@@ -140,6 +140,7 @@ fn setup_multi_token_environment() -> (
 }
 
 fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
+    let mut spy = spy_events();
     start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
 
     let future_time = get_block_timestamp() + 86400; // 1 day from now
@@ -154,7 +155,22 @@ fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
         );
 
     stop_cheat_caller_address(prediction_hub.contract_address);
-    1
+
+    // Fetch the MarketCreated event
+    let events = spy.get_events();
+
+    let market_id = match events.events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            // data is Array<felt252>, where data[0] is market_id (u256)
+            let market_id_felt = *event.data.at(0); // Access first element
+            market_id_felt.into() // Convert felt252 to u256
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+
+    market_id
 }
 
 // ================ Multi-Token Support Tests ================
@@ -308,6 +324,8 @@ fn test_bet_with_different_token_same_market() {
 
 #[test]
 fn test_multiple_markets_different_tokens() {
+    let mut spy = spy_events();
+
     let (prediction_hub, _admin_interface, _usdc, _strk, _eth, _custom) =
         setup_multi_token_environment();
 
@@ -326,8 +344,13 @@ fn test_multiple_markets_different_tokens() {
             "https://example.com/eth.jpg",
             future_time,
         );
+
+    let market_id_2 = match spy.get_events().events.into_iter().last() {
+        Option::Some((_, event)) => (*event.data.at(0)).into(),
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
     stop_cheat_caller_address(prediction_hub.contract_address);
-    let market_id_2 = 2;
+    // let market_id_2 = 2;
 
     // Bet on first market with USDC
     start_cheat_caller_address(prediction_hub.contract_address, USER1_ADDR());
@@ -477,6 +500,8 @@ fn test_market_token_fallback() {
 
 #[test]
 fn test_multi_token_fee_collection() {
+    let mut spy = spy_events();
+
     let (prediction_hub, admin_interface, usdc_token, strk_token, _eth, _custom) =
         setup_multi_token_environment();
 
@@ -494,8 +519,13 @@ fn test_multi_token_fee_collection() {
             "https://example.com/strk.jpg",
             future_time,
         );
+
+    let market_id_2 = match spy.get_events().events.into_iter().last() {
+        Option::Some((_, event)) => (*event.data.at(0)).into(),
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
     stop_cheat_caller_address(prediction_hub.contract_address);
-    let market_id_2 = 2;
+    // let market_id_2 = 2;
 
     // Bet on first market with USDC
     start_cheat_caller_address(prediction_hub.contract_address, USER1_ADDR());
