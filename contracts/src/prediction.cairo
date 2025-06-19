@@ -128,6 +128,8 @@ pub mod PredictionHub {
         total_value_locked: u256,
         // Reentrancy protection
         reentrancy_guard: bool,
+        user_nonces: Map<ContractAddress, u256>, // Tracks nonce for each user
+        market_ids: Map<u256, u256>,
     }
 
     #[event]
@@ -334,8 +336,10 @@ pub mod PredictionHub {
             self.assert_valid_market_timing(end_time);
             self.start_reentrancy_guard();
 
-            let market_id = self.prediction_count.read() + 1;
-            self.prediction_count.write(market_id);
+            let market_id = self._generate_market_id();
+            let count = self.prediction_count.read() + 1;
+            self.prediction_count.write(count);
+            self.market_ids.entry(count).write(market_id);
 
             let (choice_0_label, choice_1_label) = choices;
             let choice_0 = Choice { label: choice_0_label, staked_amount: 0 };
@@ -381,8 +385,10 @@ pub mod PredictionHub {
             assert(comparison_type < 2, 'Invalid comparison type');
             self.start_reentrancy_guard();
 
-            let market_id = self.prediction_count.read() + 1;
-            self.prediction_count.write(market_id);
+            let market_id = self._generate_market_id();
+            let count = self.prediction_count.read() + 1;
+            self.prediction_count.write(count);
+            self.market_ids.entry(count).write(market_id);
 
             let (choice_0_label, choice_1_label) = choices;
             let choice_0 = Choice { label: choice_0_label, staked_amount: 0 };
@@ -429,8 +435,10 @@ pub mod PredictionHub {
             self.assert_valid_market_timing(end_time);
             self.start_reentrancy_guard();
 
-            let market_id = self.prediction_count.read() + 1;
-            self.prediction_count.write(market_id);
+            let market_id = self._generate_market_id();
+            let count = self.prediction_count.read() + 1;
+            self.prediction_count.write(count);
+            self.market_ids.entry(count).write(market_id);
 
             let (choice_0_label, choice_1_label) = choices;
             let choice_0 = Choice { label: choice_0_label, staked_amount: 0 };
@@ -475,8 +483,10 @@ pub mod PredictionHub {
             self.assert_valid_market_timing(end_time);
             self.start_reentrancy_guard();
 
-            let market_id = self.prediction_count.read() + 1;
-            self.prediction_count.write(market_id);
+            let market_id = self._generate_market_id();
+            let count = self.prediction_count.read() + 1;
+            self.prediction_count.write(count);
+            self.market_ids.entry(count).write(market_id);
 
             let (choice_0_label, choice_1_label) = choices;
             let choice_0 = Choice { label: choice_0_label, staked_amount: 0 };
@@ -517,12 +527,15 @@ pub mod PredictionHub {
         fn get_all_predictions(self: @ContractState) -> Array<PredictionMarket> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
-            let mut i = 1;
+            let mut i: u256 = 1;
 
             while i <= count {
-                let market = self.predictions.entry(i).read();
-                if market.market_id != 0 { // Check if market exists
-                    predictions.append(market);
+                let market_id = self.market_ids.entry(i).read();
+                if market_id != 0 {
+                    let market = self.predictions.entry(market_id).read();
+                    if market.market_id != 0 {
+                        predictions.append(market);
+                    }
                 }
                 i += 1;
             }
@@ -538,12 +551,15 @@ pub mod PredictionHub {
         fn get_all_crypto_predictions(self: @ContractState) -> Array<CryptoPrediction> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
-            let mut i = 1;
+            let mut i: u256 = 1;
 
             while i <= count {
-                let market = self.crypto_predictions.entry(i).read();
-                if market.market_id != 0 { // Check if market exists
-                    predictions.append(market);
+                let market_id = self.market_ids.entry(i).read();
+                if market_id != 0 {
+                    let market = self.crypto_predictions.entry(market_id).read();
+                    if market.market_id != 0 {
+                        predictions.append(market);
+                    }
                 }
                 i += 1;
             }
@@ -559,12 +575,15 @@ pub mod PredictionHub {
         fn get_all_sports_predictions(self: @ContractState) -> Array<SportsPrediction> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
-            let mut i = 1;
+            let mut i: u256 = 1;
 
             while i <= count {
-                let market = self.sports_predictions.entry(i).read();
-                if market.market_id != 0 { // Check if market exists
-                    predictions.append(market);
+                let market_id = self.market_ids.entry(i).read();
+                if market_id != 0 {
+                    let market = self.sports_predictions.entry(market_id).read();
+                    if market.market_id != 0 {
+                        predictions.append(market);
+                    }
                 }
                 i += 1;
             }
@@ -580,12 +599,15 @@ pub mod PredictionHub {
         fn get_all_business_predictions(self: @ContractState) -> Array<BusinessPrediction> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
-            let mut i = 1;
+            let mut i: u256 = 1;
 
             while i <= count {
-                let market = self.business_predictions.entry(i).read();
-                if market.market_id != 0 { // Check if market exists
-                    predictions.append(market);
+                let market_id = self.market_ids.entry(i).read();
+                if market_id != 0 {
+                    let market = self.business_predictions.entry(market_id).read();
+                    if market.market_id != 0 {
+                        predictions.append(market);
+                    }
                 }
                 i += 1;
             }
@@ -845,6 +867,12 @@ pub mod PredictionHub {
                 let (_choice_0, choice_1) = market.choices;
                 choice_1
             };
+
+            // Verify choice label is valid ('Yes' or 'No')
+            assert(
+                winning_choice_struct.label == 'Yes' || winning_choice_struct.label == 'No',
+                'Invalid winning choice label',
+            );
 
             market.winning_choice = Option::Some(winning_choice_struct);
             self.predictions.entry(market_id).write(market);
@@ -1401,11 +1429,13 @@ pub mod PredictionHub {
                 // Check all market types
                 let mut market_type: u8 = 0;
                 while market_type < 3_u8 {
+                    println!("resolved_markets------2-: {}", resolved_markets);
                     if market_type == 0 {
                         let market = self.predictions.entry(i).read();
                         if market.market_id != 0 {
                             if market.is_resolved {
                                 resolved_markets += 1;
+                                println!("resolved_markets-------: {}", resolved_markets);
                             } else if market.is_open {
                                 active_markets += 1;
                             }
@@ -1635,6 +1665,23 @@ pub mod PredictionHub {
                     choice_1
                 }
             }
+        }
+
+        fn _generate_market_id(ref self: ContractState) -> u256 {
+            let caller = get_caller_address();
+            let timestamp = get_block_timestamp();
+            let nonce = self.user_nonces.entry(caller).read();
+
+            // Increment Nonce for the next market
+            self.user_nonces.entry(caller).write(nonce + 1);
+
+            // Generate market ID using sequential counter
+            let timestamp_part: u256 = (timestamp.into()) * 0x1000000000000000000000000;
+            let caller_felt: felt252 = caller.into();
+            let address_part: u256 = (caller_felt.into() & 0xFFFFFFFFFFFFFFFF);
+            let nonce_part: u256 = nonce & 0xFFFF;
+
+            timestamp_part | address_part | nonce_part
         }
 
         fn get_asset_address(self: @ContractState, token_name: felt252) -> ContractAddress {
