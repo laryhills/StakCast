@@ -2,6 +2,11 @@
 name = "stakcast"
 version = "0.1.0"
 edition = "2024_07"
+authors = ["StakCast Team <fishon.amos@stakcast.com>"]
+description = "Decentralized Prediction Market on Starknet"
+repository = "https://github.com/gear5labs/StakCast"
+keywords = ["Prediction Markets", "Bet", "Wager", "cairo", "contracts", "starknet"]
+
 
 [dependencies]
 starknet = "2.11.4"
