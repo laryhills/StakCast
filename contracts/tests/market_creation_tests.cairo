@@ -1,86 +1,21 @@
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
-    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
+    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address, 
 };
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
-use starknet::{ContractAddress, get_block_timestamp};
-
-// ================ Test Constants ================
-
-const ADMIN: felt252 = 123;
-const MODERATOR: felt252 = 456;
-const MODERATOR2: felt252 = 789;
-const USER1: felt252 = 101112;
-const USER2: felt252 = 131415;
-const FEE_RECIPIENT: felt252 = 161718;
-const PRAGMA_ORACLE: felt252 = 192021;
-
-fn ADMIN_ADDR() -> ContractAddress {
-    ADMIN.try_into().unwrap()
-}
-
-fn MODERATOR_ADDR() -> ContractAddress {
-    MODERATOR.try_into().unwrap()
-}
-
-fn MODERATOR2_ADDR() -> ContractAddress {
-    MODERATOR2.try_into().unwrap()
-}
-
-fn USER1_ADDR() -> ContractAddress {
-    USER1.try_into().unwrap()
-}
-
-fn USER2_ADDR() -> ContractAddress {
-    USER2.try_into().unwrap()
-}
-
-fn FEE_RECIPIENT_ADDR() -> ContractAddress {
-    FEE_RECIPIENT.try_into().unwrap()
-}
-
-fn PRAGMA_ORACLE_ADDR() -> ContractAddress {
-    PRAGMA_ORACLE.try_into().unwrap()
-}
-
-// ================ Test Setup ================
-
-fn deploy_contract() -> (IPredictionHubDispatcher, IAdditionalAdminDispatcher) {
-    // Deploy mock ERC20 token
-    let token_contract = declare("strktoken").unwrap().contract_class();
-    let token_calldata = array![USER1_ADDR().into(), ADMIN_ADDR().into(), 18];
-    let (token_address, _) = token_contract.deploy(@token_calldata).unwrap();
-
-    let contract = declare("PredictionHub").unwrap().contract_class();
-    let constructor_calldata = array![
-        ADMIN_ADDR().into(),
-        FEE_RECIPIENT_ADDR().into(),
-        PRAGMA_ORACLE_ADDR().into(),
-        token_address.into(),
-    ];
-    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
-    let prediction_hub = IPredictionHubDispatcher { contract_address };
-    let admin_contract = IAdditionalAdminDispatcher { contract_address };
-    (prediction_hub, admin_contract)
-}
-
-fn setup_with_moderator() -> (IPredictionHubDispatcher, IAdditionalAdminDispatcher) {
-    let (contract, admin_contract) = deploy_contract();
-
-    // Add moderator
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
-    contract.add_moderator(MODERATOR_ADDR());
-    stop_cheat_caller_address(contract.contract_address);
-
-    (contract, admin_contract)
-}
-
+use starknet::{ContractAddress, get_block_timestamp, contract_address_const};
+use crate::test_utils::{
+    ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
+    create_business_prediction, create_crypto_prediction, create_sports_prediction,
+    create_test_market, setup_test_environment,
+};
 // ================ General Prediction Market Tests ================
 
 #[test]
 fn test_create_prediction_market_success() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_interface, _token) = setup_test_environment();
+
     let mut spy = spy_events();
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let future_time = get_block_timestamp() + 86400; // 1 day from now
@@ -127,7 +62,7 @@ fn test_create_prediction_market_success() {
 
 #[test]
 fn test_create_multiple_prediction_markets() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let future_time = get_block_timestamp() + 86400;
@@ -191,7 +126,7 @@ fn test_create_multiple_prediction_markets() {
 #[test]
 #[should_panic(expected: ('Only admin or moderator',))]
 fn test_create_prediction_access_control_failure() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
     let future_time = get_block_timestamp() + 86400;
@@ -210,7 +145,7 @@ fn test_create_prediction_access_control_failure() {
 #[test]
 #[should_panic(expected: ('End time must be in future',))]
 fn test_create_prediction_invalid_end_time() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 
@@ -233,7 +168,7 @@ fn test_create_prediction_invalid_end_time() {
 #[test]
 #[should_panic(expected: ('Market duration too short',))]
 fn test_create_prediction_too_short_duration() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let short_future_time = get_block_timestamp() + 1800; // 30 minutes (less than 1 hour minimum)
@@ -253,7 +188,7 @@ fn test_create_prediction_too_short_duration() {
 
 #[test]
 fn test_create_crypto_prediction_success() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -303,7 +238,7 @@ fn test_create_crypto_prediction_success() {
 #[test]
 #[should_panic(expected: ('Invalid comparison type',))]
 fn test_create_crypto_prediction_invalid_comparison_type() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let future_time = get_block_timestamp() + 86400;
@@ -324,7 +259,7 @@ fn test_create_crypto_prediction_invalid_comparison_type() {
 
 #[test]
 fn test_create_crypto_prediction_both_comparison_types() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -386,7 +321,7 @@ fn test_create_crypto_prediction_both_comparison_types() {
 
 #[test]
 fn test_create_sports_prediction_success() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -433,7 +368,7 @@ fn test_create_sports_prediction_success() {
 
 #[test]
 fn test_create_sports_prediction_non_team_event() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -469,7 +404,7 @@ fn test_create_sports_prediction_non_team_event() {
 
 #[test]
 fn test_create_business_prediction_success() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -520,7 +455,7 @@ fn test_create_business_prediction_success() {
 
 #[test]
 fn test_create_all_market_types() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -636,7 +571,7 @@ fn test_create_all_market_types() {
 
 #[test]
 fn test_admin_can_create_market() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
@@ -667,13 +602,12 @@ fn test_admin_can_create_market() {
 
 #[test]
 fn test_multiple_moderators_can_create_markets() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     // Add two moderators
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
-    contract.add_moderator(MODERATOR_ADDR());
-    contract.add_moderator(MODERATOR2_ADDR());
+    contract.add_moderator(contract_address_const::<0x02>());
     stop_cheat_caller_address(contract.contract_address);
 
     let future_time = get_block_timestamp() + 86400;
@@ -698,7 +632,7 @@ fn test_multiple_moderators_can_create_markets() {
     stop_cheat_caller_address(contract.contract_address);
 
     // Second moderator creates a market
-    start_cheat_caller_address(contract.contract_address, MODERATOR2_ADDR());
+    start_cheat_caller_address(contract.contract_address, contract_address_const::<0x02>());
     contract
         .create_prediction(
             "Moderator 2 Market",
@@ -731,7 +665,7 @@ fn test_multiple_moderators_can_create_markets() {
 #[test]
 #[should_panic(expected: ('Market does not exist',))]
 fn test_get_nonexistent_market() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     // Try to get a market that doesn't exist
     contract.get_prediction(999);
@@ -740,7 +674,7 @@ fn test_get_nonexistent_market() {
 #[test]
 #[should_panic(expected: ('Market does not exist',))]
 fn test_get_nonexistent_crypto_market() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     // Try to get a crypto market that doesn't exist
     contract.get_crypto_prediction(999);
@@ -749,7 +683,7 @@ fn test_get_nonexistent_crypto_market() {
 #[test]
 #[should_panic(expected: ('Market does not exist',))]
 fn test_get_nonexistent_sports_market() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     // Try to get a sports market that doesn't exist
     contract.get_sports_prediction(999);
@@ -757,7 +691,7 @@ fn test_get_nonexistent_sports_market() {
 
 #[test]
 fn test_empty_arrays_when_no_markets() {
-    let (contract, _admin_contract) = deploy_contract();
+    let (contract, _admin_contract, _token) = setup_test_environment();
 
     // Test that get_all functions return empty arrays when no markets exist
     let all_general = contract.get_all_predictions();
@@ -777,7 +711,7 @@ fn test_empty_arrays_when_no_markets() {
 
 #[test]
 fn test_sequential_market_id_generation() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -836,7 +770,7 @@ fn test_sequential_market_id_generation() {
 
 #[test]
 fn test_market_data_integrity() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
@@ -891,7 +825,7 @@ fn test_market_data_integrity() {
 #[test]
 #[should_panic(expected: ('Contract is paused',))]
 fn test_cannot_create_market_when_emergency_paused() {
-    let (contract, admin_contract) = setup_with_moderator();
+    let (contract, admin_contract, _token) = setup_test_environment();
 
     // Emergency pause the contract
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
@@ -916,7 +850,7 @@ fn test_cannot_create_market_when_emergency_paused() {
 #[test]
 #[should_panic(expected: ('Market creation paused',))]
 fn test_cannot_create_market_when_market_creation_paused() {
-    let (contract, admin_contract) = setup_with_moderator();
+    let (contract, admin_contract, _token) = setup_test_environment();
 
     // Pause market creation specifically
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
@@ -940,7 +874,7 @@ fn test_cannot_create_market_when_market_creation_paused() {
 
 #[test]
 fn test_can_create_market_after_unpause() {
-    let (contract, admin_contract) = setup_with_moderator();
+    let (contract, admin_contract, _token) = setup_test_environment();
 
     // Emergency pause the contract
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
@@ -976,7 +910,7 @@ fn test_can_create_market_after_unpause() {
 
 #[test]
 fn test_can_create_market_after_market_creation_unpause() {
-    let (contract, admin_contract) = setup_with_moderator();
+    let (contract, admin_contract, _token) = setup_test_environment();
 
     // Pause market creation
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
@@ -1006,7 +940,7 @@ fn test_can_create_market_after_market_creation_unpause() {
 
 #[test]
 fn test_emergency_pause_functionality() {
-    let (_contract, admin_contract) = deploy_contract();
+    let (_contract, admin_contract, _token) = setup_test_environment();
 
     start_cheat_caller_address(admin_contract.contract_address, ADMIN_ADDR());
 
