@@ -130,6 +130,8 @@ pub mod PredictionHub {
         reentrancy_guard: bool,
         user_nonces: Map<ContractAddress, u256>, // Tracks nonce for each user
         market_ids: Map<u256, u256>,
+        market_users_bets_len: Map<(u256, u8), u32>, // (market_id, market_type) -> length
+        market_users_bets: Map<(u256, u8, u32), ContractAddress>, // (market_id, market_type, idx) -> user
     }
 
     #[event]
@@ -615,6 +617,53 @@ pub mod PredictionHub {
             predictions
         }
 
+        fn get_market_status(self: @ContractState, market_id: u256, market_type: u8) -> (bool, bool) {
+             self.assert_market_exists(market_id, market_type);
+
+             if market_type == 0 {
+                let market = self.predictions.entry(market_id).read();
+                (market.is_open, market.is_resolved)
+             } else if market_type == 1 {
+                let market = self.sports_predictions.entry(market_id).read();
+                (market.is_open, market.is_resolved)
+             } else if market_type == 2 {
+                let market = self.crypto_predictions.entry(market_id).read();
+                (market.is_open, market.is_resolved)
+             } else if market_type == 3 {
+                let market = self.business_predictions.entry(market_id).read();
+                (market.is_open, market.is_resolved)
+             } else {
+                panic!("Invalid market type!")
+             }
+        }
+
+        fn get_market_bet_count(self: @ContractState, market_id: u256, market_type: u8) -> u256 {
+            // Validate that the market exists for the given market_id and market_type
+            self.assert_market_exists(market_id, market_type);
+
+            // Retrieve the number of users who have placed bets in this market
+            let len = self.market_users_bets_len.entry((market_id, market_type)).read();
+            // Initialize a counter for total bets
+            let mut total_bets: u256 = 0;
+            // Iterate through all users who placed bets in this market
+            let mut i = 0;
+            
+            while i < len {
+                // Get the user address at index i for this market
+                let user = self.market_users_bets.entry((market_id, market_type, i)).read();
+                // Construct key to access the user's bet count
+                let count_key = (user, market_id, market_type);
+                // Get the number of bets placed by this user for the market
+                let bet_count = self.user_bet_counts.entry(count_key).read();
+                // Add the user's bet count to the total
+                total_bets += bet_count.into();
+                // increment loop counter
+                i += 1;
+            }
+
+            total_bets
+        }
+
         fn get_active_prediction_markets(self: @ContractState) -> Array<PredictionMarket> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -875,6 +924,13 @@ pub mod PredictionHub {
             let current_count = self.user_bet_counts.entry(count_key).read();
             let bet_key = (caller, market_id, market_type, current_count);
 
+            if current_count == 0 {
+                // First bet for this user in this market
+                let mut len = self.market_users_bets_len.entry((market_id, market_type)).read();
+                self.market_users_bets.entry((market_id, market_type, len)).write(caller);
+                self.market_users_bets_len.entry((market_id, market_type)).write(len + 1);
+            }
+
             self.user_bets.entry(bet_key).write(user_bet);
             self.user_bet_counts.entry(count_key).write(current_count + 1);
 
@@ -975,6 +1031,13 @@ pub mod PredictionHub {
             let count_key = (caller, market_id, market_type);
             let current_count = self.user_bet_counts.entry(count_key).read();
             let bet_key = (caller, market_id, market_type, current_count);
+
+            if current_count == 0 {
+                // First bet for this user in this market
+                let mut len = self.market_users_bets_len.entry((market_id, market_type)).read();
+                self.market_users_bets.entry((market_id, market_type, len)).write(caller);
+                self.market_users_bets_len.entry((market_id, market_type)).write(len + 1);
+            }
 
             self.user_bets.entry(bet_key).write(user_bet);
             self.user_bet_counts.entry(count_key).write(current_count + 1);
