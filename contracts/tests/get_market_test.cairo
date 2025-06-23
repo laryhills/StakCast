@@ -442,113 +442,6 @@ fn test_is_business_prediction_market_open() {
 }
 
 
-#[test]
-fn test_resolve_multiple_predictions() {
-    let (prediction_hub, _admin_interface, _token) = setup_test_environment();
-    start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
-    let mut spy = spy_events();
-    let future_time = get_block_timestamp() + 86400; // 1 day from now
-
-    let market = prediction_hub.get_active_business_markets();
-    assert(market.len() == 0, 'Market count should be 0');
-    // create general prediction market
-    create_test_market(prediction_hub);
-
-    // Fetch market_id from MarketCreated event
-    let market_id1 = match spy.get_events().events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            let market_id_felt = *event.data.at(0);
-            market_id_felt.into()
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-    // create crypto prediction market
-    create_crypto_prediction(prediction_hub);
-    // Fetch market_id from MarketCreated event
-    let market_id2 = match spy.get_events().events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            let market_id_felt = *event.data.at(0);
-            market_id_felt.into()
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-    // create sport prediction market
-    prediction_hub
-        .create_sports_prediction(
-            "Lakers vs Warriors",
-            "Who will win the Lakers vs Warriors game?",
-            ('Lakers', 'Warriors'),
-            'nba',
-            "https://example.com/nba.png",
-            future_time,
-            123456, // Event ID
-            true // Team flag
-        );
-    // Fetch market_id from MarketCreated event
-    let market_id3 = match spy.get_events().events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            let market_id_felt = *event.data.at(0);
-            market_id_felt.into()
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-    // create business prediction market
-    create_business_prediction(prediction_hub);
-
-    // Fetch market_id from MarketCreated event
-    let market_id4 = match spy.get_events().events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            let market_id_felt = *event.data.at(0);
-            market_id_felt.into()
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-
-    let market = prediction_hub
-        .get_active_prediction_markets(); // get general prediction active market count
-    assert(market.len() == 1, 'active Market count should be 1');
-    let market = prediction_hub.get_active_crypto_markets(); // get crypto active market count
-    assert(market.len() == 1, 'active Market count should be 1');
-    let market = prediction_hub.get_active_sport_markets(); // get sport active market count
-    assert(market.len() == 1, 'active Market count should be 1');
-    let market = prediction_hub.get_active_business_markets(); // get business active market count
-    assert(market.len() == 1, 'active Market count should be 1');
-
-    start_cheat_block_timestamp(
-        prediction_hub.contract_address, get_block_timestamp() + 86400 + 3600,
-    );
-
-    start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
-
-    // Resolve market
-    prediction_hub.resolve_prediction(market_id1, 0); // BTC reaches $100k (choice 0 wins)
-    prediction_hub.resolve_crypto_prediction_manually(market_id2, 1);
-    prediction_hub.resolve_sports_prediction(market_id3, 1);
-    prediction_hub.resolve_business_prediction_manually(market_id4, 1);
-
-    stop_cheat_caller_address(prediction_hub.contract_address);
-
-    let market = prediction_hub.get_resolved_crypto_markets(); // get crypto resolve market count
-    assert(market.len() == 1, 'resolve count should be 1');
-    let market = prediction_hub
-        .get_resolved_prediction_markets(); // get general prediction resolve market count
-    assert(market.len() == 1, 'resolve count should be 1');
-
-    let market = prediction_hub.get_resolved_sport_markets(); // get sport resolve market count
-    assert(market.len() == 1, 'resolve count should be 1');
-    let market = prediction_hub
-        .get_resolved_business_markets(); // get business resolve market count
-    assert(market.len() == 1, 'resolve count should be 1');
-}
-
 //test if emergency close market is working. And a closed market does not show up in the
 //get_active_prediction_markets()
 #[test]
@@ -694,4 +587,98 @@ fn test_emergency_resolve_multiple_markets() {
     let winning_choice2 = resolved_prediction2.winning_choice.unwrap();
     assert(winning_choice1.label == 'Yes', 'Market 1 winning is Yes');
     assert(winning_choice2.label == 'No', 'Market 2 winning is No');
+}
+
+
+#[test]
+fn test_resolve_multiple_predictions() {
+    let (contract, _admin_interface, _token) = setup_test_environment();
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    let mut spy = spy_events();
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+
+    let market = contract.get_active_business_markets();
+    assert(market.len() == 0, 'Market count should be 0');
+    // create general prediction market
+    create_test_market(contract);
+    // Fetch market_id from MarketCreated event
+    let market_id1 = match spy.get_events().events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            let market_id_felt = *event.data.at(0);
+            market_id_felt.into()
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+    // create crypto prediction market
+    create_crypto_prediction(contract);
+    // Fetch market_id from MarketCreated event
+    let market_id2 = match spy.get_events().events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            let market_id_felt = *event.data.at(0);
+            market_id_felt.into()
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+    // create sport prediction market
+    create_sports_prediction(contract);
+    // Fetch market_id from MarketCreated event
+    let market_id3 = match spy.get_events().events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            let market_id_felt = *event.data.at(0);
+            market_id_felt.into()
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+    // create business prediction market
+    create_business_prediction(contract);
+
+    // Fetch market_id from MarketCreated event
+    let market_id4 = match spy.get_events().events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            let market_id_felt = *event.data.at(0);
+            market_id_felt.into()
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+
+    let market = contract
+        .get_active_prediction_markets(); // get general prediction active market count
+    assert(market.len() == 1, 'active Market count should be 1');
+    let market = contract.get_active_crypto_markets(); // get crypto active market count
+    assert(market.len() == 1, 'active Market count should be 1');
+    let market = contract.get_active_sport_markets(); // get sport active market count
+    assert(market.len() == 1, 'active Market count should be 1');
+    let market = contract.get_active_business_markets(); // get business active market count
+    assert(market.len() == 1, 'active Market count should be 1');
+
+    start_cheat_block_timestamp(contract.contract_address, get_block_timestamp() + 86400 + 3600);
+
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+
+    // Resolve market
+    contract.resolve_prediction(market_id1, 0); // BTC reaches $100k (choice 0 wins)
+    contract.resolve_crypto_prediction_manually(market_id2, 1);
+    contract.resolve_sports_prediction(market_id3, 1);
+    contract.resolve_business_prediction_manually(market_id4, 1);
+
+    stop_cheat_caller_address(contract.contract_address);
+
+    let market = contract.get_resolved_crypto_markets(); // get crypto resolve market count
+    assert(market.len() == 1, 'resolve count should be 1');
+    let market = contract
+        .get_resolved_prediction_markets(); // get general prediction resolve market count
+    assert(market.len() == 1, 'resolve count should be 1');
+
+    let market = contract.get_resolved_sport_markets(); // get sport resolve market count
+    assert(market.len() == 1, 'resolve count should be 1');
+    let market = contract.get_resolved_business_markets(); // get business resolve market count
+    assert(market.len() == 1, 'resolve count should be 1');
 }
