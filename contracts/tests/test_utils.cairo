@@ -266,5 +266,5 @@ fn create_dynamic_market(
     prediction_hub: IPredictionHubDispatcher,
     details: Option<market_details>,
     market_type: MarketType,
-) {// todo() : implement a dynamic create market function
+) { // todo() : implement a dynamic create market function
 }

@@ -1,7 +1,7 @@
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
-    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address
+    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
@@ -35,7 +35,6 @@ fn create_market_and_get_id(
 
 // ================ Complete Integration Test ================
 
-
 #[test]
 fn test_complete_bet_management_workflow() {
     let (prediction_hub, admin_interface, token) = setup_test_environment();
@@ -63,15 +62,18 @@ fn test_complete_bet_management_workflow() {
     // USER1 keeps remaining 5M tokens
 
     // Set up allowances for all users
-    token.approve(prediction_hub.contract_address, 5000000000000000000000000); // 5M tokens allowance
+    token
+        .approve(prediction_hub.contract_address, 5000000000000000000000000); // 5M tokens allowance
     stop_cheat_caller_address(token.contract_address);
 
     start_cheat_caller_address(token.contract_address, USER2_ADDR());
-    token.approve(prediction_hub.contract_address, 3000000000000000000000000); // 3M tokens allowance
+    token
+        .approve(prediction_hub.contract_address, 3000000000000000000000000); // 3M tokens allowance
     stop_cheat_caller_address(token.contract_address);
 
     start_cheat_caller_address(token.contract_address, USER3_ADDR());
-    token.approve(prediction_hub.contract_address, 2000000000000000000000000); // 2M tokens allowance
+    token
+        .approve(prediction_hub.contract_address, 2000000000000000000000000); // 2M tokens allowance
     stop_cheat_caller_address(token.contract_address);
 
     // ================ Market Creation Phase ================
@@ -186,7 +188,6 @@ fn test_complete_bet_management_workflow() {
     // prediction_hub.collect_winnings(3, 2, 0); // Sports market Team A win
     stop_cheat_caller_address(prediction_hub.contract_address);
 
-
     // Check final balances increased
     let user1_final = token.balance_of(USER1_ADDR());
     let user2_final = token.balance_of(USER2_ADDR());
@@ -227,7 +228,6 @@ fn test_complete_bet_management_workflow() {
     println!("Total events emitted: {}", events.events.len());
     println!("Final TVL: {}", prediction_hub.get_total_value_locked());
 }
-
 
 
 // ================ Edge Cases Test ================
@@ -277,5 +277,4 @@ fn test_edge_cases_and_error_conditions() {
         assert(admin_balance == contract_balance, 'Emergency withdrawal failed');
     }
     stop_cheat_caller_address(prediction_hub.contract_address);
-
 }

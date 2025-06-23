@@ -1,16 +1,16 @@
+use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
-    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address, 
+    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
-use starknet::{ContractAddress, get_block_timestamp};
+use starknet::{ContractAddress, get_block_timestamp, contract_address_const};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
     create_business_prediction, create_crypto_prediction, create_sports_prediction,
     create_test_market, setup_test_environment,
 };
-use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 // ================ General Prediction Market Tests ================
 
@@ -455,21 +455,13 @@ fn test_create_business_prediction_success() {
 
 #[test]
 fn test_get_market_status() {
-    let (contract, _admin_contract) = setup_with_moderator();
+    let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let future_time = get_block_timestamp() + 86400; // 1 day from now
 
-    contract
-        .create_prediction(
-            "General Market",
-            "General prediction description",
-            ('Option A', 'Option B'),
-            'general',
-            "https://example.com/general.png",
-            future_time,
-        );
+    create_test_market(contract);
 
     let market_id = match spy.get_events().events.into_iter().last() {
         Option::Some((_, event)) => (*event.data.at(0)).into(),
@@ -481,36 +473,18 @@ fn test_get_market_status() {
     let (is_open, is_resolved) = contract.get_market_status(market_id, 0);
     assert(is_open, 'Market should be open');
     assert(!is_resolved, 'Should be resolved');
-
-    // contract.resolve_prediction(market_id, 0);
-    // let (is_open2, is_resolved2) = contract.get_market_status(market_id, 0);
-    // assert(!is_open2, 'Market should be closed');
-    // assert(!is_resolved2, 'Should be resolved');
 }
 
 #[test]
 fn test_get_market_bet_count() {
     // Deploy token and contract
-    let (contract, _admin_contract) = deploy_contract();
-    let token = IERC20Dispatcher { contract_address: contract.get_betting_token() };
-
-    // Add moderator
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
-    contract.add_moderator(MODERATOR_ADDR());
-    stop_cheat_caller_address(contract.contract_address);
+    let (contract, _admin_contract, token) = setup_test_environment();
 
     // Create market
     let mut spy = spy_events();
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
-    let future_time = get_block_timestamp() + 86400;
-    contract.create_prediction(
-        "General Market",
-        "General prediction description",
-        ('Option A', 'Option B'),
-        'general',
-        "https://example.com/general.png",
-        future_time,
-    );
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+    create_test_market(contract);
     let market_id = match spy.get_events().events.into_iter().last() {
         Option::Some((_, event)) => (*event.data.at(0)).into(),
         Option::None => panic!("No MarketCreated event emitted"),
