@@ -5,6 +5,7 @@ use snforge_std::{
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
 use starknet::{ContractAddress, get_block_timestamp};
+use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 // ================ Test Constants ================
 
@@ -514,6 +515,114 @@ fn test_create_business_prediction_success() {
 
     let business_market = contract.get_all_business_predictions();
     assert(business_market.len() == 1, 'Should return 1 business market');
+}
+
+#[test]
+fn test_get_market_status() {
+    let (contract, _admin_contract) = setup_with_moderator();
+    let mut spy = spy_events();
+
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+
+    contract
+        .create_prediction(
+            "General Market",
+            "General prediction description",
+            ('Option A', 'Option B'),
+            'general',
+            "https://example.com/general.png",
+            future_time,
+        );
+
+    let market_id = match spy.get_events().events.into_iter().last() {
+        Option::Some((_, event)) => (*event.data.at(0)).into(),
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+
+    stop_cheat_caller_address(contract.contract_address);
+
+    let (is_open, is_resolved) = contract.get_market_status(market_id, 0);
+    assert(is_open, 'Market should be open');
+    assert(!is_resolved, 'Should be resolved');
+
+    // contract.resolve_prediction(market_id, 0);
+    // let (is_open2, is_resolved2) = contract.get_market_status(market_id, 0);
+    // assert(!is_open2, 'Market should be closed');
+    // assert(!is_resolved2, 'Should be resolved');
+}
+
+#[test]
+fn test_get_market_bet_count() {
+    // Deploy token and contract
+    let (contract, _admin_contract) = deploy_contract();
+    let token = IERC20Dispatcher { contract_address: contract.get_betting_token() };
+
+    // Add moderator
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    contract.add_moderator(MODERATOR_ADDR());
+    stop_cheat_caller_address(contract.contract_address);
+
+    // Create market
+    let mut spy = spy_events();
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    let future_time = get_block_timestamp() + 86400;
+    contract.create_prediction(
+        "General Market",
+        "General prediction description",
+        ('Option A', 'Option B'),
+        'general',
+        "https://example.com/general.png",
+        future_time,
+    );
+    let market_id = match spy.get_events().events.into_iter().last() {
+        Option::Some((_, event)) => (*event.data.at(0)).into(),
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+    stop_cheat_caller_address(contract.contract_address);
+
+    // Setup token balances
+    start_cheat_caller_address(token.contract_address, USER1_ADDR());
+    let user1_initial_balance = token.balance_of(USER1_ADDR());
+    assert(user1_initial_balance >= 525000000000000000000, 'USER1 initial balance too low');
+    token.transfer(USER2_ADDR(), 500000000000000000000); // 500 tokens to USER2
+    stop_cheat_caller_address(token.contract_address);
+
+    // Verify balances
+    let user1_balance = token.balance_of(USER1_ADDR());
+    let user2_balance = token.balance_of(USER2_ADDR());
+    assert(user1_balance >= 25000000000000000000, 'USER1 balance too low'); // 25 tokens
+    assert(user2_balance >= 30000000000000000000, 'USER2 balance too low'); // 30 tokens
+
+    // Set approvals
+    start_cheat_caller_address(token.contract_address, USER1_ADDR());
+    token.approve(contract.contract_address, 1000000000000000000000); // 1000 tokens
+    stop_cheat_caller_address(token.contract_address);
+
+    start_cheat_caller_address(token.contract_address, USER2_ADDR());
+    token.approve(contract.contract_address, 1000000000000000000000); // 1000 tokens
+    stop_cheat_caller_address(token.contract_address);
+
+    // Verify allowances
+    let user1_allowance = token.allowance(USER1_ADDR(), contract.contract_address);
+    let user2_allowance = token.allowance(USER2_ADDR(), contract.contract_address);
+    assert(user1_allowance >= 25000000000000000000, 'USER1 allowance too low');
+    assert(user2_allowance >= 30000000000000000000, 'USER2 allowance too low');
+
+    // User 1 places 2 bets
+    start_cheat_caller_address(contract.contract_address, USER1_ADDR());
+    contract.place_bet(market_id, 0, 10000000000000000000, 0); // 10 tokens
+    contract.place_bet(market_id, 1, 15000000000000000000, 0); // 15 tokens
+    stop_cheat_caller_address(contract.contract_address);
+
+    // User 2 places 1 bet
+    start_cheat_caller_address(contract.contract_address, USER2_ADDR());
+    contract.place_bet(market_id, 0, 30000000000000000000, 0); // 30 tokens
+    stop_cheat_caller_address(contract.contract_address);
+
+    // Verify total bets
+    let total_bets = contract.get_market_bet_count(market_id, 0);
+    assert(total_bets == 3, 'Total bet count should be 3');
 }
 
 // ================ Mixed Market Type Tests ================

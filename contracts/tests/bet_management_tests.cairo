@@ -109,6 +109,7 @@ fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
         );
 
     stop_cheat_caller_address(prediction_hub.contract_address);
+    
 
     // Fetch the MarketCreated event
     let events = spy.get_events();
