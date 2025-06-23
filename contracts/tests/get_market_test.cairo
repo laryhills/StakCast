@@ -7,8 +7,8 @@ use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrai
 use starknet::{ContractAddress, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
-    create_business_prediction, create_crypto_prediction, create_test_market,
-    setup_test_environment, create_sports_prediction
+    create_business_prediction, create_crypto_prediction, create_sports_prediction,
+    create_test_market, setup_test_environment,
 };
 
 // ================ General Prediction Market Tests ================

@@ -31,6 +31,10 @@ pub fn USER2_ADDR() -> ContractAddress {
     USER2_CONST.try_into().unwrap()
 }
 
+pub fn USER3_ADDR() -> ContractAddress {
+    USER2_CONST.try_into().unwrap()
+}
+
 pub fn FEE_RECIPIENT_ADDR() -> ContractAddress {
     FEE_RECIPIENT_CONST.try_into().unwrap()
 }
@@ -218,7 +222,7 @@ pub fn create_sports_prediction(prediction_hub: IPredictionHubDispatcher) -> u25
 
     let future_time = get_block_timestamp() + 86400; // 1 day from now
     prediction_hub
-                .create_sports_prediction(
+        .create_sports_prediction(
             "Lakers vs Warriors",
             "Who will win the Lakers vs Warriors game?",
             ('Lakers', 'Warriors'),
@@ -249,14 +253,18 @@ pub fn create_sports_prediction(prediction_hub: IPredictionHubDispatcher) -> u25
 }
 
 #[derive(Debug, Drop)]
-pub struct market_details {
-
-}
+pub struct market_details {}
 
 #[derive(Drop, Debug)]
 enum MarketType {
-    SPORTS, BUISNESS, CRYPTO, GENERAL,
+    SPORTS,
+    BUISNESS,
+    CRYPTO,
+    GENERAL,
 }
-fn create_dynamic_market(prediction_hub: IPredictionHubDispatcher, details: Option<market_details>, market_type: MarketType) {
-    // todo() : implement a dynamic create market function
+fn create_dynamic_market(
+    prediction_hub: IPredictionHubDispatcher,
+    details: Option<market_details>,
+    market_type: MarketType,
+) {// todo() : implement a dynamic create market function
 }
