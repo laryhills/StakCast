@@ -190,7 +190,7 @@ pub trait IPredictionHub<TContractState> {
     /// Returns an array of all active business prediction markets
     fn get_all_business_predictions(self: @TContractState) -> Array<BusinessPrediction>;
 
-    // get current market status of markets 
+    // get current market status of markets
     fn get_market_status(self: @TContractState, market_id: u256, market_type: u8) -> (bool, bool);
 
     // Returns the total number of bets placed on a market by all users.

@@ -131,7 +131,9 @@ pub mod PredictionHub {
         user_nonces: Map<ContractAddress, u256>, // Tracks nonce for each user
         market_ids: Map<u256, u256>,
         market_users_bets_len: Map<(u256, u8), u32>, // (market_id, market_type) -> length
-        market_users_bets: Map<(u256, u8, u32), ContractAddress>, // (market_id, market_type, idx) -> user
+        market_users_bets: Map<
+            (u256, u8, u32), ContractAddress,
+        > // (market_id, market_type, idx) -> user
     }
 
     #[event]
@@ -617,24 +619,26 @@ pub mod PredictionHub {
             predictions
         }
 
-        fn get_market_status(self: @ContractState, market_id: u256, market_type: u8) -> (bool, bool) {
-             self.assert_market_exists(market_id, market_type);
+        fn get_market_status(
+            self: @ContractState, market_id: u256, market_type: u8,
+        ) -> (bool, bool) {
+            self.assert_market_exists(market_id, market_type);
 
-             if market_type == 0 {
+            if market_type == 0 {
                 let market = self.predictions.entry(market_id).read();
                 (market.is_open, market.is_resolved)
-             } else if market_type == 1 {
+            } else if market_type == 1 {
                 let market = self.sports_predictions.entry(market_id).read();
                 (market.is_open, market.is_resolved)
-             } else if market_type == 2 {
+            } else if market_type == 2 {
                 let market = self.crypto_predictions.entry(market_id).read();
                 (market.is_open, market.is_resolved)
-             } else if market_type == 3 {
+            } else if market_type == 3 {
                 let market = self.business_predictions.entry(market_id).read();
                 (market.is_open, market.is_resolved)
-             } else {
+            } else {
                 panic!("Invalid market type!")
-             }
+            }
         }
 
         fn get_market_bet_count(self: @ContractState, market_id: u256, market_type: u8) -> u256 {
@@ -647,7 +651,7 @@ pub mod PredictionHub {
             let mut total_bets: u256 = 0;
             // Iterate through all users who placed bets in this market
             let mut i = 0;
-            
+
             while i < len {
                 // Get the user address at index i for this market
                 let user = self.market_users_bets.entry((market_id, market_type, i)).read();
