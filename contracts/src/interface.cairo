@@ -21,8 +21,16 @@ pub struct PredictionMarket {
     // logic - if total pool is 0 then its a normal prediction, and crpto prediction has to
     pub total_pool: u256, // Total amount staked in the market
     pub prediction_market_type: u8, // 0 - normal predicion market, 1 - crypto prediction market, 2 - sports prediction, 3 - buisness market
+    //Some((comparison_type,asset_key target_value))
+    //comparison_type: 0 -> less than amount, 1 -> greater than amount,| asset_key: Identifier for
+    //the crypto asset (e.g., BTC, ETH) | target_value:  Target price value for the prediction
     pub crypto_prediction: Option<(u8, felt252, u128)>, // Optional crypto prediction details
+    //Some((event_id,team_flag))
+    // event_id: External API event ID for automatic resolution | team_flag: Flag indicating if this
+    // is a team-based prediction
     pub sports_prediction: Option<(u64, bool)>, // Optional sports prediction details
+    //Some(event_id)
+    //event_id: External API event ID for automatic resolution
     pub buisness_prediction: Option<u64> // Optional buisness prediction details
 }
 
@@ -78,7 +86,7 @@ pub trait IPredictionHub<TContractState> {
     fn get_prediction_count(self: @TContractState) -> u256;
 
     /// Retrieves a specific prediction market by ID
-    fn get_prediction(self: @TContractState, market_id: u256) -> PredictionMarket;
+    fn get_prediction(self: @TContractState, market_id: u256, market_type: u8) -> PredictionMarket;
 
     /// Returns an array of all active prediction markets
     fn get_all_predictions(self: @TContractState) -> Array<PredictionMarket>;

@@ -376,6 +376,7 @@ pub mod PredictionHub {
                 },
                 1 => {
                     let (comparison_type, asset_key, target_value) = crypto_prediction.unwrap();
+                    assert(comparison_type < 2, 'Invalid comparison type');
                     let market = PredictionMarket {
                         title,
                         market_id,
@@ -461,8 +462,10 @@ pub mod PredictionHub {
             self.prediction_count.read()
         }
 
-        fn get_prediction(self: @ContractState, market_id: u256) -> PredictionMarket {
-            self.assert_market_exists(market_id, 0);
+        fn get_prediction(
+            self: @ContractState, market_id: u256, market_type: u8,
+        ) -> PredictionMarket {
+            self.assert_market_exists(market_id, market_type);
             self.all_predictions.entry(market_id).read()
         }
 
