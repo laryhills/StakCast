@@ -3,7 +3,7 @@ use starknet::class_hash::ClassHash;
 
 // ================ Market Types ================
 /// Represents a prediction market that can be of various types
-/// Each market can be a general prediction, crypto prediction, sports prediction, or business
+/// Each market can be a general prediction, crypto prediction or sports prediction
 /// prediction This struct serves as a base for all prediction markets, allowing for flexible market
 /// management
 #[derive(Drop, Serde, starknet::Store, Clone)]
@@ -28,10 +28,7 @@ pub struct PredictionMarket {
     //Some((event_id,team_flag))
     // event_id: External API event ID for automatic resolution | team_flag: Flag indicating if this
     // is a team-based prediction
-    pub sports_prediction: Option<(u64, bool)>, // Optional sports prediction details
-    //Some(event_id)
-    //event_id: External API event ID for automatic resolution
-    pub buisness_prediction: Option<u64> // Optional buisness prediction details
+    pub sports_prediction: Option<(u64, bool)> // Optional sports prediction details
 }
 
 // ================ Supporting Types ================
@@ -89,6 +86,11 @@ pub trait IPredictionHub<TContractState> {
     fn get_prediction(self: @TContractState, market_id: u256, market_type: u8) -> PredictionMarket;
 
     /// Returns an array of all active prediction markets
+    fn get_all_predictions_by_market_type(
+        self: @TContractState, market_type: u8,
+    ) -> Array<PredictionMarket>;
+
+    /// Returns an array of all active prediction markets
     fn get_all_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active general prediction markets
@@ -99,9 +101,6 @@ pub trait IPredictionHub<TContractState> {
 
     /// Returns an array of all active sports prediction markets
     fn get_all_sports_predictions(self: @TContractState) -> Array<PredictionMarket>;
-
-    /// Returns an array of all active business prediction markets
-    fn get_all_business_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     // get current market status of markets
     fn get_market_status(self: @TContractState, market_id: u256, market_type: u8) -> (bool, bool);
@@ -162,9 +161,6 @@ pub trait IPredictionHub<TContractState> {
     /// Returns an array of all active crypto prediction markets
     fn get_active_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
 
-    /// Returns an array of all active business prediction markets
-    fn get_active_business_markets(self: @TContractState) -> Array<PredictionMarket>;
-
     /// Returns an array of all resolved general prediction markets
     fn get_all_resolved_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
 
@@ -176,9 +172,6 @@ pub trait IPredictionHub<TContractState> {
 
     /// Returns an array of all resolved crypto prediction markets
     fn get_resolved_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
-
-    /// Returns an array of all resolved business prediction markets
-    fn get_resolved_business_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     fn is_prediction_market_open_for_betting(ref self: TContractState, market_id: u256) -> bool;
 
@@ -205,11 +198,6 @@ pub trait IPredictionHub<TContractState> {
     /// Resolves a sports prediction automatically based on event outcome
     fn resolve_sports_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
 
-    /// Manually resolves a business prediction market
-    /// Override for the automatic resolution
-    fn resolve_business_prediction_manually(
-        ref self: TContractState, market_id: u256, winning_choice: u8,
-    );
     // ================ Winnings Management ================
 
     /// Allows a user to claim their winnings from a resolved prediction
@@ -237,11 +225,6 @@ pub trait IPredictionHub<TContractState> {
 
     /// Returns all sports prediction markets a specific user has participated in
     fn get_user_sports_predictions(
-        self: @TContractState, user: ContractAddress,
-    ) -> Array<PredictionMarket>;
-
-    /// Returns all business prediction markets a specific user has participated in
-    fn get_user_business_predictions(
         self: @TContractState, user: ContractAddress,
     ) -> Array<PredictionMarket>;
 

@@ -5,7 +5,7 @@ use snforge_std::{
 };
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
-use starknet::{ContractAddress, get_block_timestamp, contract_address_const};
+use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
     create_business_prediction, create_crypto_prediction, create_sports_prediction,
@@ -883,11 +883,10 @@ fn test_empty_arrays_when_no_markets() {
 fn test_sequential_market_id_generation() {
     let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
-
-//     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    //     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 //     let future_time = get_block_timestamp() + 86400;
 
-//     // Create 5 markets and collect IDs
+    //     // Create 5 markets and collect IDs
 //     let mut market_ids = ArrayTrait::new();
 //     let mut i: u32 = 1;
 //     while i <= 5 {
@@ -901,7 +900,7 @@ fn test_sequential_market_id_generation() {
 //                 future_time,
 //             );
 
-//         // Fetch market_id from MarketCreated event
+    //         // Fetch market_id from MarketCreated event
 //         let market_id = match spy.get_events().events.into_iter().last() {
 //             Option::Some((_, event)) => (*event.data.at(0)).into(),
 //             Option::None => panic!("No MarketCreated event emitted"),
@@ -909,21 +908,21 @@ fn test_sequential_market_id_generation() {
 //         market_ids.append(market_id);
 //         // spy.drop_all_events(); // Clear events for next iteration
 
-//         let count = contract.get_prediction_count();
+    //         let count = contract.get_prediction_count();
 //         assert(count == i.into(), 'Count matches iteration');
 
-//         // Verify market exists with correct ID
+    //         // Verify market exists with correct ID
 //         let market = contract.get_prediction(market_id);
 //         assert(market.market_id == market_id, 'Market ID mismatch');
 //         assert(market.title == "Market", 'Market title mismatch');
 
-//         i += 1;
+    //         i += 1;
 //     }
 
-//     let final_count = contract.get_prediction_count();
+    //     let final_count = contract.get_prediction_count();
 //     assert(final_count == 5, 'Final count 5');
 
-//     // Verify IDs are unique
+    //     // Verify IDs are unique
 //     let mut i: u32 = 0;
 //     while i < market_ids.len() {
 //         let mut j: u32 = i + 1;
@@ -935,24 +934,24 @@ fn test_sequential_market_id_generation() {
 //         i += 1;
 //     }
 
-//     stop_cheat_caller_address(contract.contract_address);
+    //     stop_cheat_caller_address(contract.contract_address);
 // }
 
-#[test]
-fn test_market_data_integrity() {
-    let (contract, _admin_contract, _token) = setup_test_environment();
-    let mut spy = spy_events();
+    // #[test]
+// fn test_market_data_integrity() {
+//     let (contract, _admin_contract, _token) = setup_test_environment();
+//     let mut spy = spy_events();
 
-//     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    //     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 //     let future_time = get_block_timestamp() + 86400;
 
-//     // Create a market with specific data
+    //     // Create a market with specific data
 //     let title = "Data Integrity Test Market";
 //     let description = "This market tests data integrity across storage and retrieval";
 //     let category = 'integrity_test';
 //     let image_url = "https://example.com/integrity-test.png";
 
-//     contract
+    //     contract
 //         .create_prediction(
 //             title.clone(),
 //             description.clone(),
@@ -962,18 +961,18 @@ fn test_market_data_integrity() {
 //             future_time,
 //         );
 
-//     // Fetch market_id from MarketCreated event
+    //     // Fetch market_id from MarketCreated event
 //     let market_id = match spy.get_events().events.into_iter().last() {
 //         Option::Some((_, event)) => (*event.data.at(0)).into(),
 //         Option::None => panic!("No MarketCreated event emitted"),
 //     };
 
-//     stop_cheat_caller_address(contract.contract_address);
+    //     stop_cheat_caller_address(contract.contract_address);
 
-//     // Retrieve and verify all data matches exactly
+    //     // Retrieve and verify all data matches exactly
 //     let market = contract.get_prediction(market_id);
 
-//     assert(market.title == title, 'Title match');
+    //     assert(market.title == title, 'Title match');
 //     assert(market.description == description, 'Description match');
 //     assert(market.category == category, 'Category match');
 //     assert(market.image_url == image_url, 'Image URL match');
@@ -983,12 +982,12 @@ fn test_market_data_integrity() {
 //     assert(market.is_resolved == false, 'Market not resolved');
 //     assert(market.total_pool == 0, 'Total pool 0 initially');
 
-//     let (choice_0, choice_1) = market.choices;
+    //     let (choice_0, choice_1) = market.choices;
 //     assert(choice_0.label == 'Option Alpha', 'Choice 0 label');
 //     assert(choice_1.label == 'Option Beta', 'Choice 1 label');
 //     assert(choice_0.staked_amount == 0, 'Choice 0 stake 0');
 //     assert(choice_1.staked_amount == 0, 'Choice 1 stake 0');
-// }
+}
 
 // // ================ Pause/Unpause Tests ================
 
@@ -996,17 +995,16 @@ fn test_market_data_integrity() {
 #[should_panic(expected: ('Contract is paused',))]
 fn test_cannot_create_market_when_emergency_paused() {
     let (contract, admin_contract, _token) = setup_test_environment();
-
-//     // Emergency pause the contract
+    //     // Emergency pause the contract
 //     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
 //     admin_contract.emergency_pause("Emergency maintenance");
 //     stop_cheat_caller_address(contract.contract_address);
 
-//     // Try to create market while paused
+    //     // Try to create market while paused
 //     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 //     let future_time = get_block_timestamp() + 86400;
 
-//     contract
+    //     contract
 //         .create_prediction(
 //             "Should Fail",
 //             "This should fail due to pause",
@@ -1015,23 +1013,22 @@ fn test_cannot_create_market_when_emergency_paused() {
 //             "https://example.com/fail.png",
 //             future_time,
 //         );
-// }
+}
 
 #[test]
 #[should_panic(expected: ('Market creation paused',))]
 fn test_cannot_create_market_when_market_creation_paused() {
     let (contract, admin_contract, _token) = setup_test_environment();
-
-//     // Pause market creation specifically
+    //     // Pause market creation specifically
 //     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
 //     admin_contract.pause_market_creation();
 //     stop_cheat_caller_address(contract.contract_address);
 
-//     // Try to create market while market creation is paused
+    //     // Try to create market while market creation is paused
 //     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 //     let future_time = get_block_timestamp() + 86400;
 
-//     contract
+    //     contract
 //         .create_prediction(
 //             "Should Fail",
 //             "This should fail due to market creation pause",
@@ -1040,31 +1037,30 @@ fn test_cannot_create_market_when_market_creation_paused() {
 //             "https://example.com/fail.png",
 //             future_time,
 //         );
-// }
+}
 
 #[test]
 fn test_can_create_market_after_unpause() {
     let (contract, admin_contract, _token) = setup_test_environment();
-
-//     // Emergency pause the contract
+    //     // Emergency pause the contract
 //     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
 //     admin_contract.emergency_pause("Testing pause/unpause");
 
-//     // Verify contract is paused
+    //     // Verify contract is paused
 //     assert(admin_contract.is_paused(), 'Contract paused');
 
-//     // Unpause the contract
+    //     // Unpause the contract
 //     admin_contract.emergency_unpause();
 
-//     // Verify contract is unpaused
+    //     // Verify contract is unpaused
 //     assert(!admin_contract.is_paused(), 'Contract unpaused');
 //     stop_cheat_caller_address(contract.contract_address);
 
-//     // Now create market should work
+    //     // Now create market should work
 //     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 //     let future_time = get_block_timestamp() + 86400;
 
-//     contract
+    //     contract
 //         .create_prediction(
 //             "Post Unpause Market",
 //             "This should work after unpause",
@@ -1074,27 +1070,26 @@ fn test_can_create_market_after_unpause() {
 //             future_time,
 //         );
 
-//     let count = contract.get_prediction_count();
+    //     let count = contract.get_prediction_count();
 //     assert(count == 1, 'Market created after unpause');
-// }
+}
 
 #[test]
 fn test_can_create_market_after_market_creation_unpause() {
     let (contract, admin_contract, _token) = setup_test_environment();
-
-//     // Pause market creation
+    //     // Pause market creation
 //     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
 //     admin_contract.pause_market_creation();
 
-//     // Unpause market creation
+    //     // Unpause market creation
 //     admin_contract.unpause_market_creation();
 //     stop_cheat_caller_address(contract.contract_address);
 
-//     // Now create market should work
+    //     // Now create market should work
 //     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
 //     let future_time = get_block_timestamp() + 86400;
 
-//     contract
+    //     contract
 //         .create_prediction(
 //             "Post Market Creation Unpause",
 //             "This should work after unpause",
@@ -1104,17 +1099,17 @@ fn test_can_create_market_after_market_creation_unpause() {
 //             future_time,
 //         );
 
-//     let count = contract.get_prediction_count();
+    //     let count = contract.get_prediction_count();
 //     assert(count == 1, 'Market created after unpause');
-// }
+}
 
 #[test]
 fn test_emergency_pause_functionality() {
     let (_contract, admin_contract, _token) = setup_test_environment();
 
-//     start_cheat_caller_address(admin_contract.contract_address, ADMIN_ADDR());
+    //     start_cheat_caller_address(admin_contract.contract_address, ADMIN_ADDR());
 
-//     admin_contract.emergency_pause("Test emergency pause");
+    //     admin_contract.emergency_pause("Test emergency pause");
 
     // Verify pause was successful (functional test)
     assert(admin_contract.is_paused(), 'Contract should be paused');
