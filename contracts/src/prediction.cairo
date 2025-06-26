@@ -1091,44 +1091,44 @@ pub mod PredictionHub {
 
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
-            let (comparison_type, asset_key, target_value) = market.crypto_prediction.unwrap();
+            let (asset_key, target_value) = market.crypto_prediction.unwrap();
             // Get price from Pragma Oracle
             let oracle = IPragmaABIDispatcher { contract_address: self.pragma_oracle.read() };
             let price_response = oracle.get_data_median(DataType::SpotEntry(asset_key));
             let current_price = price_response.price;
 
-            // Determine winning choice based on comparison
-            let winning_choice = if comparison_type == 0 {
-                // Less than target
-                if current_price < target_value.into() {
-                    0
-                } else {
-                    1
-                }
-            } else {
-                // Greater than target
-                if current_price > target_value.into() {
-                    0
-                } else {
-                    1
-                }
-            };
+            // // Determine winning choice based on comparison
+            // let winning_choice = if comparison_type == 0 {
+            //     // Less than target
+            //     if current_price < target_value.into() {
+            //         0
+            //     } else {
+            //         1
+            //     }
+            // } else {
+            //     // Greater than target
+            //     if current_price > target_value.into() {
+            //         0
+            //     } else {
+            //         1
+            //     }
+            // };
 
             market.is_resolved = true;
             market.is_open = false;
 
-            let winning_choice_struct = if winning_choice == 0 {
-                let (choice_0, _choice_1) = market.choices;
-                choice_0
-            } else {
-                let (_choice_0, choice_1) = market.choices;
-                choice_1
-            };
+            // let winning_choice_struct = if winning_choice == 0 {
+            //     let (choice_0, _choice_1) = market.choices;
+            //     choice_0
+            // } else {
+            //     let (_choice_0, choice_1) = market.choices;
+            //     choice_1
+            // };
 
-            market.winning_choice = Option::Some(winning_choice_struct);
+            // market.winning_choice = Option::Some(winning_choice_struct);
             self.crypto_predictions.entry(market_id).write(market);
 
-            self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
+            // self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
 
             self.end_reentrancy_guard();
         }
