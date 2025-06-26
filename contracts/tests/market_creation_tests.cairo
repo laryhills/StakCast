@@ -229,7 +229,7 @@ fn test_create_crypto_prediction_success() {
             "https://example.com/eth.png",
             future_time,
             1, // crypto prediction market
-            Some((1, 'ETH', 3000)), //comparison_type Asset key,Target value
+            Some(('ETH', 3000)), //comparison_type Asset key,Target value
             None,
             None,
         );
@@ -280,7 +280,7 @@ fn test_create_crypto_prediction_invalid_comparison_type() {
             "https://example.com/test.png",
             future_time,
             1, // crypto prediction market
-            Some((2, 'ETH', 3000)), //comparison_type Asset key,Target value
+            Some(('ETH', 3000)), //comparison_type Asset key,Target value
             None,
             None,
         );
@@ -304,7 +304,7 @@ fn test_create_crypto_prediction_both_comparison_types() {
             "https://example.com/btc.png",
             future_time,
             1, // crypto prediction market
-            Some((0, 'BTC', 40000)), //comparison_type Asset key,Target value
+            Some(('BTC', 40000)), //comparison_type Asset key,Target value
             None,
             None,
         );
@@ -436,62 +436,6 @@ fn test_create_sports_prediction_non_team_event() {
     let (choice_0, choice_1) = sports_market.choices;
     assert(choice_0.label == 'Yes', 'Choice 0 Yes');
     assert(choice_1.label == 'No', 'Choice 1 No');
-}
-
-// // ================ Business Prediction Market Tests ================
-
-#[test]
-fn test_create_business_prediction_success() {
-    let (contract, _admin_contract, _token) = setup_test_environment();
-    let mut spy = spy_events();
-
-    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
-    let future_time = get_block_timestamp() + 86400; // 1 day from now
-
-    contract
-        .create_predictions(
-            "Will Microsoft acquire a gaming company by June 2025?",
-            "business Predictions for Microsoft to acquire a specific gaming company by June 2025?",
-            ('Yes', 'No'),
-            'business_acquisition',
-            "https://example.com/microsoft-image.png",
-            future_time,
-            3, // business prediction market
-            None,
-            None,
-            Some(45637) //Event ID
-        );
-
-    let market_id = match spy.get_events().events.into_iter().last() {
-        Option::Some((_, event)) => (*event.data.at(0)).into(),
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-
-    // Verify market count increased
-    let count = contract.get_prediction_count();
-    println!("Market count: {}", count);
-    assert(count == 1, 'Market count should be 1');
-
-    // Verify market data
-    let market = contract.get_prediction(market_id, 3);
-    let event_id = market.buisness_prediction.unwrap();
-    assert(market.market_id == market_id, 'Market ID mismatch');
-    assert(
-        market.title == "Will Microsoft acquire a gaming company by June 2025?", 'Title mismatch',
-    );
-    assert(market.is_open, 'Market should be open');
-    assert(!market.is_resolved, 'Market not resolved');
-    assert(market.total_pool == 0, 'Initial pool 0');
-    assert(market.end_time == future_time, 'End time mismatch');
-    assert(event_id == 45637, 'event id mismatch');
-
-    // Verify choices
-    let (choice_0, choice_1) = market.choices;
-    assert(choice_0.label == 'Yes', 'Choice 0 label mismatch');
-    assert(choice_1.label == 'No', 'Choice 1 label mismatch');
-
-    let business_market = contract.get_all_business_predictions();
-    assert(business_market.len() == 1, 'Should return 1 business market');
 }
 
 #[test]
@@ -642,7 +586,7 @@ fn test_create_all_market_types() {
             "https://example.com/crypto.png",
             future_time + 3600,
             1, // crypto prediction market
-            Some((1, 'BTC', 50000)), //comparison_type Asset key,Target value
+            Some(('BTC', 50000)), //Asset key,Target value
             None,
             None,
         );
@@ -675,28 +619,6 @@ fn test_create_all_market_types() {
         Option::None => panic!("No MarketCreated event emitted"),
     };
 
-    // Create business prediction
-    contract
-        .create_predictions(
-            "Will Microsoft acquire a gaming company by June 2025?",
-            "business Predictions for Microsoft to acquire a specific gaming company by June 2025?",
-            ('Yes', 'No'),
-            'business_acquisition',
-            "https://example.com/microsoft-image.png",
-            future_time,
-            3, // business prediction market
-            None,
-            None,
-            Some(45637) //Event ID
-        );
-
-    // Fetch sports market_id
-    let business_market_id = match spy.get_events().events.into_iter().last() {
-        Option::Some((_, event)) => (*event.data.at(0)).into(),
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-    // spy.drop_all_events(); // Clear events
-
     // Verify total count
     let count = contract.get_prediction_count();
     assert(count == 4, 'Should have 4 markets');
@@ -705,7 +627,6 @@ fn test_create_all_market_types() {
     let general_market = contract.get_prediction(general_market_id, 0);
     let crypto_market = contract.get_prediction(crypto_market_id, 1);
     let sports_market = contract.get_prediction(sports_market_id, 2);
-    let _business_market = contract.get_prediction(business_market_id, 3);
 
     assert(general_market.market_id == general_market_id, 'General market ID mismatch');
     assert(crypto_market.market_id == crypto_market_id, 'Crypto market ID mismatch');
@@ -719,11 +640,9 @@ fn test_create_all_market_types() {
     let all_general = contract.get_all_general_predictions();
     let all_crypto = contract.get_all_crypto_predictions();
     let all_sports = contract.get_all_sports_predictions();
-    let all_business = contract.get_all_business_predictions();
     assert(all_general.len() == 1, 'general market should be 1');
     assert(all_crypto.len() == 1, 'crypto market should be 1');
     assert(all_sports.len() == 1, 'sport market should be 1');
-    assert(all_business.len() == 1, 'busines market should be 1');
     stop_cheat_caller_address(contract.contract_address);
 }
 // // ================ Admin and Moderator Management Tests ================

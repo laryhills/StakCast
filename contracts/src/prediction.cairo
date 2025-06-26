@@ -323,7 +323,7 @@ pub mod PredictionHub {
             image_url: ByteArray,
             end_time: u64,
             prediction_market_type: u8,
-            crypto_prediction: Option<(u8, felt252, u128)>,
+            crypto_prediction: Option<(felt252, u128)>,
             sports_prediction: Option<(u64, bool)>,
             buisness_prediction: Option<u64>,
         ) {
@@ -365,11 +365,10 @@ pub mod PredictionHub {
                     self.predictions.entry(market_id).write(market);
                 },
                 1 => {
-                    let (comparison_type, asset_key, target_value) = crypto_prediction.unwrap();
-                    assert(comparison_type < 2, 'Invalid comparison type');
+                    let (asset_key, target_value) = crypto_prediction.unwrap();
                     market
                         .crypto_prediction =
-                            Option::Some((comparison_type, asset_key, target_value));
+                            Option::Some((asset_key, target_value));
                     market.prediction_market_type = 1;
                     self.all_predictions.entry(market_id).write(market.clone());
                     self.crypto_predictions.entry(market_id).write(market);
