@@ -1,14 +1,14 @@
 import { RpcProvider, hash, num } from 'starknet';
-import { starknetProvider, predictionHubContract } from '../config/starknet';
-import { MarketService } from '../services/market.service';
+import { starknetProvider, predictionHubContract } from '../config/starknet'; 
 import { StarknetService } from '../services/starknet.service';
 import fs from 'fs';
 import path from 'path';
+import { MarketService } from '../services/market.service';
 
 const marketService = new MarketService();
 const starknetService = new StarknetService();
 
-const LAST_BLOCK_FILE = path.resolve(__dirname, '../../last_processed_block.txt');
+const LAST_BLOCK_FILE = path.resolve(__dirname, '../../../last_processed_block.txt');
 
 function readLastProcessedBlock(): number {
     try {
@@ -58,9 +58,11 @@ export async function startStarknetEventListener() {
                         const eventSelector = event.keys[0];
                         const txHash = event.transaction_hash;
                         try {
+                            // Fetch the transaction receipt for the event
+                            const txReceipt = await starknetProvider.getTransactionReceipt(txHash);
+                            const parsedEvents = predictionHubContract.parseEvents(txReceipt) as unknown as Record<string, any[]>;
                             if (eventSelector === MARKET_CREATED_EVENT_HASH) {
-                                const parsedEvents = predictionHubContract.parseEvents([event]);
-                                const marketCreatedData = parsedEvents.MarketCreated?.[0];
+                                const marketCreatedData = parsedEvents['MarketCreated']?.[0];
                                 if (marketCreatedData) {
                                     const fullMarketDetails = await starknetService.getMarketDetailsFromContract(
                                         marketCreatedData.market_id,
@@ -69,14 +71,12 @@ export async function startStarknetEventListener() {
                                     await marketService.createMarket(fullMarketDetails, blockTimestamp);
                                 }
                             } else if (eventSelector === MARKET_RESOLVED_EVENT_HASH) {
-                                const parsedEvents = predictionHubContract.parseEvents([event]);
-                                const marketResolvedData = parsedEvents.MarketResolved?.[0];
+                                const marketResolvedData = parsedEvents['MarketResolved']?.[0];
                                 if (marketResolvedData) {
                                     await marketService.updateMarketResolution(marketResolvedData, blockTimestamp);
                                 }
                             } else if (eventSelector === WAGER_PLACED_EVENT_HASH) {
-                                const parsedEvents = predictionHubContract.parseEvents([event]);
-                                const wagerPlacedData = parsedEvents.WagerPlaced?.[0];
+                                const wagerPlacedData = parsedEvents['WagerPlaced']?.[0];
                                 if (wagerPlacedData) {
                                     await marketService.updateMarketWager(wagerPlacedData, blockTimestamp);
                                 }

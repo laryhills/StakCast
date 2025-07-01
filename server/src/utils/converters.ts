@@ -1,8 +1,10 @@
 import { BigNumberish, shortString, num } from 'starknet';
-import { MarketType as PrismaMarketType, ChoiceIndex } from '../types';
-import { ApiMarket } from '../types';
+import {
+    PrismaMarketType,
+    ChoiceIndex,
+    ApiMarket
+} from '../types/backend.types';
 import { Market as PrismaMarket } from '@prisma/client';
-import Decimal from 'decimal.js';
 
 export function felt252ToString(felt: BigNumberish): string {
     if (typeof felt === 'string' && felt.startsWith('0x')) {

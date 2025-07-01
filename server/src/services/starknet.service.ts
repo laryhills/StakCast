@@ -1,4 +1,5 @@
 import { RpcProvider, Contract, BigNumberish, num } from 'starknet';
+// 
 import { predictionHubContract, starknetProvider } from '../config/starknet';
 import { felt252ToString } from '../utils/converters';
 import { MarketType as PrismaMarketType } from '@prisma/client';
@@ -35,7 +36,7 @@ export class StarknetService {
             }
 
             const response = await this.predictionHub.call(methodName, [marketId]);
-            marketData = response[0];
+            marketData = response; // Use response directly, or destructure if you know the shape
 
             const parsedMarket = {
                 market_id: num.toBigInt(marketData.market_id),

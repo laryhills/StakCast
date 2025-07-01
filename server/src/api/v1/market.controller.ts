@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { MarketService } from '../services/market.service';
-import { StarknetService } from '../services/starknet.service';
-import { CreateMarketRequest, PrismaMarketType } from '../types';
-import { stringToFelt252, dateToU64 } from '../utils/converters';
-import { predictionHubContract } from '../config/starknet';
+import { MarketService } from '../../services/market.service';
+import { StarknetService } from '../../services/starknet.service';
+import { CreateMarketRequest, PrismaMarketType } from '../../types/backend.types';
+import { stringToFelt252, dateToU64 } from '../../utils/converters';
 import { BigNumberish } from 'starknet';
+import { predictionHubContract } from '../../config/starknet';
 
 const marketService = new MarketService();
 const starknetService = new StarknetService();
@@ -70,7 +70,8 @@ export class MarketController {
             const commonArgs = [
                 stringToFelt252(marketRequest.title),
                 stringToFelt252(marketRequest.description),
-                [stringToFelt252(marketRequest.choices[0]), stringToFelt252(marketRequest.choices[1])] as [BigNumberish, BigNumberish],
+                stringToFelt252(marketRequest.choices[0]),
+                stringToFelt252(marketRequest.choices[1]),
                 stringToFelt252(marketRequest.category),
                 stringToFelt252(marketRequest.imageUrl),
                 dateToU64(new Date(marketRequest.endTime * 1000)),

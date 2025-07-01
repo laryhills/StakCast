@@ -6,7 +6,7 @@ import {
     WagerPlacedEvent,
     PrismaMarketType,
     ChoiceIndex,
-} from '../types';
+} from '../types/backend.types';
 import {
     u256ToDecimalString,
     u64ToDate,
