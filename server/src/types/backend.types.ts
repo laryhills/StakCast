@@ -1,8 +1,4 @@
-import { Market, MarketType as PrismaMarketType, ChoiceIndex } from '@prisma/client';
 import { BigNumberish } from 'starknet';
-
-// Re-export Prisma types for direct use
-export { Market, PrismaMarketType, ChoiceIndex };
 
 // ==================== Smart Contract Event Types ====================
 export interface MarketCreatedEvent {
@@ -69,7 +65,7 @@ export interface ApiMarket {
     id: string;
     title: string;
     description: string;
-    marketType: PrismaMarketType;
+    marketType: MarketType;
     category: string;
     imageUrl: string;
     endTime: number;
@@ -89,4 +85,13 @@ export interface ApiMarket {
     targetValue?: string;
     eventId?: number;
     teamFlag?: boolean;
+}
+
+
+export type MarketType = 'general' | 'crypto' | 'sports' | 'business';
+
+// Enums used across the app
+export enum ChoiceIndex {
+    CHOICE_0 = 'CHOICE_0',
+    CHOICE_1 = 'CHOICE_1',
 }
