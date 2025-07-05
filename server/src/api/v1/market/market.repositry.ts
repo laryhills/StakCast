@@ -12,31 +12,8 @@ export class MarketRepository {
     this.marketRepository = AppDataSource.getRepository(Market);
   }
 
-  async createMarket(marketDetails: any, blockTimestamp: number): Promise<Market> {
-    const newMarket = this.marketRepository.create({
-      id: num.toHex(marketDetails.market_id),
-      creator: num.toHex(marketDetails.creator),
-      marketType: marketDetails.marketType,
-      title: marketDetails.title,
-      description: marketDetails.description,
-      category: marketDetails.category,
-      imageUrl: marketDetails.image_url,
-      endTime: BigInt(marketDetails.end_time).toString(),
-      isResolved: marketDetails.is_resolved,
-      isOpen: marketDetails.is_open,
-      totalPool: u256ToDecimalString(marketDetails.total_pool),
-      createdAt: u64ToDate(blockTimestamp),
-      updatedAt: u64ToDate(blockTimestamp),
-      choice0Label: marketDetails.choice0Label,
-      choice0Staked: u256ToDecimalString(marketDetails.choice0Staked || 0),
-      choice1Label: marketDetails.choice1Label,
-      choice1Staked: u256ToDecimalString(marketDetails.choice1Staked || 0),
-      comparisonType: marketDetails.comparison_type,
-      assetKey: marketDetails.asset_key,
-      targetValue: marketDetails.target_value ? BigInt(marketDetails.target_value).toString() : null,
-      eventId: marketDetails.event_id ? BigInt(marketDetails.event_id).toString() : null,
-      teamFlag: marketDetails.team_flag,
-    });
+  async createMarket(market: Partial<Market>): Promise<Market> {
+    const newMarket = this.marketRepository.create(market);
     return this.marketRepository.save(newMarket);
   }
 

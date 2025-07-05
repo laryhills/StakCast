@@ -94,7 +94,7 @@ export async function startStarknetEventListener(): Promise<void> {
                                         marketCreatedData.market_id,
                                         marketCreatedData.market_type
                                     );
-                                    await marketService.createMarket(fullMarketDetails, blockTimestamp);
+                                    await marketService.createMarket({ ...fullMarketDetails, blockTimestamp });
                                 }
                             } else if (
                                 eventSelector === MARKET_RESOLVED_EVENT_HASH &&

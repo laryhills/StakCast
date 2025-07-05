@@ -1,5 +1,5 @@
 import { MarketRepository } from './market.repositry';
-import { Market } from './market.entity';
+import { Market, MarketType as MarketTypeEnum } from './market.entity';
 import {
   ApiMarket,
   MarketCreatedEvent,
@@ -7,6 +7,10 @@ import {
   WagerPlacedEvent,
   MarketType,
   ChoiceIndex,
+  CreateMarketRequest,
+  CryptoMarketCreateRequest,
+  SportsMarketCreateRequest,
+  BusinessMarketCreateRequest
 } from '../../../types/backend.types';
 import {
   u256ToDecimalString,
@@ -24,9 +28,74 @@ export class MarketService {
     this.marketRepository = new MarketRepository();
   }
 
-  async createMarket(marketDetails: any, blockTimestamp: number): Promise<ApiMarket> {
-    // You may need to convert market_type to marketType here if needed
-    const savedMarket = await this.marketRepository.createMarket(marketDetails, blockTimestamp);
+  async createMarket(marketDetails: CreateMarketRequest & { market_id: string, creator: string, total_pool: string, is_resolved: boolean, is_open: boolean, choice0Staked?: string, choice1Staked?: string, blockTimestamp: number }): Promise<ApiMarket> {
+    // Prepare and transform data for Market entity
+    const {
+      market_id,
+      creator,
+      type,
+      title,
+      description,
+      category,
+      imageUrl,
+      endTime,
+      choices,
+      total_pool,
+      is_resolved,
+      is_open,
+      choice0Staked,
+      choice1Staked,
+      blockTimestamp,
+      ...rest
+    } = marketDetails;
+
+    // Convert string type to MarketType enum
+    let marketType = (Object.values(MarketTypeEnum) as string[]).includes(type)
+      ? (type as MarketTypeEnum)
+      : MarketTypeEnum.GENERAL;
+    let comparisonType = null;
+    let assetKey = null;
+    let targetValue = null;
+    let eventId = null;
+    let teamFlag = null;
+
+    if (type === 'crypto') {
+      comparisonType = (marketDetails as CryptoMarketCreateRequest).comparisonType;
+      assetKey = (marketDetails as CryptoMarketCreateRequest).assetKey;
+      targetValue = (marketDetails as CryptoMarketCreateRequest).targetValue;
+    } else if (type === 'sports') {
+      eventId = (marketDetails as SportsMarketCreateRequest).eventId;
+      teamFlag = (marketDetails as SportsMarketCreateRequest).teamFlag;
+    } else if (type === 'business') {
+      eventId = (marketDetails as BusinessMarketCreateRequest).eventId;
+    }
+
+    const marketEntity = {
+      id: market_id,
+      creator,
+      marketType,
+      title,
+      description,
+      category,
+      imageUrl,
+      endTime: BigInt(endTime).toString(),
+      isResolved: is_resolved,
+      isOpen: is_open,
+      totalPool: total_pool,
+      createdAt: new Date(blockTimestamp * 1000),
+      updatedAt: new Date(blockTimestamp * 1000),
+      choice0Label: choices[0],
+      choice0Staked: choice0Staked || '0',
+      choice1Label: choices[1],
+      choice1Staked: choice1Staked || '0',
+      comparisonType,
+      assetKey,
+      targetValue: targetValue ? BigInt(targetValue).toString() : null,
+      eventId: eventId ? BigInt(eventId).toString() : null,
+      teamFlag,
+    };
+
+    const savedMarket = await this.marketRepository.createMarket(marketEntity);
     return prismaMarketToApiMarket(savedMarket);
   }
 
