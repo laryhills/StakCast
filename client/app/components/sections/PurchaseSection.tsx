@@ -46,7 +46,7 @@ const AVAILABLE_TOKENS: {
 ];
 
 const PurchaseSection = ({ market }: PurchaseSectionProps) => {
-  const { selectedOption, units, pricePerUnit, setUnits, handleOptionSelect } =
+  const { selectedOption, units, pricePerUnit, setUnits, handleOptionSelect,numberOfUnits,setNumberOfUnits } =
     useMarketContext();
   const connected = useIsConnected();
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -245,6 +245,23 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* number of Units*/}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+            Number Of Units
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              value={numberOfUnits}
+              onChange={(e) => setNumberOfUnits(parseInt(e.target.value) || 0)}
+              min={1}
+              placeholder="Enter amount"
+              className="w-full p-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white font-semibold"
+            />
           </div>
         </div>
 

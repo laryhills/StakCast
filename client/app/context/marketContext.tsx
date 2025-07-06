@@ -14,6 +14,8 @@ interface MarketContextType {
   selectedOption: string | null;
   units: number;
   pricePerUnit: number;
+  numberOfUnits: number;
+  setNumberOfUnits: Dispatch<SetStateAction<number>>;
   setUnits: Dispatch<SetStateAction<number>>;
   handleOptionSelect: (optionName: string, odds: number) => void;
   setMarkets: Dispatch<SetStateAction<DummyMarketType[]>>;
@@ -42,6 +44,7 @@ export const MarketProvider = ({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [units, setUnits] = useState<number>(1);
   const [pricePerUnit, setPricePerUnit] = useState<number>(0);
+  const [numberOfUnits, setNumberOfUnits] = useState<number>(1);
 
   const handleOptionSelect = (optionName: string, odds: number) => {
     setSelectedOption(optionName);
@@ -57,7 +60,9 @@ export const MarketProvider = ({
         pricePerUnit,
         setUnits,
         handleOptionSelect,
-        setMarkets
+        setMarkets,
+        numberOfUnits,
+        setNumberOfUnits
       }}
     >
       {children}
