@@ -7,8 +7,7 @@ use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDisp
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
 use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
-    ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
-     create_test_market,
+    ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR, create_test_market,
     default_create_crypto_prediction, default_create_predictions, default_create_sports_prediction,
     setup_test_environment,
 };
@@ -94,6 +93,24 @@ fn test_create_market_should_panic_if_contract_is_pasued() {
 }
 
 #[test]
+fn test_create_market_should_work_after_contract_unpasued() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    let admin_dispatcher = IAdditionalAdminDispatcher {
+        contract_address: contract.contract_address,
+    };
+
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+    admin_dispatcher.emergency_pause("Testing Contract Paused");
+    stop_cheat_caller_address(contract.contract_address);
+
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+    admin_dispatcher.emergency_unpause("Testing Contract Paused");
+    stop_cheat_caller_address(contract.contract_address);
+
+    default_create_predictions(contract);
+}
+
+#[test]
 #[should_panic(expected: 'Market creation paused')]
 fn test_create_market_should_panic_if_market_creation_is_pasued() {
     let (contract, _admin_contract, _token) = setup_test_environment();
@@ -103,6 +120,23 @@ fn test_create_market_should_panic_if_market_creation_is_pasued() {
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     admin_dispatcher.pause_market_creation();
     stop_cheat_caller_address(contract.contract_address);
+    default_create_predictions(contract);
+}
+
+#[test]
+fn test_create_market_should_work_after_market_creation_unpasued() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    let admin_dispatcher = IAdditionalAdminDispatcher {
+        contract_address: contract.contract_address,
+    };
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+    admin_dispatcher.pause_market_creation();
+    stop_cheat_caller_address(contract.contract_address);
+
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+    admin_dispatcher.unpause_market_creation();
+    stop_cheat_caller_address(contract.contract_address);
+
     default_create_predictions(contract);
 }
 
@@ -190,6 +224,172 @@ fn test_create_market_create_crypto_market() {
     assert(count == 1, 'Market count should be 1');
 }
 
+
+#[test]
+fn test_create_market_create_multiple_market_types() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    let mut spy = spy_events();
+
+    let all_general = contract.get_all_predictions();
+    let all_crypto = contract.get_all_crypto_predictions();
+    let all_sports = contract.get_all_sports_predictions();
+
+    assert(all_general.len() == 0, 'Empty general array');
+    assert(all_crypto.len() == 0, 'Empty crypto array');
+    assert(all_sports.len() == 0, 'Empty sports array');
+
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    let future_time = get_block_timestamp() + 86400;
+
+    contract
+        .create_predictions(
+            "General Market",
+            "General prediction description",
+            ('Option A', 'Option B'),
+            'general',
+            "https://example.com/general.png",
+            future_time,
+            0,
+            None,
+            None,
+        );
+
+    let mut general_market_id = 0;
+
+    if let Some((_, event)) = spy.get_events().events.into_iter().last() {
+        general_market_id = (*event.data.at(0)).into();
+    }
+
+    contract
+        .create_predictions(
+            "Crypto Market",
+            "Crypto prediction description",
+            ('Up', 'Down'),
+            'crypto',
+            "https://example.com/crypto.png",
+            future_time + 3600,
+            1,
+            Some(('BTC', 50000)),
+            None,
+        );
+
+    let mut crypto_market_id = 0;
+
+    if let Some((_, event)) = spy.get_events().events.into_iter().last() {
+        crypto_market_id = (*event.data.at(0)).into();
+    }
+
+    contract
+        .create_predictions(
+            "Sports Market",
+            "Sports prediction description",
+            ('Team A', 'Team B'),
+            'sports',
+            "https://example.com/sports.png",
+            future_time + 7200,
+            2,
+            None,
+            Some((555, true)),
+        );
+
+    let mut sports_market_id = 0;
+
+    if let Some((_, event)) = spy.get_events().events.into_iter().last() {
+        sports_market_id = (*event.data.at(0)).into();
+    }
+
+    let count = contract.get_prediction_count();
+    assert(count == 4, 'Should have 4 markets');
+
+    let general_market = contract.get_prediction(general_market_id, 0);
+    let crypto_market = contract.get_prediction(crypto_market_id, 1);
+    let sports_market = contract.get_prediction(sports_market_id, 2);
+
+    assert(general_market.market_id == general_market_id, 'General market ID mismatch');
+    assert(crypto_market.market_id == crypto_market_id, 'Crypto market ID mismatch');
+    assert(sports_market.market_id == sports_market_id, 'Sports market ID mismatch');
+    assert(general_market.title == "General Market", 'General market title mismatch');
+    assert(crypto_market.title == "Crypto Market", 'Crypto market title mismatch');
+    assert(sports_market.title == "Sports Market", 'Sports market title mismatch');
+
+    let all_general = contract.get_all_general_predictions();
+    let all_crypto = contract.get_all_crypto_predictions();
+    let all_sports = contract.get_all_sports_predictions();
+    assert(all_general.len() == 1, 'general market should be 1');
+    assert(all_crypto.len() == 1, 'crypto market should be 1');
+    assert(all_sports.len() == 1, 'sport market should be 1');
+    stop_cheat_caller_address(contract.contract_address);
+}
+
+
+#[test]
+fn test_creat_market_multiple_moderators_can_create_markets() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    let mut spy = spy_events();
+
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    contract.add_moderator(contract_address_const::<0x02>());
+    stop_cheat_caller_address(contract.contract_address);
+
+    let future_time = get_block_timestamp() + 86400;
+
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    contract
+        .create_predictions(
+            "Moderator 1 Market",
+            "Market by moderator 1",
+            ('Yes', 'No'),
+            'mod1',
+            "https://example.com/mod1.png",
+            future_time,
+            0,
+            None,
+            None,
+        );
+
+    let mut market1_id = 0;
+
+    if let Some((_, event)) = spy.get_events().events.into_iter().last() {
+        market1_id = (*event.data.at(0)).into();
+    }
+
+    stop_cheat_caller_address(contract.contract_address);
+
+    // Second moderator creates a market
+    start_cheat_caller_address(contract.contract_address, contract_address_const::<0x02>());
+    contract
+        .create_predictions(
+            "Moderator 2 Market",
+            "Market by moderator 2",
+            ('True', 'False'),
+            'mod2',
+            "https://example.com/mod2.png",
+            future_time + 3600,
+            0, // Normal general prediction market
+            None,
+            None,
+        );
+
+    // Fetch market_id for second market
+    let mut market2_id = 0;
+
+    if let Some((_, event)) = spy.get_events().events.into_iter().last() {
+        market2_id = (*event.data.at(0)).into();
+    }
+
+    stop_cheat_caller_address(contract.contract_address);
+
+    let count = contract.get_prediction_count();
+    assert(count == 2, '2 moderator markets');
+
+    let market1 = contract.get_prediction(market1_id, 0);
+    let market2 = contract.get_prediction(market2_id, 0);
+
+    assert(market1.title == "Moderator 1 Market", 'Market 1 title');
+    assert(market2.title == "Moderator 2 Market", 'Market 2 title');
+}
+
+
 #[test]
 fn test_get_market_status() {
     let (contract, _admin_contract, _token) = setup_test_environment();
@@ -201,3 +401,26 @@ fn test_get_market_status() {
     assert(is_open, 'Market should be open');
     assert(!is_resolved, 'Should not be resolved');
 }
+
+#[test]
+#[should_panic(expected: ('Market does not exist',))]
+fn test_get_market_should_panic_if_non_existent_market() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    contract.get_prediction(999, 0);
+}
+
+
+#[test]
+#[should_panic(expected: ('Market does not exist',))]
+fn test_get_market_should_panic_if_non_existent_crypto_market() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    contract.get_prediction(999, 1);
+}
+
+#[test]
+#[should_panic(expected: ('Market does not exist',))]
+fn test_get_market_should_panic_if_non_existent_sports_market() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    contract.get_prediction(999, 2);
+}
+

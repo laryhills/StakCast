@@ -257,7 +257,7 @@ pub fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
     let mut market_id: u256 = 0;
     if let Some((_, event)) = events.events.into_iter().last() {
         let market_id_felt = *event.data.at(0);
-        market_id =  market_id_felt.into();
+        market_id = market_id_felt.into();
     }
     market_id
 }
