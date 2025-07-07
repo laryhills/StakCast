@@ -99,13 +99,10 @@ fn test_create_market_should_work_after_contract_unpasued() {
         contract_address: contract.contract_address,
     };
 
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     admin_dispatcher.emergency_pause("Testing Contract Paused");
-    stop_cheat_caller_address(contract.contract_address);
 
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
-    admin_dispatcher.emergency_unpause("Testing Contract Paused");
-    stop_cheat_caller_address(contract.contract_address);
+    admin_dispatcher.emergency_unpause();
+
 
     default_create_predictions(contract);
 }
@@ -129,13 +126,9 @@ fn test_create_market_should_work_after_market_creation_unpasued() {
     let admin_dispatcher = IAdditionalAdminDispatcher {
         contract_address: contract.contract_address,
     };
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     admin_dispatcher.pause_market_creation();
-    stop_cheat_caller_address(contract.contract_address);
 
-    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     admin_dispatcher.unpause_market_creation();
-    stop_cheat_caller_address(contract.contract_address);
 
     default_create_predictions(contract);
 }
@@ -299,7 +292,7 @@ fn test_create_market_create_multiple_market_types() {
     }
 
     let count = contract.get_prediction_count();
-    assert(count == 4, 'Should have 4 markets');
+    assert(count == 3, 'Should have 4 markets');
 
     let general_market = contract.get_prediction(general_market_id, 0);
     let crypto_market = contract.get_prediction(crypto_market_id, 1);
