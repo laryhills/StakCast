@@ -1,4 +1,3 @@
-use stakcast::interface::PredictionMarket;
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
@@ -100,133 +99,27 @@ pub fn setup_test_environment() -> (
     (prediction_hub, admin_interface, token)
 }
 
-pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
-    let title: ByteArray = "Will Donald Trump Be President";
-    let description: ByteArray = "This is a pool to check if donald trump will be president";
-    let choices: (felt252, felt252) = ('Yes', 'No');
-    let category: felt252 = 'general';
-    let image_url: ByteArray = "https://example.com/donald-trump.jpg";
-    let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
-    let prediction_market_type: u8 = 0;
-    let crypto_prediction: Option<(felt252, u128)> = Option::None;
-    let sports_prediction: Option<(u64, bool)> = Option::None;
-    let buisness_prediction: Option<u64> = Option::None;
-
-    let mut spy = spy_events();
-
-    prediction_hub.create_predictions(
-        title.clone(), description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
-    );
-
-    let market_id = match spy.get_events().events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            let market_id_felt = *event.data.at(0);
-            market_id_felt.into()
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-
-    let list_of_genenral_predictions: Array<PredictionMarket> = prediction_hub.get_all_general_predictions();
-    assert(list_of_genenral_predictions.len() == 1, 'list not updated as expceted');
-
-    let market = prediction_hub.get_prediction(market_id, 0);
-    assert(market.market_id == market_id, 'Market ID mismatch');
-    assert(market.title == title, 'Title mismatch');
-    assert(market.is_open, 'Market should be open');
-    assert(!market.is_resolved, 'Market not resolved');
-    assert(market.total_pool == 0, 'Initial pool 0');
-
-}
-
-// Default create for a crypto prediction market
-pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher) {
-    let title: ByteArray = "ETH Price Prediction";
-    let description: ByteArray = "Will Ethereum price be above $3000 by tomorrow?";
-    let choices: (felt252, felt252) = ('Above $3000', 'Below $3000');
-    let category: felt252 = 'crypto';
-    let image_url: ByteArray = "https://example.com/eth.png";
-    let end_time: u64 = get_block_timestamp() + 86400;
-    let prediction_market_type: u8 = 1;
-    let crypto_prediction: Option<(felt252, u128)> = Option::Some(('ETH', 3000));
-    let sports_prediction: Option<(u64, bool)> = Option::None;
-    let buisness_prediction: Option<u64> = Option::None;
-    let mut spy = spy_events();
-
-    prediction_hub.create_predictions(
-        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
-    );
-
-    let market_id = match spy.get_events().events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            let market_id_felt = *event.data.at(0);
-            market_id_felt.into()
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-
-    let list_of_genenral_predictions: Array<PredictionMarket> = prediction_hub.get_all_general_predictions();
-    assert(list_of_genenral_predictions.len() == 1, 'list not updated as expceted');
-
-    let market = prediction_hub.get_prediction(market_id, 0);
-    assert(market.market_id == market_id, 'Market ID mismatch');
-    assert(market.title == title, 'Title mismatch');
-    assert(market.is_open, 'Market should be open');
-    assert(!market.is_resolved, 'Market not resolved');
-    assert(market.total_pool == 0, 'Initial pool 0');
-}
-
-// Default create for a sports prediction market
-pub fn default_create_sports_prediction(prediction_hub: IPredictionHubDispatcher) {
-    let title: ByteArray = "Champions League Final Winner";
-    let description: ByteArray = "Will Team A win the Champions League Final?";
-    let choices: (felt252, felt252) = ('Team A', 'Team B');
-    let category: felt252 = 'sports';
-    let image_url: ByteArray = "https://example.com/champions-league.jpg";
-    let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
-    let prediction_market_type: u8 = 2;
-    let crypto_prediction: Option<(felt252, u128)> = Option::None;
-    let sports_prediction: Option<(u64, bool)> = Option::Some((123456, false)); // event_id, team_flag
-    let buisness_prediction: Option<u64> = Option::None;
-
-    prediction_hub.create_predictions(
-        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
-    );
-}
-
-// Default create for a business prediction market
-pub fn default_create_buisness_prediction(prediction_hub: IPredictionHubDispatcher) {
-    let title: ByteArray = "Will Company X IPO in 2024?";
-    let description: ByteArray = "Predict if Company X will go public in 2024.";
-    let choices: (felt252, felt252) = ('Yes', 'No');
-    let category: felt252 = 'business';
-    let image_url: ByteArray = "https://example.com/company-x.jpg";
-    let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
-    let prediction_market_type: u8 = 3;
-    let crypto_prediction: Option<(felt252, u128)> = Option::None;
-    let sports_prediction: Option<(u64, bool)> = Option::None;
-    let buisness_prediction: Option<u64> = Option::Some(2024);
-
-    prediction_hub.create_predictions(
-        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
-    );
-}
-
 
 // a util function to create a test market
 // This function creates a prediction market with a future time and returns the market ID.
 pub fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
     let mut spy = spy_events();
-
     start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
 
-    default_create_predictions(prediction_hub);
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+    prediction_hub
+        .create_prediction(
+            "Will BTC reach $100k?",
+            "A prediction about Bitcoin price",
+            ('Yes', 'No'),
+            'crypto',
+            "https://example.com/btc.jpg",
+            future_time,
+        );
 
     stop_cheat_caller_address(prediction_hub.contract_address);
 
+    // Fetch the MarketCreated event
     let events = spy.get_events();
 
     let market_id = match events.events.into_iter().last() {
@@ -251,8 +144,19 @@ pub fn create_crypto_prediction(prediction_hub: IPredictionHubDispatcher) -> u25
     let mut spy = spy_events();
     start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
 
-    default_create_crypto_prediction(prediction_hub);
-
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+    prediction_hub
+        .create_crypto_prediction(
+            "ETH Price Prediction",
+            "Will Ethereum price be above $3000 by tomorrow?",
+            ('Above $3000', 'Below $3000'),
+            'eth_price',
+            "https://example.com/eth.png",
+            future_time,
+            1, // Greater than comparison
+            'ETH', // Asset key
+            3000 // Target value
+        );
     stop_cheat_caller_address(prediction_hub.contract_address);
 
     // Fetch the MarketCreated event
@@ -279,8 +183,17 @@ pub fn create_business_prediction(prediction_hub: IPredictionHubDispatcher) -> u
     let mut spy = spy_events();
     start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
 
-    default_create_buisness_prediction(prediction_hub);
-
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+    prediction_hub
+        .create_business_prediction(
+            "Will Apple acquire a gaming company by June 2025?",
+            "business Predictions for Apple to acquire a specific gaming company by June 2025?",
+            ('Yes', 'No'),
+            'business_acquisition',
+            "https://example.com/microsoft-image.png",
+            future_time,
+            35637 // Event ID
+        );
     stop_cheat_caller_address(prediction_hub.contract_address);
 
     // Fetch the MarketCreated event
@@ -307,8 +220,18 @@ pub fn create_sports_prediction(prediction_hub: IPredictionHubDispatcher) -> u25
     let mut spy = spy_events();
     start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
 
-    default_create_sports_prediction(prediction_hub);
-
+    let future_time = get_block_timestamp() + 86400; // 1 day from now
+    prediction_hub
+        .create_sports_prediction(
+            "Lakers vs Warriors",
+            "Who will win the Lakers vs Warriors game?",
+            ('Lakers', 'Warriors'),
+            'nba',
+            "https://example.com/nba.png",
+            future_time,
+            123456, // Event ID
+            true // Team flag
+        );
     stop_cheat_caller_address(prediction_hub.contract_address);
 
     // Fetch the MarketCreated event
@@ -327,4 +250,21 @@ pub fn create_sports_prediction(prediction_hub: IPredictionHubDispatcher) -> u25
     };
 
     market_id
+}
+
+#[derive(Debug, Drop)]
+pub struct market_details {}
+
+#[derive(Drop, Debug)]
+enum MarketType {
+    SPORTS,
+    BUISNESS,
+    CRYPTO,
+    GENERAL,
+}
+fn create_dynamic_market(
+    prediction_hub: IPredictionHubDispatcher,
+    details: Option<market_details>,
+    market_type: MarketType,
+) { // todo() : implement a dynamic create market function
 }
