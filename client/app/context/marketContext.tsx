@@ -6,6 +6,7 @@ import {
   useContext,
   useState,
   ReactNode,
+  useEffect,
 } from "react";
 import { DummyMarketType } from "../types";
 
@@ -15,9 +16,15 @@ interface MarketContextType {
   units: number;
   pricePerUnit: number;
   numberOfUnits: number;
+  optionPrice: number;
+  setOptionPrice: Dispatch<SetStateAction<number>>;
   setNumberOfUnits: Dispatch<SetStateAction<number>>;
   setUnits: Dispatch<SetStateAction<number>>;
-  handleOptionSelect: (optionName: string, odds: number) => void;
+  handleOptionSelect: (
+    optionName: string,
+    odds: number,
+    unitPrice: string
+  ) => void;
   setMarkets: Dispatch<SetStateAction<DummyMarketType[]>>;
 }
 
@@ -44,11 +51,18 @@ export const MarketProvider = ({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [units, setUnits] = useState<number>(1);
   const [pricePerUnit, setPricePerUnit] = useState<number>(0);
+  // number of unit to stake on
   const [numberOfUnits, setNumberOfUnits] = useState<number>(1);
+  // unit price (option price)
+  const [optionPrice, setOptionPrice] = useState<number>(0)
+  useEffect(() => {
+    setUnits(optionPrice * numberOfUnits);
+  }, [optionPrice, numberOfUnits, numberOfUnits]);
 
-  const handleOptionSelect = (optionName: string, odds: number) => {
+  const handleOptionSelect = (optionName: string, odds: number, unitPrice: string) => {
     setSelectedOption(optionName);
     setPricePerUnit(odds);
+    setOptionPrice(parseInt(unitPrice));
   };
 
   return (
@@ -62,7 +76,9 @@ export const MarketProvider = ({
         handleOptionSelect,
         setMarkets,
         numberOfUnits,
-        setNumberOfUnits
+        setNumberOfUnits,
+        optionPrice,
+        setOptionPrice
       }}
     >
       {children}
