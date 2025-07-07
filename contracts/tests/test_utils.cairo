@@ -1,4 +1,4 @@
-use stakcast::interface::PredictionMarket;
+use stakcast::types::PredictionMarket;
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
@@ -110,12 +110,50 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
     let prediction_market_type: u8 = 0;
     let crypto_prediction: Option<(felt252, u128)> = Option::None;
     let sports_prediction: Option<(u64, bool)> = Option::None;
-    let buisness_prediction: Option<u64> = Option::None;
 
     let mut spy = spy_events();
 
     prediction_hub.create_predictions(
-        title.clone(), description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
+        title.clone(), description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction
+    );
+
+    let market_id = match spy.get_events().events.into_iter().last() {
+        Option::Some((
+            _, event,
+        )) => {
+            let market_id_felt = *event.data.at(0);
+            market_id_felt.into()
+        },
+        Option::None => panic!("No MarketCreated event emitted"),
+    };
+
+    let all_normal_predictions = prediction_hub.get_all_predictions_by_market_type(0);
+    assert(all_normal_predictions.len() == 1, 'should be increased by 1');
+    
+    let market = prediction_hub.get_prediction(market_id, 0);
+    assert(market.market_id == market_id, 'Market ID mismatch');
+    assert(market.title == title, 'Title mismatch');
+    assert(market.is_open, 'Market should be open');
+    assert(!market.is_resolved, 'Market not resolved');
+    assert(market.total_pool == 0, 'Initial pool 0');
+
+}
+
+// Default create for a crypto prediction market
+pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher) {
+    let title: ByteArray = "ETH Price Prediction";
+    let description: ByteArray = "Will Ethereum price be above $3000 by tomorrow?";
+    let choices: (felt252, felt252) = ('Above $3000', 'Below $3000');
+    let category: felt252 = 'crypto';
+    let image_url: ByteArray = "https://example.com/eth.png";
+    let end_time: u64 = get_block_timestamp() + 86400;
+    let prediction_market_type: u8 = 1;
+    let crypto_prediction: Option<(felt252, u128)> = Option::Some(('ETH', 3000));
+    let sports_prediction: Option<(u64, bool)> = Option::None;
+    let mut spy = spy_events();
+
+    prediction_hub.create_predictions(
+        title.clone(), description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction
     );
 
     let market_id = match spy.get_events().events.into_iter().last() {
@@ -137,46 +175,15 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
     assert(market.is_open, 'Market should be open');
     assert(!market.is_resolved, 'Market not resolved');
     assert(market.total_pool == 0, 'Initial pool 0');
+    assert(market.prediction_market_type == 1, 'should be crypro mkt');
+    assert(market.sports_prediction.is_none(), 'Sports should be none');
 
-}
+    let (token, price) = market.crypto_prediction.unwrap();
+    assert(token ==  'ETH', 'token shoiuld be ETH');
+    assert(price == 3000, 'price should be 3000');
 
-// Default create for a crypto prediction market
-pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher) {
-    let title: ByteArray = "ETH Price Prediction";
-    let description: ByteArray = "Will Ethereum price be above $3000 by tomorrow?";
-    let choices: (felt252, felt252) = ('Above $3000', 'Below $3000');
-    let category: felt252 = 'crypto';
-    let image_url: ByteArray = "https://example.com/eth.png";
-    let end_time: u64 = get_block_timestamp() + 86400;
-    let prediction_market_type: u8 = 1;
-    let crypto_prediction: Option<(felt252, u128)> = Option::Some(('ETH', 3000));
-    let sports_prediction: Option<(u64, bool)> = Option::None;
-    let buisness_prediction: Option<u64> = Option::None;
-    let mut spy = spy_events();
-
-    prediction_hub.create_predictions(
-        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
-    );
-
-    // let market_id = match spy.get_events().events.into_iter().last() {
-    //     Option::Some((
-    //         _, event,
-    //     )) => {
-    //         let market_id_felt = *event.data.at(0);
-    //         market_id_felt.into()
-    //     },
-    //     Option::None => panic!("No MarketCreated event emitted"),
-    // };
-
-    // let list_of_genenral_predictions: Array<PredictionMarket> = prediction_hub.get_all_general_predictions();
-    // assert(list_of_genenral_predictions.len() == 1, 'list not updated as expceted');
-
-    // let market = prediction_hub.get_prediction(market_id, 0);
-    // assert(market.market_id == market_id, 'Market ID mismatch');
-    // assert(market.title == title, 'Title mismatch');
-    // assert(market.is_open, 'Market should be open');
-    // assert(!market.is_resolved, 'Market not resolved');
-    // assert(market.total_pool == 0, 'Initial pool 0');
+    let all_crypto_predictions = prediction_hub.get_all_predictions_by_market_type(1);
+    assert(all_crypto_predictions.len() == 1, 'should be increased by 1')
 }
 
 // Default create for a sports prediction market
@@ -190,30 +197,12 @@ pub fn default_create_sports_prediction(prediction_hub: IPredictionHubDispatcher
     let prediction_market_type: u8 = 2;
     let crypto_prediction: Option<(felt252, u128)> = Option::None;
     let sports_prediction: Option<(u64, bool)> = Option::Some((123456, false)); // event_id, team_flag
-    let buisness_prediction: Option<u64> = Option::None;
 
     prediction_hub.create_predictions(
-        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
+        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction
     );
 }
 
-// Default create for a business prediction market
-pub fn default_create_buisness_prediction(prediction_hub: IPredictionHubDispatcher) {
-    let title: ByteArray = "Will Company X IPO in 2024?";
-    let description: ByteArray = "Predict if Company X will go public in 2024.";
-    let choices: (felt252, felt252) = ('Yes', 'No');
-    let category: felt252 = 'business';
-    let image_url: ByteArray = "https://example.com/company-x.jpg";
-    let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
-    let prediction_market_type: u8 = 3;
-    let crypto_prediction: Option<(felt252, u128)> = Option::None;
-    let sports_prediction: Option<(u64, bool)> = Option::None;
-    let buisness_prediction: Option<u64> = Option::Some(2024);
-
-    prediction_hub.create_predictions(
-        title, description, choices, category, image_url, end_time, prediction_market_type, crypto_prediction, sports_prediction, buisness_prediction
-    );
-}
 
 
 // a util function to create a test market
@@ -273,33 +262,6 @@ pub fn create_crypto_prediction(prediction_hub: IPredictionHubDispatcher) -> u25
     market_id
 }
 
-// a util function to create a test market
-// This function creates a buisness prediction market with a future time and returns the market ID.
-pub fn create_business_prediction(prediction_hub: IPredictionHubDispatcher) -> u256 {
-    let mut spy = spy_events();
-    start_cheat_caller_address(prediction_hub.contract_address, MODERATOR_ADDR());
-
-    default_create_buisness_prediction(prediction_hub);
-
-    stop_cheat_caller_address(prediction_hub.contract_address);
-
-    // Fetch the MarketCreated event
-    let events = spy.get_events();
-
-    let market_id = match events.events.into_iter().last() {
-        Option::Some((
-            _, event,
-        )) => {
-            // event is of type snforge_std::cheatcodes::events::Event
-            // data is Array<felt252>, where data[0] is market_id (u256)
-            let market_id_felt = *event.data.at(0); // Access first element
-            market_id_felt.into() // Convert felt252 to u256
-        },
-        Option::None => panic!("No MarketCreated event emitted"),
-    };
-
-    market_id
-}
 
 // a util function to create a test market
 // This function creates a buisness prediction market with a future time and returns the market ID.

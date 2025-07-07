@@ -24,7 +24,6 @@ pub trait IPredictionHub<TContractState> {
         prediction_market_type: u8,
         crypto_prediction: Option<(felt252, u128)>,
         sports_prediction: Option<(u64, bool)>,
-        buisness_prediction: Option<u64>,
     );
 
     // ================ Market Queries ================

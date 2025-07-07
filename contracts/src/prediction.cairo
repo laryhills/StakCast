@@ -253,28 +253,29 @@ pub mod PredictionHub {
             prediction_market_type: u8,
             crypto_prediction: Option<(felt252, u128)>,
             sports_prediction: Option<(u64, bool)>,
-            buisness_prediction: Option<u64>,
         ) {
             self.assert_not_paused();
             self.assert_market_creation_not_paused();
             self.assert_only_moderator_or_admin();
             self.assert_valid_market_timing(end_time);
-            self.start_reentrancy_guard();
             assert(prediction_market_type <= 2, 'Invalid market type');
-
+            
+            self.start_reentrancy_guard();
+            
             let market_id = self._generate_market_id();
             let count = self.prediction_count.read() + 1;
             self.prediction_count.write(count);
             self.market_ids.entry(count).write(market_id);
-
+            
             let (choice_0_label, choice_1_label) = choices;
-            let choice_0 = Choice { label: choice_0_label, staked_amount: 0 };
-            let choice_1 = Choice { label: choice_1_label, staked_amount: 0 };
             let mut market = PredictionMarket {
                 title,
                 market_id,
                 description,
-                choices: (choice_0, choice_1),
+                choices: (
+                    Choice { label: choice_0_label, staked_amount: 0 },
+                    Choice { label: choice_1_label, staked_amount: 0 }
+                ),
                 category,
                 image_url,
                 is_resolved: false,
@@ -282,44 +283,27 @@ pub mod PredictionHub {
                 end_time,
                 winning_choice: Option::None,
                 total_pool: 0,
-                prediction_market_type: 0,
-                crypto_prediction: Option::None,
-                sports_prediction: Option::None,
+                prediction_market_type,
+                crypto_prediction: if prediction_market_type == 1 { crypto_prediction } else { Option::None },
+                sports_prediction: if prediction_market_type == 2 { sports_prediction } else { Option::None },
             };
-
+            
+            self.all_predictions.entry(market_id).write(market.clone());
+            
+            // Type-specific storage
             match prediction_market_type {
-                0 => {
-                    self.all_predictions.entry(market_id).write(market.clone());
-                    self.predictions.entry(market_id).write(market);
-                },
-                1 => {
-                    let (asset_key, target_value) = crypto_prediction.unwrap();
-                    market
-                        .crypto_prediction =
-                            Option::Some((asset_key, target_value));
-                    market.prediction_market_type = 1;
-                    self.all_predictions.entry(market_id).write(market.clone());
-                    self.crypto_predictions.entry(market_id).write(market);
-                },
-                2 => {
-                    let (event_id, team_flag) = sports_prediction.unwrap();
-                    market.prediction_market_type = 2;
-                    market.sports_prediction = Option::Some((event_id, team_flag));
-                    self.all_predictions.entry(market_id).write(market.clone());
-                    self.sports_predictions.entry(market_id).write(market);
-                },
-                _ => { panic!("Invalid market type"); },
+                0 => self.predictions.entry(market_id).write(market),
+                1 => self.crypto_predictions.entry(market_id).write(market),
+                2 => self.sports_predictions.entry(market_id).write(market),
+                _ => {}, 
             }
-
-            self
-                .emit(
-                    MarketCreated {
-                        market_id,
-                        creator: get_caller_address(),
-                        market_type: prediction_market_type,
-                    },
-                );
-
+            
+            self.emit(MarketCreated {
+                market_id,
+                creator: get_caller_address(),
+                market_type: prediction_market_type,
+            });
+            
             self.end_reentrancy_guard();
         }
 

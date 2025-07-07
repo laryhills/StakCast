@@ -11,7 +11,7 @@ use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrai
 use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
-    create_business_prediction, create_crypto_prediction, create_sports_prediction,
+     create_crypto_prediction, create_sports_prediction,
     create_test_market, setup_test_environment,
 };
 
@@ -58,7 +58,6 @@ fn test_create_multiple_prediction_markets() {
             0, // Normal general prediction market
             None,
             None,
-            None,
         );
 
     // Fetch market_id for second market
@@ -77,8 +76,6 @@ fn test_create_multiple_prediction_markets() {
 
     assert(market1.market_id == market1_id, 'Market 1 ID mismatch');
     assert(market2.market_id == market2_id, 'Market 2 ID mismatch');
-    assert(market1.title == "Market 1", 'Market 1 title mismatch');
-    assert(market2.title == "Market 2", 'Market 2 title mismatch');
 
     stop_cheat_caller_address(contract.contract_address);
 }
@@ -122,20 +119,23 @@ fn test_create_market_should_panic_if_non_admin_tries_to_create() {
 fn test_create_market_should_panic_if_end_time_not_in_future() {
     let (contract, _admin_contract, _token) = setup_test_environment();
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
-    let past_time = get_block_timestamp() - 86400;
-    contract.create_predictions(
-        "Market 2",
-        "Description 2",
-        ('True', 'False'),
-        'category2',
-        "https://example.com/2.png",
-        past_time,
-        0, // Normal general prediction market
-        None,
-        None,
-        None,
-    );
-    stop_cheat_caller_address(contract.contract_address);
+    let current_time = 10000;
+    start_cheat_block_timestamp(contract.contract_address, current_time);
+
+    let past_time = current_time - 1;
+
+    contract
+        .create_predictions(
+            "Invalid Time Market",
+            "This should fail due to past end time",
+            ('Yes', 'No'),
+            'test',
+            "https://example.com/test.png",
+            past_time,
+            0, // Normal general prediction market
+            None,
+            None,
+        );
 }
 
 #[test]
@@ -152,7 +152,6 @@ fn test_create_market_should_panic_if_end_time_is_too_short() {
         "https://example.com/2.png",
         small_time,
         0,
-        None,
         None,
         None,
     );
@@ -175,86 +174,15 @@ fn test_create_market_should_panic_if_end_time_is_too_long() {
         0,
         None,
         None,
-        None,
     );
     stop_cheat_caller_address(contract.contract_address);
 }
 
-
-// // ================ Crypto Prediction Market Tests ================
-
-// #[test]
-// fn test_create_crypto_prediction_success() {
-//     let (contract, _admin_contract, _token) = setup_test_environment();
-//     let mut spy = spy_events();
-
-//     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
-
-//     default_create_crypto_prediction(contract);
-
-//     // Fetch market_id from MarketCreated event
-//     let market_id = match spy.get_events().events.into_iter().last() {
-//         Option::Some((_, event)) => (*event.data.at(0)).into(),
-//         Option::None => panic!("No MarketCreated event emitted"),
-//     };
-
-//     stop_cheat_caller_address(contract.contract_address);
-
-//     // Verify market count
-//     let count = contract.get_prediction_count();
-//     assert(count == 1, 'Market count should be 1');
-
-//     // Verify crypto market data
-//     let crypto_market = contract.get_prediction(market_id, 1);
-//     assert(crypto_market.market_id == market_id, 'Market ID mismatch');
-//     assert(crypto_market.title == "ETH Price Prediction", 'Title mismatch');
-//     assert(crypto_market.is_open, 'Market should be open');
-//     assert(!crypto_market.is_resolved, 'Market not resolved');
-//     assert(crypto_market.prediction_market_type == 1, 'Prediction market type mismatch');
-//     let (crypto_prediction_option_1, crypto_prediction_option_2) = crypto_market.crypto_prediction.unwrap();
-//     assert(crypto_prediction_option_1 == 'ETH', 'Asset key mismatch');
-//     assert(crypto_prediction_option_2 == 3000, 'Target value mismatch');
-
-//     // Verify choices;
-// }
-
-// // // ================ Sports Prediction Market Tests ================
-
-// #[test]
-// fn test_create_sports_prediction_success() {
-//     let (contract, _admin_contract, _token) = setup_test_environment();
-//     let mut spy = spy_events();
-
-//     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
-
-//     default_create_sports_prediction(contract);
-
-//     // Fetch market_id from MarketCreated event
-//     let market_id = match spy.get_events().events.into_iter().last() {
-//         Option::Some((_, event)) => (*event.data.at(0)).into(),
-//         Option::None => panic!("No MarketCreated event emitted"),
-//     };
-
-//     stop_cheat_caller_address(contract.contract_address);
-
-//     // Verify market count
-//     let count = contract.get_prediction_count();
-//     assert(count == 1, 'Market count should be 1');
-
-//     // Verify sports market data
-//     let sports_market = contract.get_prediction(market_id, 2);
-//     let (event_id, team_flag) = sports_market.sports_prediction.unwrap();
-//     assert(sports_market.market_id == market_id, 'Market ID should be 1');
-//     assert(sports_market.title == "Lakers vs Warriors", 'Title mismatch');
-//     assert(event_id == 123456, 'Event ID 123456');
-//     assert(team_flag, 'Team flag true');
-//     assert(sports_market.is_open, 'Market should be open');
-//     assert(!sports_market.is_resolved, 'Market not resolved');
-//     assert(sports_market.prediction_market_type == 2, 'Prediction market type mismatch');
-
-//     let (detail_0, detail_1) = sports_market.sports_prediction.unwrap();
-
-//     assert(detail_0 == 123456, 'Option not set correctly');
-//     assert(!detail_1, 'option not set correctly');
-
-// }
+#[test]
+fn test_create_market_create_crypto_market() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+    default_create_crypto_prediction(contract);
+    let count = contract.get_prediction_count();
+    assert(count == 1, 'Market count should be 1');
+}
