@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 use starknet::class_hash::ClassHash;
 use crate::types::{
-    BusinessPrediction, CryptoPrediction, PredictionMarket, SportsPrediction, UserBet,
+    PredictionMarket, UserBet,
 };
 
 // ================ Contract Interface ================

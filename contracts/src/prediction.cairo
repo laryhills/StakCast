@@ -3,13 +3,13 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
 use pragma_lib::types::DataType;
 use stakcast::admin_interface::IAdditionalAdmin;
-use stakcast::interface::{Choice, IPredictionHub, PredictionMarket, UserBet, UserStake};
+use stakcast::interface::{ IPredictionHub};
 use stakcast::events::{
     BetPlaced, EmergencyPaused, Event, FeesCollected, MarketCreated, MarketResolved, ModeratorAdded,
     ModeratorRemoved, WagerPlaced, WinningsCollected,
 };
 use stakcast::types::{
-    BusinessPrediction, Choice, CryptoPrediction, PredictionMarket, SportsPrediction, UserBet,
+ Choice, PredictionMarket, UserBet,
     UserStake,
 };
 use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
