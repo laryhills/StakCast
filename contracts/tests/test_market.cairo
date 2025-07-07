@@ -99,10 +99,11 @@ fn test_create_market_should_work_after_contract_unpasued() {
         contract_address: contract.contract_address,
     };
 
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+
     admin_dispatcher.emergency_pause("Testing Contract Paused");
 
     admin_dispatcher.emergency_unpause();
-
 
     default_create_predictions(contract);
 }
@@ -126,6 +127,8 @@ fn test_create_market_should_work_after_market_creation_unpasued() {
     let admin_dispatcher = IAdditionalAdminDispatcher {
         contract_address: contract.contract_address,
     };
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+
     admin_dispatcher.pause_market_creation();
 
     admin_dispatcher.unpause_market_creation();

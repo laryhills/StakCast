@@ -184,10 +184,11 @@ pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher
     };
 
     let list_of_genenral_predictions: Array<PredictionMarket> = prediction_hub
-        .get_all_general_predictions();
+        .get_all_predictions_by_market_type(1);
+
     assert(list_of_genenral_predictions.len() == 1, 'list not updated as expceted');
 
-    let market = prediction_hub.get_prediction(market_id, 0);
+    let market = prediction_hub.get_prediction(market_id, 1);
     assert(market.market_id == market_id, 'Market ID mismatch');
     assert(market.title == title, 'Title mismatch');
     assert(market.is_open, 'Market should be open');
@@ -199,9 +200,6 @@ pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher
     let (token, price) = market.crypto_prediction.unwrap();
     assert(token == 'ETH', 'token shoiuld be ETH');
     assert(price == 3000, 'price should be 3000');
-
-    let all_crypto_predictions = prediction_hub.get_all_predictions_by_market_type(1);
-    assert(all_crypto_predictions.len() == 1, 'should be increased by 1')
 }
 
 // Default create for a sports prediction market
