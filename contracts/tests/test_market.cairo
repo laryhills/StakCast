@@ -1,6 +1,3 @@
-use crate::test_utils::default_create_sports_prediction;
-use crate::test_utils::default_create_crypto_prediction;
-use crate::test_utils::default_create_predictions;
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
@@ -11,8 +8,9 @@ use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrai
 use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
-     create_crypto_prediction, create_sports_prediction,
-    create_test_market, setup_test_environment,
+     create_test_market,
+    default_create_crypto_prediction, default_create_predictions, default_create_sports_prediction,
+    setup_test_environment,
 };
 
 // ================ General Prediction Market Tests ================
@@ -26,7 +24,6 @@ fn test_create_prediction_market_success() {
     stop_cheat_caller_address(contract.contract_address);
     let count = contract.get_prediction_count();
     assert(count == 1, 'Market count should be 1');
-
 }
 
 #[test]
@@ -84,7 +81,9 @@ fn test_create_multiple_prediction_markets() {
 #[should_panic(expected: 'Contract is paused')]
 fn test_create_market_should_panic_if_contract_is_pasued() {
     let (contract, _admin_contract, _token) = setup_test_environment();
-    let admin_dispatcher = IAdditionalAdminDispatcher {contract_address: contract.contract_address };
+    let admin_dispatcher = IAdditionalAdminDispatcher {
+        contract_address: contract.contract_address,
+    };
 
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     admin_dispatcher.emergency_pause("Testing Contract Paused");
@@ -98,7 +97,9 @@ fn test_create_market_should_panic_if_contract_is_pasued() {
 #[should_panic(expected: 'Market creation paused')]
 fn test_create_market_should_panic_if_market_creation_is_pasued() {
     let (contract, _admin_contract, _token) = setup_test_environment();
-    let admin_dispatcher = IAdditionalAdminDispatcher {contract_address: contract.contract_address };
+    let admin_dispatcher = IAdditionalAdminDispatcher {
+        contract_address: contract.contract_address,
+    };
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     admin_dispatcher.pause_market_creation();
     stop_cheat_caller_address(contract.contract_address);
@@ -144,17 +145,18 @@ fn test_create_market_should_panic_if_end_time_is_too_short() {
     let (contract, _admin_contract, _token) = setup_test_environment();
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     let small_time = get_block_timestamp() + 10;
-    contract.create_predictions(
-        "Market 2",
-        "Description 2",
-        ('True', 'False'),
-        'category2',
-        "https://example.com/2.png",
-        small_time,
-        0,
-        None,
-        None,
-    );
+    contract
+        .create_predictions(
+            "Market 2",
+            "Description 2",
+            ('True', 'False'),
+            'category2',
+            "https://example.com/2.png",
+            small_time,
+            0,
+            None,
+            None,
+        );
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -164,17 +166,18 @@ fn test_create_market_should_panic_if_end_time_is_too_long() {
     let (contract, _admin_contract, _token) = setup_test_environment();
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     let large_time = get_block_timestamp() + 1000000000;
-    contract.create_predictions(
-        "Market 2",
-        "Description 2",
-        ('True', 'False'),
-        'category2',
-        "https://example.com/2.png",
-        large_time,
-        0,
-        None,
-        None,
-    );
+    contract
+        .create_predictions(
+            "Market 2",
+            "Description 2",
+            ('True', 'False'),
+            'category2',
+            "https://example.com/2.png",
+            large_time,
+            0,
+            None,
+            None,
+        );
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -185,4 +188,16 @@ fn test_create_market_create_crypto_market() {
     default_create_crypto_prediction(contract);
     let count = contract.get_prediction_count();
     assert(count == 1, 'Market count should be 1');
+}
+
+#[test]
+fn test_get_market_status() {
+    let (contract, _admin_contract, _token) = setup_test_environment();
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
+    let market_id = create_test_market(contract);
+    stop_cheat_caller_address(contract.contract_address);
+
+    let (is_open, is_resolved) = contract.get_market_status(market_id, 0);
+    assert(is_open, 'Market should be open');
+    assert(!is_resolved, 'Should not be resolved');
 }
