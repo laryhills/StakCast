@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'tsyringe';
-import Joi from 'joi';
+import { getMarketsSchema } from './market.dto';
 import { MarketService } from './market.service';
 import { StarknetService } from '../../../services/starknet.service';
 import { CreateMarketRequest, ApiMarket, CryptoMarketCreateRequest, SportsMarketCreateRequest, BusinessMarketCreateRequest, MarketType } from '../../../types/backend.types';
@@ -15,16 +15,7 @@ export class MarketController {
     @inject(StarknetService) private starknetService: StarknetService
   ) {}
   async getMarkets(req: Request, res: Response, next: NextFunction) {
-    const schema = Joi.object({
-      status: Joi.string().valid('open', 'resolved', 'all'),
-      type: Joi.string().valid('general', 'crypto', 'sports', 'business'),
-      category: Joi.string(),
-      creator: Joi.string(),
-      search: Joi.string(),
-      limit: Joi.number().integer().min(1),
-      offset: Joi.number().integer().min(0)
-    });
-    const { error } = schema.validate(req.query);
+    const { error } = getMarketsSchema.validate(req.query);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
     }

@@ -20,7 +20,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api", appRoutes);
-app.use("/api", marketRoutes);
 app.use(ErrorHandler); 
 
 export default app;

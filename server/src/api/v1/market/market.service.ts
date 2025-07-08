@@ -1,4 +1,4 @@
-import { MarketRepository } from './market.repositry';
+import { MarketRepository } from './market.repository';
 import { Market, MarketType as MarketTypeEnum } from './market.entity';
 import {
   ApiMarket,
@@ -20,13 +20,13 @@ import {
   cairoMarketTypeToMarketType,
 } from '../../../utils/converters';
 import { BigNumberish, num } from 'starknet';
+import { injectable, inject } from 'tsyringe';
 
+@injectable()
 export class MarketService {
-  private marketRepository: MarketRepository;
-
-  constructor() {
-    this.marketRepository = new MarketRepository();
-  }
+  constructor(
+    @inject(MarketRepository) private marketRepository: MarketRepository
+  ) {}
 
   async createMarket(marketDetails: CreateMarketRequest & { market_id: string, creator: string, total_pool: string, is_resolved: boolean, is_open: boolean, choice0Staked?: string, choice1Staked?: string, blockTimestamp: number }): Promise<ApiMarket> {
     // Prepare and transform data for Market entity
