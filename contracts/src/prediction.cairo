@@ -3,80 +3,17 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
 use pragma_lib::types::DataType;
 use stakcast::admin_interface::IAdditionalAdmin;
-use stakcast::interface::{
-    BusinessPrediction, Choice, CryptoPrediction, IPredictionHub, PredictionMarket,
-    SportsPrediction, UserBet, UserStake,
+use stakcast::events::{
+    BetPlaced, EmergencyPaused, Event, FeesCollected, MarketCreated, MarketResolved, ModeratorAdded,
+    ModeratorRemoved, WagerPlaced, WinningsCollected,
+};
+use stakcast::interface::IPredictionHub;
+use stakcast::types::{
+    BusinessPrediction, Choice, CryptoPrediction, PredictionMarket, SportsPrediction, UserBet,
+    UserStake,
 };
 use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
 use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
-
-// ================ Security Events ================
-
-#[derive(Drop, starknet::Event)]
-pub struct ModeratorAdded {
-    pub moderator: ContractAddress,
-    pub added_by: ContractAddress,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct ModeratorRemoved {
-    pub moderator: ContractAddress,
-    pub removed_by: ContractAddress,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct EmergencyPaused {
-    pub paused_by: ContractAddress,
-    pub reason: ByteArray,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct MarketCreated {
-    pub market_id: u256,
-    pub creator: ContractAddress,
-    pub market_type: u8,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct MarketResolved {
-    pub market_id: u256,
-    pub resolver: ContractAddress,
-    pub winning_choice: u8,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct WagerPlaced {
-    pub market_id: u256,
-    pub user: ContractAddress,
-    pub choice: u8,
-    pub amount: u256,
-    pub fee_amount: u256,
-    pub net_amount: u256,
-    pub wager_index: u8,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct FeesCollected {
-    pub market_id: u256,
-    pub fee_amount: u256,
-    pub fee_recipient: ContractAddress,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct WinningsCollected {
-    pub market_id: u256,
-    pub user: ContractAddress,
-    pub amount: u256,
-    pub wager_index: u8,
-}
-
-#[derive(Drop, starknet::Event)]
-pub struct BetPlaced {
-    pub market_id: u256,
-    pub user: ContractAddress,
-    pub choice: u8,
-    pub amount: u256,
-}
 
 // ================ Contract Storage ================
 
@@ -135,20 +72,8 @@ pub mod PredictionHub {
             (u256, u8, u32), ContractAddress,
         > // (market_id, market_type, idx) -> user
     }
-
     #[event]
-    #[derive(Drop, starknet::Event)]
-    pub enum Event {
-        ModeratorAdded: ModeratorAdded,
-        ModeratorRemoved: ModeratorRemoved,
-        EmergencyPaused: EmergencyPaused,
-        MarketCreated: MarketCreated,
-        MarketResolved: MarketResolved,
-        WagerPlaced: WagerPlaced,
-        FeesCollected: FeesCollected,
-        WinningsCollected: WinningsCollected,
-        BetPlaced: BetPlaced,
-    }
+    use stakcast::events::Event;
 
     // ================ Constructor ================
 
