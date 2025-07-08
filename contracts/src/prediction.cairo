@@ -3,15 +3,12 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
 use pragma_lib::types::DataType;
 use stakcast::admin_interface::IAdditionalAdmin;
-use stakcast::interface::{Choice, IPredictionHub, PredictionMarket, UserBet, UserStake};
 use stakcast::events::{
     BetPlaced, EmergencyPaused, Event, FeesCollected, MarketCreated, MarketResolved, ModeratorAdded,
     ModeratorRemoved, WagerPlaced, WinningsCollected,
 };
-use stakcast::types::{
-    BusinessPrediction, Choice, CryptoPrediction, PredictionMarket, SportsPrediction, UserBet,
-    UserStake,
-};
+use stakcast::interface::IPredictionHub;
+use stakcast::types::{Choice, PredictionMarket, UserBet, UserStake};
 use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
 use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
@@ -253,14 +250,14 @@ pub mod PredictionHub {
             prediction_market_type: u8,
             crypto_prediction: Option<(felt252, u128)>,
             sports_prediction: Option<(u64, bool)>,
-            buisness_prediction: Option<u64>,
         ) {
             self.assert_not_paused();
             self.assert_market_creation_not_paused();
             self.assert_only_moderator_or_admin();
             self.assert_valid_market_timing(end_time);
-            self.start_reentrancy_guard();
             assert(prediction_market_type <= 2, 'Invalid market type');
+
+            self.start_reentrancy_guard();
 
             let market_id = self._generate_market_id();
             let count = self.prediction_count.read() + 1;
@@ -268,13 +265,14 @@ pub mod PredictionHub {
             self.market_ids.entry(count).write(market_id);
 
             let (choice_0_label, choice_1_label) = choices;
-            let choice_0 = Choice { label: choice_0_label, staked_amount: 0 };
-            let choice_1 = Choice { label: choice_1_label, staked_amount: 0 };
             let mut market = PredictionMarket {
                 title,
                 market_id,
                 description,
-                choices: (choice_0, choice_1),
+                choices: (
+                    Choice { label: choice_0_label, staked_amount: 0 },
+                    Choice { label: choice_1_label, staked_amount: 0 },
+                ),
                 category,
                 image_url,
                 is_resolved: false,
@@ -282,33 +280,27 @@ pub mod PredictionHub {
                 end_time,
                 winning_choice: Option::None,
                 total_pool: 0,
-                prediction_market_type: 0,
-                crypto_prediction: Option::None,
-                sports_prediction: Option::None,
+                prediction_market_type,
+                crypto_prediction: if prediction_market_type == 1 {
+                    crypto_prediction
+                } else {
+                    Option::None
+                },
+                sports_prediction: if prediction_market_type == 2 {
+                    sports_prediction
+                } else {
+                    Option::None
+                },
             };
 
+            self.all_predictions.entry(market_id).write(market.clone());
+
+            // Type-specific storage
             match prediction_market_type {
-                0 => {
-                    self.all_predictions.entry(market_id).write(market.clone());
-                    self.predictions.entry(market_id).write(market);
-                },
-                1 => {
-                    let (asset_key, target_value) = crypto_prediction.unwrap();
-                    market
-                        .crypto_prediction =
-                            Option::Some((asset_key, target_value));
-                    market.prediction_market_type = 1;
-                    self.all_predictions.entry(market_id).write(market.clone());
-                    self.crypto_predictions.entry(market_id).write(market);
-                },
-                2 => {
-                    let (event_id, team_flag) = sports_prediction.unwrap();
-                    market.prediction_market_type = 2;
-                    market.sports_prediction = Option::Some((event_id, team_flag));
-                    self.all_predictions.entry(market_id).write(market.clone());
-                    self.sports_predictions.entry(market_id).write(market);
-                },
-                _ => { panic!("Invalid market type"); },
+                0 => self.predictions.entry(market_id).write(market),
+                1 => self.crypto_predictions.entry(market_id).write(market),
+                2 => self.sports_predictions.entry(market_id).write(market),
+                _ => {},
             }
 
             self
@@ -335,55 +327,36 @@ pub mod PredictionHub {
             self.assert_market_exists(market_id, market_type);
             self.all_predictions.entry(market_id).read()
         }
+
         fn get_all_predictions_by_market_type(
             self: @ContractState, market_type: u8,
         ) -> Array<PredictionMarket> {
+            assert(market_type <= 2, 'Invalid market type!');
+
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
-            assert(market_type <= 2, 'Invalid market type!');
             let mut i: u256 = 1;
 
-            match market_type {
-                0 => {
-                    while i <= count {
-                        let market_id = self.market_ids.entry(i).read();
-                        if market_id != 0 {
-                            let market = self.predictions.entry(market_id).read();
-                            if market.market_id != 0 {
-                                predictions.append(market);
-                            }
-                        }
-                        i += 1;
+            while i <= count {
+                let market_id = self.market_ids.entry(i).read();
+                if market_id != 0 {
+                    let market = match market_type {
+                        0 => self.predictions.entry(market_id).read(),
+                        1 => self.crypto_predictions.entry(market_id).read(),
+                        2 => self.sports_predictions.entry(market_id).read(),
+                        _ => panic!("Invalid market type!"),
+                    };
+
+                    if market.market_id != 0 {
+                        predictions.append(market);
                     }
-                },
-                1 => {
-                    while i <= count {
-                        let market_id = self.market_ids.entry(i).read();
-                        if market_id != 0 {
-                            let market = self.crypto_predictions.entry(market_id).read();
-                            if market.market_id != 0 {
-                                predictions.append(market);
-                            }
-                        }
-                        i += 1;
-                    }
-                },
-                2 => {
-                    while i <= count {
-                        let market_id = self.market_ids.entry(i).read();
-                        if market_id != 0 {
-                            let market = self.sports_predictions.entry(market_id).read();
-                            if market.market_id != 0 {
-                                predictions.append(market);
-                            }
-                        }
-                        i += 1;
-                    }
-                },
-                _ => { panic!("Invalid market type!") },
+                }
+                i += 1;
             }
+
             predictions
         }
+
         fn get_all_predictions(self: @ContractState) -> Array<PredictionMarket> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -1056,7 +1029,8 @@ pub mod PredictionHub {
             // market.winning_choice = Option::Some(winning_choice_struct);
             self.crypto_predictions.entry(market_id).write(market);
 
-            // self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
+            // self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice
+            // });
 
             self.end_reentrancy_guard();
         }
