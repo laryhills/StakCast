@@ -17,7 +17,6 @@ pub trait IPredictionHub<TContractState> {
         description: ByteArray,
         choices: (felt252, felt252),
         category: felt252,
-        image_url: ByteArray,
         end_time: u64,
         prediction_market_type: u8,
         crypto_prediction: Option<(felt252, u128)>,
@@ -56,17 +55,6 @@ pub trait IPredictionHub<TContractState> {
     fn get_market_bet_count(self: @TContractState, market_id: u256, market_type: u8) -> u256;
 
     // ================ Betting Functions ================
-
-    /// Places a bet on a specific market and choice
-    /// Returns true if the bet was successfully placed
-    fn place_bet(
-        ref self: TContractState, market_id: u256, choice_idx: u8, amount: u256, market_type: u8,
-    ) -> bool;
-
-
-    fn place_wager(
-        ref self: TContractState, market_id: u256, choice_idx: u8, amount: u256, market_type: u8,
-    ) -> bool;
 
     /// Returns how many bets a user has placed on a specific market
     fn get_bet_count_for_market(
@@ -201,26 +189,6 @@ pub trait IPredictionHub<TContractState> {
     fn upgrade(ref self: TContractState, impl_hash: ClassHash);
 
     // ================ Multi-Token Support Functions ================
-
-    /// Places a bet using a specific token
-    fn place_bet_with_token(
-        ref self: TContractState,
-        market_id: u256,
-        choice_idx: u8,
-        amount: u256,
-        market_type: u8,
-        token_name: felt252,
-    ) -> bool;
-
-    /// Places a wager using a specific token
-    fn place_wager_with_token(
-        ref self: TContractState,
-        market_id: u256,
-        choice_idx: u8,
-        amount: u256,
-        market_type: u8,
-        token_name: felt252,
-    ) -> bool;
 
     /// Gets the contract address for a supported token
     fn get_supported_token(self: @TContractState, token_name: felt252) -> ContractAddress;

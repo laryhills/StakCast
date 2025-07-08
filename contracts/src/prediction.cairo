@@ -245,7 +245,6 @@ pub mod PredictionHub {
             description: ByteArray,
             choices: (felt252, felt252),
             category: felt252,
-            image_url: ByteArray,
             end_time: u64,
             prediction_market_type: u8,
             crypto_prediction: Option<(felt252, u128)>,
@@ -274,11 +273,12 @@ pub mod PredictionHub {
                     Choice { label: choice_1_label, staked_amount: 0 },
                 ),
                 category,
-                image_url,
                 is_resolved: false,
                 is_open: true,
                 end_time,
                 winning_choice: Option::None,
+                total_shares_option_one: 0,
+                total_shares_option_two: 0,
                 total_pool: 0,
                 prediction_market_type,
                 crypto_prediction: if prediction_market_type == 1 {
@@ -328,6 +328,7 @@ pub mod PredictionHub {
             self.all_predictions.entry(market_id).read()
         }
 
+
         fn get_all_predictions_by_market_type(
             self: @ContractState, market_type: u8,
         ) -> Array<PredictionMarket> {
@@ -376,6 +377,8 @@ pub mod PredictionHub {
             predictions
         }
 
+
+        /// @dev depriciated
         fn get_all_general_predictions(self: @ContractState) -> Array<PredictionMarket> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -394,7 +397,7 @@ pub mod PredictionHub {
 
             predictions
         }
-
+        /// @dev depriciated
         fn get_all_crypto_predictions(self: @ContractState) -> Array<PredictionMarket> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -413,7 +416,7 @@ pub mod PredictionHub {
 
             predictions
         }
-
+        /// @dev depriciated
         fn get_all_sports_predictions(self: @ContractState) -> Array<PredictionMarket> {
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -436,8 +439,6 @@ pub mod PredictionHub {
         fn get_market_status(
             self: @ContractState, market_id: u256, market_type: u8,
         ) -> (bool, bool) {
-            self.assert_market_exists(market_id, market_type);
-
             if market_type == 0 {
                 let market = self.predictions.entry(market_id).read();
                 (market.is_open, market.is_resolved)
@@ -448,7 +449,7 @@ pub mod PredictionHub {
                 let market = self.crypto_predictions.entry(market_id).read();
                 (market.is_open, market.is_resolved)
             } else {
-                panic!("Invalid market type!")
+                panic!("Market not found")
             }
         }
 
@@ -629,221 +630,6 @@ pub mod PredictionHub {
             }
         }
 
-        // ================ Betting Functions ================
-
-        fn place_bet(
-            ref self: ContractState, market_id: u256, choice_idx: u8, amount: u256, market_type: u8,
-        ) -> bool {
-            self.place_wager(market_id, choice_idx, amount, market_type)
-        }
-
-        fn place_bet_with_token(
-            ref self: ContractState,
-            market_id: u256,
-            choice_idx: u8,
-            amount: u256,
-            market_type: u8,
-            token_name: felt252,
-        ) -> bool {
-            self.place_wager_with_token(market_id, choice_idx, amount, market_type, token_name)
-        }
-
-        fn place_wager(
-            ref self: ContractState, market_id: u256, choice_idx: u8, amount: u256, market_type: u8,
-        ) -> bool {
-            self.assert_not_paused();
-            self.assert_betting_not_paused();
-            self.assert_market_exists(market_id, market_type);
-            self.assert_market_open(market_id, market_type);
-            self.assert_valid_choice(choice_idx);
-            self.assert_valid_amount(amount);
-            self.start_reentrancy_guard();
-
-            let caller = get_caller_address();
-            self.assert_sufficient_token_balance(caller, amount);
-            self.assert_sufficient_allowance(caller, amount);
-
-            // Calculate fees
-            let fee_percentage = self.platform_fee_percentage.read();
-            let fee_amount = (amount * fee_percentage) / 10000; // Basis points conversion
-            let net_amount = amount - fee_amount;
-
-            // Transfer tokens from user to contract
-            let token = IERC20Dispatcher { contract_address: self.betting_token.read() };
-            let success = token.transfer_from(caller, starknet::get_contract_address(), amount);
-            assert(success, 'Token transfer failed');
-
-            // Transfer fees to fee recipient
-            if fee_amount > 0 {
-                let fee_success = token.transfer(self.fee_recipient.read(), fee_amount);
-                assert(fee_success, 'Fee transfer failed');
-
-                // Track fees
-                let current_market_fees = self.collected_fees.entry(market_id).read();
-                self.collected_fees.entry(market_id).write(current_market_fees + fee_amount);
-                self.total_fees_collected.write(self.total_fees_collected.read() + fee_amount);
-
-                self
-                    .emit(
-                        FeesCollected {
-                            market_id, fee_amount, fee_recipient: self.fee_recipient.read(),
-                        },
-                    );
-            }
-
-            // Create user bet with net amount
-            let choice = self._get_choice_struct(market_id, market_type, choice_idx);
-            let user_stake = UserStake { amount: net_amount, claimed: false };
-            let user_bet = UserBet { choice, stake: user_stake };
-
-            // Update user bets
-            let count_key = (caller, market_id, market_type);
-            let current_count = self.user_bet_counts.entry(count_key).read();
-            let bet_key = (caller, market_id, market_type, current_count);
-
-            if current_count == 0 {
-                // First bet for this user in this market
-                let mut len = self.market_users_bets_len.entry((market_id, market_type)).read();
-                self.market_users_bets.entry((market_id, market_type, len)).write(caller);
-                self.market_users_bets_len.entry((market_id, market_type)).write(len + 1);
-            }
-
-            self.user_bets.entry(bet_key).write(user_bet);
-            self.user_bet_counts.entry(count_key).write(current_count + 1);
-
-            // Update market totals with net amount
-            self._update_market_totals(market_id, market_type, choice_idx, net_amount);
-
-            // Update liquidity tracking
-            let current_liquidity = self.market_liquidity.entry(market_id).read();
-            self.market_liquidity.entry(market_id).write(current_liquidity + net_amount);
-            self.total_value_locked.write(self.total_value_locked.read() + net_amount);
-
-            // Emit comprehensive wager event
-            self
-                .emit(
-                    WagerPlaced {
-                        market_id,
-                        user: caller,
-                        choice: choice_idx,
-                        amount,
-                        fee_amount,
-                        net_amount,
-                        wager_index: current_count,
-                    },
-                );
-
-            self.end_reentrancy_guard();
-            true
-        }
-
-        fn place_wager_with_token(
-            ref self: ContractState,
-            market_id: u256,
-            choice_idx: u8,
-            amount: u256,
-            market_type: u8,
-            token_name: felt252,
-        ) -> bool {
-            self.assert_not_paused();
-            self.assert_betting_not_paused();
-            self.assert_market_exists(market_id, market_type);
-            self.assert_market_open(market_id, market_type);
-            self.assert_valid_choice(choice_idx);
-            self.assert_valid_amount(amount);
-            self.start_reentrancy_guard();
-
-            let caller = get_caller_address();
-
-            // Get token address from the mapping
-            let token_address = self.get_asset_address(token_name);
-            assert(!token_address.is_zero(), 'Unsupported token');
-
-            // Store the token used for this market (for consistency)
-            let existing_market_token = self.market_token.entry(market_id).read();
-            if existing_market_token.is_zero() {
-                self.market_token.entry(market_id).write(token_address);
-            } else {
-                // Ensure all bets on this market use the same token
-                assert(existing_market_token == token_address, 'Market token mismatch');
-            }
-
-            self.assert_sufficient_token_balance_for_token(caller, amount, token_address);
-            self.assert_sufficient_allowance_for_token(caller, amount, token_address);
-
-            // Calculate fees
-            let fee_percentage = self.platform_fee_percentage.read();
-            let fee_amount = (amount * fee_percentage) / 10000; // Basis points conversion
-            let net_amount = amount - fee_amount;
-
-            // Transfer tokens from user to contract
-            let token = IERC20Dispatcher { contract_address: token_address };
-            let success = token.transfer_from(caller, starknet::get_contract_address(), amount);
-            assert(success, 'Token transfer failed');
-
-            // Transfer fees to fee recipient
-            if fee_amount > 0 {
-                let fee_success = token.transfer(self.fee_recipient.read(), fee_amount);
-                assert(fee_success, 'Fee transfer failed');
-
-                // Track fees
-                let current_market_fees = self.collected_fees.entry(market_id).read();
-                self.collected_fees.entry(market_id).write(current_market_fees + fee_amount);
-                self.total_fees_collected.write(self.total_fees_collected.read() + fee_amount);
-
-                self
-                    .emit(
-                        FeesCollected {
-                            market_id, fee_amount, fee_recipient: self.fee_recipient.read(),
-                        },
-                    );
-            }
-
-            // Create user bet with net amount
-            let choice = self._get_choice_struct(market_id, market_type, choice_idx);
-            let user_stake = UserStake { amount: net_amount, claimed: false };
-            let user_bet = UserBet { choice, stake: user_stake };
-
-            // Update user bets
-            let count_key = (caller, market_id, market_type);
-            let current_count = self.user_bet_counts.entry(count_key).read();
-            let bet_key = (caller, market_id, market_type, current_count);
-
-            if current_count == 0 {
-                // First bet for this user in this market
-                let mut len = self.market_users_bets_len.entry((market_id, market_type)).read();
-                self.market_users_bets.entry((market_id, market_type, len)).write(caller);
-                self.market_users_bets_len.entry((market_id, market_type)).write(len + 1);
-            }
-
-            self.user_bets.entry(bet_key).write(user_bet);
-            self.user_bet_counts.entry(count_key).write(current_count + 1);
-
-            // Update market totals with net amount
-            self._update_market_totals(market_id, market_type, choice_idx, net_amount);
-
-            // Update liquidity tracking
-            let current_liquidity = self.market_liquidity.entry(market_id).read();
-            self.market_liquidity.entry(market_id).write(current_liquidity + net_amount);
-            self.total_value_locked.write(self.total_value_locked.read() + net_amount);
-
-            // Emit comprehensive wager event
-            self
-                .emit(
-                    WagerPlaced {
-                        market_id,
-                        user: caller,
-                        choice: choice_idx,
-                        amount,
-                        fee_amount,
-                        net_amount,
-                        wager_index: current_count,
-                    },
-                );
-
-            self.end_reentrancy_guard();
-            true
-        }
 
         fn get_bet_count_for_market(
             self: @ContractState, user: ContractAddress, market_id: u256, market_type: u8,

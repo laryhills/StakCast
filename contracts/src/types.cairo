@@ -1,25 +1,23 @@
 #[derive(Drop, Serde, starknet::Store, Clone)]
 pub struct PredictionMarket {
-    pub title: ByteArray, // Market title/question
-    pub market_id: u256, // Unique identifier for the market
-    pub description: ByteArray, // Detailed description of the prediction
-    pub choices: (Choice, Choice), // Binary choices (typically Yes/No)
-    pub category: felt252, // Category identifier for market classification
-    pub image_url: ByteArray, // URL to market image/icon
-    pub is_resolved: bool, // Whether the market has been resolved
-    pub is_open: bool, // Whether the market is accepting new bets
-    pub end_time: u64, // Timestamp when the market closes
-    pub winning_choice: Option<Choice>, // The winning choice after resolution
-    // logic - if total pool is 0 then its a normal prediction, and crpto prediction has to
-    pub total_pool: u256, // Total amount staked in the market
+    pub title: ByteArray,
+    pub market_id: u256,
+    pub description: ByteArray,
+    pub choices: (Choice, Choice),
+    pub category: felt252,
+    pub is_resolved: bool,
+    pub is_open: bool,
+    pub end_time: u64,
+    pub winning_choice: Option<Choice>,
+    pub total_shares_option_one: u256,
+    pub total_shares_option_two: u256,
+    pub total_pool: u256,
     pub prediction_market_type: u8, // 0 - normal predicion market, 1 - crypto prediction market, 2 - sports prediction, 3 - buisness market
-    //Some((asset_key target_value))
-    //the crypto asset (e.g., BTC, ETH) | target_value:  Target price value for the prediction
-    pub crypto_prediction: Option<(felt252, u128)>, // Optional crypto prediction details
-    //Some((event_id,team_flag))
-    // event_id: External API event ID for automatic resolution | team_flag: Flag indicating if this
-    // is a team-based prediction
-    pub sports_prediction: Option<(u64, bool)> // Optional sports prediction details
+    pub crypto_prediction: Option<
+        (felt252, u128),
+    >, // the crypto asset (e.g., BTC, ETH) | target_value:  Target price value for the prediction
+    /// @dev depreciated
+    pub sports_prediction: Option<(u64, bool)>,
 }
 
 // ================ Supporting Types ================
