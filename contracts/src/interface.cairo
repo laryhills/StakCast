@@ -51,29 +51,12 @@ pub trait IPredictionHub<TContractState> {
     // get current market status of markets
     fn get_market_status(self: @TContractState, market_id: u256, market_type: u8) -> (bool, bool);
 
-    // Returns the total number of bets placed on a market by all users.
-    fn get_market_bet_count(self: @TContractState, market_id: u256, market_type: u8) -> u256;
-
     // ================ Betting Functions ================
 
-    /// Returns how many bets a user has placed on a specific market
-    fn get_bet_count_for_market(
-        self: @TContractState, user: ContractAddress, market_id: u256, market_type: u8,
-    ) -> u8;
 
-    /// Retrieves a specific bet made by a user
-    fn get_choice_and_bet(
-        self: @TContractState, user: ContractAddress, market_id: u256, market_type: u8, bet_idx: u8,
-    ) -> UserBet;
 
-    /// Returns the betting token contract address
-    fn get_betting_token(self: @TContractState) -> ContractAddress;
-
-    /// Returns total fees collected for a specific market
-    fn get_market_fees(self: @TContractState, market_id: u256) -> u256;
-
-    /// Returns total fees collected across all markets
-    fn get_total_fees_collected(self: @TContractState) -> u256;
+    /// Returns the protocol token contract address
+    fn get_protocol_token(self: @TContractState) -> ContractAddress;
 
     /// Returns current betting restrictions (min, max amounts)
     fn get_betting_restrictions(self: @TContractState) -> (u256, u256);
@@ -135,33 +118,14 @@ pub trait IPredictionHub<TContractState> {
 
     // ================ Winnings Management ================
 
-    /// Allows a user to claim their winnings from a resolved prediction
-    fn collect_winnings(ref self: TContractState, market_id: u256, market_type: u8, bet_idx: u8);
-
-    /// Calculates total unclaimed winnings for a user across all markets
-    fn get_user_claimable_amount(self: @TContractState, user: ContractAddress) -> u256;
-
     // ================ User Queries ================
 
-    /// Returns all prediction markets a specific user has participated in
-    fn get_all_user_predictions(
-        self: @TContractState, user: ContractAddress,
-    ) -> Array<PredictionMarket>;
 
-    /// Returns all general prediction markets a specific user has participated in
-    fn get_user_general_predictions(
-        self: @TContractState, user: ContractAddress,
-    ) -> Array<PredictionMarket>;
+    // place bet functions
+    fn calculate_share_prices(ref self: TContractState, market_id: u256) -> (u256, u256);
 
-    /// Returns all crypto prediction markets a specific user has participated in
-    fn get_user_crypto_predictions(
-        self: @TContractState, user: ContractAddress,
-    ) -> Array<PredictionMarket>;
+    fn buy_shares(ref self: TContractState, market_id: u256, choice: u8, amount: u256, token: ContractAddress);
 
-    /// Returns all sports prediction markets a specific user has participated in
-    fn get_user_sports_predictions(
-        self: @TContractState, user: ContractAddress,
-    ) -> Array<PredictionMarket>;
 
     // ================ Administrative Functions ================
 
@@ -191,11 +155,4 @@ pub trait IPredictionHub<TContractState> {
     // ================ Multi-Token Support Functions ================
 
     /// Gets the contract address for a supported token
-    fn get_supported_token(self: @TContractState, token_name: felt252) -> ContractAddress;
-
-    /// Gets the token used for a specific market
-    fn get_market_token(self: @TContractState, market_id: u256) -> ContractAddress;
-
-    /// Checks if a token is supported
-    fn is_token_supported(self: @TContractState, token_name: felt252) -> bool;
 }
