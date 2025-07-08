@@ -8,7 +8,7 @@ use stakcast::events::{
     ModeratorRemoved, WagerPlaced, WinningsCollected,
 };
 use stakcast::interface::IPredictionHub;
-use stakcast::types::{Choice, PredictionMarket, UserBet, UserStake};
+use stakcast::types::{Choice, MarketStatus, Outcome, PredictionMarket, UserStake};
 use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
 use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
@@ -17,7 +17,7 @@ use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_addre
 #[starknet::contract]
 pub mod PredictionHub {
     use starknet::storage::Vec;
-use super::*;
+    use super::{*, StoragePathEntry};
 
     #[storage]
     struct Storage {
@@ -32,11 +32,12 @@ use super::*;
         crypto_predictions: Map<u256, PredictionMarket>,
         sports_predictions: Map<u256, PredictionMarket>,
         // bets placed
+        bet_details: Map<(u256, ContractAddress), UserStake>,
         fee_recipient: ContractAddress,
-        platform_fee_percentage: u256, 
+        platform_fee_percentage: u256,
         // Token integration - Multi-token support
-        protocol_token: ContractAddress, 
-        supported_tokens: Vec<ContractAddress>, 
+        protocol_token: ContractAddress,
+        supported_tokens: Vec<ContractAddress>,
         // Oracle integration
         pragma_oracle: ContractAddress,
         is_paused: bool,
@@ -151,9 +152,9 @@ use super::*;
         fn assert_market_open(self: @ContractState, market_id: u256, market_type: u8) {
             let market = match market_type {
                 0 => self.predictions.entry(market_id).read(),
-                1 => self.crypto_predictions.entry(market_id).read(), 
+                1 => self.crypto_predictions.entry(market_id).read(),
                 2 => self.sports_predictions.entry(market_id).read(),
-                _ => panic!("Invalid market type")
+                _ => panic!("Invalid market type"),
             };
 
             assert(market.is_open, 'Market is closed');
@@ -282,6 +283,7 @@ use super::*;
                 is_resolved: false,
                 is_open: true,
                 end_time,
+                status: MarketStatus::Active,
                 winning_choice: Option::None,
                 total_shares_option_one: 0,
                 total_shares_option_two: 0,
@@ -483,7 +485,13 @@ use super::*;
             }
         }
 
-        fn buy_shares(ref self: ContractState, market_id: u256, choice: u8, amount: u256, token: ContractAddress) {
+        fn buy_shares(
+            ref self: ContractState,
+            market_id: u256,
+            choice: u8,
+            amount: u256,
+            token: ContractAddress,
+        ) {
             self.assert_not_paused();
             self.assert_betting_not_paused();
             self.assert_resolution_not_paused();
@@ -498,20 +506,27 @@ use super::*;
 
             let (price_a, price_b) = self.calculate_share_prices(market_id);
             let mut choice_details: (u256, u256) = (0, 0);
+            let mut user_stake: UserStake = self
+                .bet_details
+                .entry((market_id, get_caller_address()))
+                .read();
+
             if choice == 1 {
-                    let shares = self.divide(amount, price_a);
-                    market.total_shares_option_one += shares;
-                    choice_details = (price_a, shares);
+                let shares = self.divide(amount, price_a);
+                market.total_shares_option_one += shares;
+                user_stake.shares_a = user_stake.shares_a + shares;
+                choice_details = (price_a, shares);
             } else if choice == 2 {
-                    let shares = self.divide(amount, price_b);
-                    market.total_shares_option_two += shares;
-                    choice_details = (price_b, shares);
+                let shares = self.divide(amount, price_b);
+                market.total_shares_option_two += shares;
+                user_stake.shares_b = user_stake.shares_b + shares;
+                choice_details = (price_b, shares);
             } else {
                 panic!("Invalid choice selected");
             }
 
-            // todo: collect the money from the user token supported for now is strk
-            
+            user_stake.total_invested = user_stake.total_invested + amount;
+            market.total_pool = market.total_pool + amount;
 
             // End reentrancy guard
             self.end_reentrancy_guard();
@@ -666,7 +681,6 @@ use super::*;
                 return false;
             }
         }
-
 
 
         // ================ Market Resolution ================
@@ -910,7 +924,6 @@ use super::*;
         }
 
 
-
         fn get_betting_restrictions(self: @ContractState) -> (u256, u256) {
             let min_bet = self.min_bet_amount.read();
             let max_bet = self.max_bet_amount.read();
@@ -924,7 +937,6 @@ use super::*;
         fn get_total_value_locked(self: @ContractState) -> u256 {
             self.total_value_locked.read()
         }
-
         // ================ Multi-Token Support Functions ================
 
     }

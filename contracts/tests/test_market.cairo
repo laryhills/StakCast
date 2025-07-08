@@ -84,7 +84,7 @@ fn test_create_market_should_panic_if_contract_is_pasued() {
     };
 
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
-    admin_dispatcher.emergency_pause("Testing Contract Paused");
+    admin_dispatcher.emergency_pause();
     stop_cheat_caller_address(contract.contract_address);
 
     // try creating a new market
@@ -100,7 +100,7 @@ fn test_create_market_should_work_after_contract_unpasued() {
 
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
 
-    admin_dispatcher.emergency_pause("Testing Contract Paused");
+    admin_dispatcher.emergency_pause();
 
     admin_dispatcher.emergency_unpause();
 

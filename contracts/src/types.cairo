@@ -8,6 +8,7 @@ pub struct PredictionMarket {
     pub is_resolved: bool,
     pub is_open: bool,
     pub end_time: u64,
+    pub status: MarketStatus,
     pub winning_choice: Option<Choice>,
     pub total_shares_option_one: u256,
     pub total_shares_option_two: u256,
@@ -29,16 +30,23 @@ pub struct Choice {
     pub staked_amount: u256 // Total amount staked on this choice
 }
 
-/// Represents a user's stake in a prediction market
-#[derive(Drop, Serde, starknet::Store)]
-pub struct UserStake {
-    pub amount: u256, // Amount staked by the user
-    pub claimed: bool // Whether the user has claimed their winnings
+#[derive(Copy, Drop, Serde, PartialEq, starknet::Store, Debug)]
+pub enum MarketStatus {
+    #[default]
+    Active,
+    Resolved: Outcome,
 }
 
-/// Represents a user's bet on a specific choice in a market
 #[derive(Drop, Serde, starknet::Store)]
-pub struct UserBet {
-    pub choice: Choice, // The choice the user bet on
-    pub stake: UserStake // The user's stake details
+pub struct UserStake {
+    pub shares_a: u256, // Fixed-point shares
+    pub shares_b: u256, // Fixed-point shares
+    pub total_invested: u256 // Fixed-point amount
+}
+
+#[derive(Copy, Drop, Serde, PartialEq, starknet::Store, Debug)]
+pub enum Outcome {
+    #[default]
+    A,
+    B,
 }

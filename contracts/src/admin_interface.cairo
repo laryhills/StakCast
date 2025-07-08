@@ -120,5 +120,4 @@ pub trait IAdditionalAdmin<TContractState> {
     fn emergency_withdraw_tokens(
         ref self: TContractState, amount: u256, recipient: ContractAddress,
     );
-
 }

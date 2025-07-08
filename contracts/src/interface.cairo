@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 use starknet::class_hash::ClassHash;
-use crate::types::{PredictionMarket, UserBet};
+use crate::types::PredictionMarket;
 
 // ================ Contract Interface ================
 
@@ -52,8 +52,6 @@ pub trait IPredictionHub<TContractState> {
     fn get_market_status(self: @TContractState, market_id: u256, market_type: u8) -> (bool, bool);
 
     // ================ Betting Functions ================
-
-
 
     /// Returns the protocol token contract address
     fn get_protocol_token(self: @TContractState) -> ContractAddress;
@@ -120,11 +118,12 @@ pub trait IPredictionHub<TContractState> {
 
     // ================ User Queries ================
 
-
     // place bet functions
     fn calculate_share_prices(ref self: TContractState, market_id: u256) -> (u256, u256);
 
-    fn buy_shares(ref self: TContractState, market_id: u256, choice: u8, amount: u256, token: ContractAddress);
+    fn buy_shares(
+        ref self: TContractState, market_id: u256, choice: u8, amount: u256, token: ContractAddress,
+    );
 
 
     // ================ Administrative Functions ================
@@ -151,7 +150,6 @@ pub trait IPredictionHub<TContractState> {
 
     /// Upgrades the contract implementation (admin only)
     fn upgrade(ref self: TContractState, impl_hash: ClassHash);
-
     // ================ Multi-Token Support Functions ================
 
     /// Gets the contract address for a supported token
