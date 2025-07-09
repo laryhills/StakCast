@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useMarketContext } from "@/app/context/marketContext";
 import { Market } from "@/app/types";
 import { useIsConnected } from "@/app/hooks/useIsConnected";
@@ -51,8 +51,8 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
     units,
     pricePerUnit,
     handleOptionSelect,
-    numberOfUnits,
-    setNumberOfUnits,
+    unitsToStake,
+   setUnitsToStake,
     optionPrice,
   } = useMarketContext();
   const connected = useIsConnected();
@@ -100,6 +100,15 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
     setShowTokenDropdown(false);
   };
 
+  const inputValue = useMemo(() => {
+    if (!optionPrice) return unitsToStake;
+
+    const isStrkToken = selectedToken === "STRK";
+    const multiplier = isStrkToken ? 1 : 10;
+
+    return (units * pricePerUnit * multiplier).toFixed(2);
+  }, [optionPrice, selectedToken, units, pricePerUnit, unitsToStake]);
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-lg border border-gray-100 dark:border-slate-700 max-w-md mx-auto">
       <div className="flex items-center gap-2 mb-4">
@@ -123,7 +132,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
               const label = key === 1 ? "Yes" : "No";
               const isActive = selectedOption === label;
               const odds = 1;
-
+              
               return (
                 <button
                   key={key}
@@ -131,7 +140,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
                     handleOptionSelect(
                       label,
                       odds,
-                      String(formatAmount(choice.staked_amount))
+                      formatAmount(choice.staked_amount)
                     )
                   }
                   className={`group w-full p-3 rounded-lg border-2 transition-all duration-200 ${
@@ -273,8 +282,8 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
           <div className="relative">
             <input
               type="number"
-              value={numberOfUnits}
-              onChange={(e) => setNumberOfUnits(parseInt(e.target.value))}
+              value={unitsToStake}
+              onChange={(e) =>setUnitsToStake(parseInt(e.target.value))}
               min={1}
               placeholder="Enter amount"
               className="w-full p-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white font-semibold"
@@ -290,15 +299,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
           <div className="relative">
             <input
               type="number"
-              value={
-                selectedToken === "STRK"
-                  ? optionPrice
-                    ? (units * pricePerUnit).toFixed(2)
-                    : numberOfUnits
-                  : optionPrice
-                  ? (units * pricePerUnit * 10).toFixed(2)
-                  : numberOfUnits
-              }
+              value={inputValue}
               disabled
               min={1}
               placeholder="Enter amount"
@@ -317,7 +318,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
               Price per unit:
             </span>
             <span className="font-semibold text-sm text-gray-900 dark:text-white">
-              {optionPrice ? optionPrice : numberOfUnits} {selectedToken}
+              {optionPrice ? optionPrice : unitsToStake} {selectedToken}
             </span>
           </div>
           <div className="flex justify-between items-center">
@@ -325,14 +326,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
               Total:
             </span>
             <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-              {selectedToken === "STRK"
-                ? optionPrice
-                  ? `${(units * pricePerUnit).toFixed(2)} ${selectedToken}`
-                  : `${numberOfUnits} ${selectedToken}`
-                : optionPrice
-                  ? `${(units * pricePerUnit * 10).toFixed(2)} ${selectedToken}`
-                  : `${numberOfUnits} ${selectedToken}`
-              }
+             { `${inputValue}  ${selectedToken}`}
             </span>
           </div>
         </div>
