@@ -285,9 +285,9 @@ pub mod PredictionHub {
                 end_time,
                 status: MarketStatus::Active,
                 winning_choice: Option::None,
-                total_shares_option_one: 0,
-                total_shares_option_two: 0,
-                total_pool: 0,
+                total_shares_option_one: HALF,
+                total_shares_option_two: HALF,
+                total_pool: PRECISION,
                 prediction_market_type,
                 crypto_prediction: if prediction_market_type == 1 {
                     crypto_prediction
@@ -463,73 +463,92 @@ pub mod PredictionHub {
 
         fn calculate_share_prices(ref self: ContractState, market_id: u256) -> (u256, u256) {
             let market = self.all_predictions.entry(market_id).read();
-            if market.total_shares_option_one == 0 || market.total_shares_option_two == 0 {
-                return (HALF, HALF);
-            }
-            let total_shares: u256 = market.total_pool;
+            let total_shares: u256 = market.total_pool; // 11000000 tso1 20500000 ts02 500000
+            let price_a = self.divide(market.total_shares_option_one, total_shares); // 1863636
+            let price_b = self.divide(market.total_shares_option_two, total_shares); // 45454
 
-            if total_shares == 0 {
-                return (HALF, HALF);
-            }
-            let price_a = self.divide(market.total_shares_option_one, total_shares);
-            let price_b = self.divide(market.total_shares_option_two, total_shares);
+            let total_price = price_a + price_b; // 1909090
 
-            let total_price = price_a + price_b;
-
-            if total_price > 0 {
-                let normalized_a = self.divide(self.multiply(price_a, PRECISION), total_price);
-                let normalized_b = PRECISION - normalized_a; // Ensure sum = 1.0
-                (normalized_a, normalized_b)
-            } else {
-                (HALF, HALF)
-            }
+            // if total_price > 0 {
+            let normalized_a = self.divide(self.multiply(price_a, PRECISION), total_price);
+            let normalized_b = PRECISION - normalized_a; // Ensure sum = 1.0
+            (normalized_a, normalized_b)
+            // } else {
+        //     (HALF, HALF)
+        // }
         }
 
         fn buy_shares(
             ref self: ContractState,
             market_id: u256,
-            choice: u8,
+            choice: Outcome,
             amount: u256,
             token: ContractAddress,
         ) {
             self.assert_not_paused();
             self.assert_betting_not_paused();
             self.assert_resolution_not_paused();
-            self.assert_valid_choice(choice);
-            self.assert_valid_amount(amount);
+            // self.assert_valid_choice(choice);
+            // self.assert_valid_amount(amount);
+
+            let fixed_point_amount_format = amount * PRECISION;
 
             self.assert_market_open(market_id, 0);
 
             self.start_reentrancy_guard();
 
-            let mut market = self.all_predictions.entry(market_id).read();
-
             let (price_a, price_b) = self.calculate_share_prices(market_id);
+
+            let mut market = self.all_predictions.entry(market_id).read();
             let mut choice_details: (u256, u256) = (0, 0);
             let mut user_stake: UserStake = self
                 .bet_details
                 .entry((market_id, get_caller_address()))
                 .read();
 
-            if choice == 1 {
-                let shares = self.divide(amount, price_a);
-                market.total_shares_option_one += shares;
-                user_stake.shares_a = user_stake.shares_a + shares;
-                choice_details = (price_a, shares);
-            } else if choice == 2 {
-                let shares = self.divide(amount, price_b);
-                market.total_shares_option_two += shares;
-                user_stake.shares_b = user_stake.shares_b + shares;
-                choice_details = (price_b, shares);
-            } else {
-                panic!("Invalid choice selected");
+            // if choice == 1 {
+            //     let shares = self.divide(fixed_point_amount_format, price_a);
+            //     market.total_shares_option_one += shares;
+            //     user_stake.shares_a = user_stake.shares_a + shares;
+            //     choice_details = (price_a, shares);
+            // } else if choice == 2 {
+            //     let shares = self.divide(fixed_point_amount_format, price_b);
+            //     market.total_shares_option_two += shares;
+            //     user_stake.shares_b = user_stake.shares_b + shares;
+            //     choice_details = (price_b, shares);
+            // } else {
+            //     panic!("Invalid choice selected");
+            // }
+
+            match choice {
+                Outcome::Option1 => {
+                    let shares = self.divide(fixed_point_amount_format, price_a);
+                    market.total_shares_option_one += shares;
+                    user_stake.shares_a = user_stake.shares_a + shares;
+                },
+                Outcome::Option2 => {
+                    let shares = self.divide(fixed_point_amount_format, price_b);
+                    market.total_shares_option_two += shares;
+                    user_stake.shares_b = user_stake.shares_b + shares;
+                },
+                _ => panic!("Invalid choice selected"),
             }
 
-            user_stake.total_invested = user_stake.total_invested + amount;
-            market.total_pool = market.total_pool + amount;
+            user_stake.total_invested = user_stake.total_invested + fixed_point_amount_format;
+            market.total_pool = market.total_pool + fixed_point_amount_format;
 
+            self.bet_details.entry((market_id, get_caller_address())).write(user_stake);
+
+            // Update market state
+            self.all_predictions.entry(market_id).write(market);
             // End reentrancy guard
             self.end_reentrancy_guard();
+        }
+
+        fn get_user_stake_details(
+            ref self: ContractState, market_id: u256, user: ContractAddress,
+        ) -> UserStake {
+            self.bet_details.entry((market_id, user)).read()
         }
 
         fn get_active_prediction_markets(self: @ContractState) -> Array<PredictionMarket> {
