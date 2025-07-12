@@ -21,6 +21,20 @@ pub struct PredictionMarket {
     pub sports_prediction: Option<(u64, bool)>,
 }
 
+
+#[derive(Copy, Drop, Serde, starknet::Store, PartialEq)]
+pub struct MarketStats {
+    pub total_traders: u256, // Total number of unique traders
+    pub traders_option_a: u256, // Number of traders on option A
+    pub traders_option_b: u256, // Number of traders on option B
+    pub amount_staked_option_a: u256, // Total amount staked on option A
+    pub amount_staked_option_b: u256, // Total amount staked on option B
+    pub total_trades: u256 // Total number of trades executed
+}
+
+// Protocol stats
+// instead of having protocol details everywhere and unor
+
 // ================ Supporting Types ================
 
 /// Represents a choice in a prediction market with its associated stake

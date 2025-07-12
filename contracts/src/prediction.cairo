@@ -16,8 +16,9 @@ use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_addre
 
 #[starknet::contract]
 pub mod PredictionHub {
-    use starknet::storage::Vec;
-    use super::{*, StoragePathEntry};
+    use starknet::storage::{MutableVecTrait, Vec};
+    use crate::types::MarketStats;
+    use super::{*, StoragePathEntry, StoragePointerWriteAccess};
 
     #[storage]
     struct Storage {
@@ -58,10 +59,19 @@ pub mod PredictionHub {
         reentrancy_guard: bool,
         user_nonces: Map<ContractAddress, u256>, // Tracks nonce for each user
         market_ids: Map<u256, u256>,
+        market_stats: Map<u256, MarketStats>,
+        // user traded status
+        user_traded_status: Map<
+            (u256, ContractAddress), bool,
+        >, // Tracks if user has traded on a market
+        // more market analytics
+        market_analytics: Map<
+            u256, Vec<(ContractAddress, u256)>,
+        > // market to a list of (user, amount) tuples
     }
 
-    const PRECISION: u256 = 1_000_000;
-    const HALF: u256 = 500_000;
+    const PRECISION: u256 = 1000000000000000000; // 18 decimals now
+    const HALF: u256 = 500000000000000000;
     #[event]
     use stakcast::events::Event;
 
@@ -271,6 +281,15 @@ pub mod PredictionHub {
             self.market_ids.entry(count).write(market_id);
 
             let (choice_0_label, choice_1_label) = choices;
+
+            let market_stats = MarketStats {
+                total_traders: 0,
+                traders_option_a: 0,
+                traders_option_b: 0,
+                amount_staked_option_a: 0,
+                amount_staked_option_b: 0,
+                total_trades: 0,
+            };
             let mut market = PredictionMarket {
                 title,
                 market_id,
@@ -302,6 +321,8 @@ pub mod PredictionHub {
             };
 
             self.all_predictions.entry(market_id).write(market.clone());
+
+            self.market_stats.entry(market_id).write(market_stats);
 
             // Type-specific storage
             match prediction_market_type {
@@ -506,44 +527,67 @@ pub mod PredictionHub {
                 .entry((market_id, get_caller_address()))
                 .read();
 
-            // if choice == 1 {
-            //     let shares = self.divide(fixed_point_amount_format, price_a);
-            //     market.total_shares_option_one += shares;
-            //     user_stake.shares_a = user_stake.shares_a + shares;
-            //     choice_details = (price_a, shares);
-            // } else if choice == 2 {
-            //     let shares = self.divide(fixed_point_amount_format, price_b);
-            //     market.total_shares_option_two += shares;
-            //     user_stake.shares_b = user_stake.shares_b + shares;
-            //     choice_details = (price_b, shares);
-            // } else {
-            //     panic!("Invalid choice selected");
-            // }
+            // Check if user has traded on this market before
+            let user_traded = self
+                .user_traded_status
+                .entry((market_id, get_caller_address()))
+                .read();
+            let mut market_stats = self.market_stats.entry(market_id).read();
+
+            if !user_traded {
+                market_stats.total_trades += 1;
+                self.user_traded_status.entry((market_id, get_caller_address())).write(true);
+            }
+
+            // Update market stats
 
             match choice {
                 Outcome::Option1 => {
                     let shares = self.divide(fixed_point_amount_format, price_a);
                     market.total_shares_option_one += shares;
                     user_stake.shares_a = user_stake.shares_a + shares;
+                    market_stats.traders_option_a += 1;
+                    market_stats.amount_staked_option_a += fixed_point_amount_format;
                 },
                 Outcome::Option2 => {
                     let shares = self.divide(fixed_point_amount_format, price_b);
                     market.total_shares_option_two += shares;
                     user_stake.shares_b = user_stake.shares_b + shares;
+                    market_stats.traders_option_b += 1;
+                    market_stats.amount_staked_option_b += fixed_point_amount_format;
                 },
                 _ => panic!("Invalid choice selected"),
             }
 
             user_stake.total_invested = user_stake.total_invested + fixed_point_amount_format;
             market.total_pool = market.total_pool + fixed_point_amount_format;
-
+            market_stats.total_trades += 1;
             self.bet_details.entry((market_id, get_caller_address())).write(user_stake);
 
+            // update market analytics
+            let mut analytics = self
+                .market_analytics
+                .entry(market_id)
+                .append()
+                .write((get_caller_address(), fixed_point_amount_format));
             // Update market state
             self.all_predictions.entry(market_id).write(market);
             // End reentrancy guard
             self.end_reentrancy_guard();
         }
+
+        fn get_market_activity(
+            ref self: ContractState, market_id: u256,
+        ) -> Array<(ContractAddress, u256)> {
+            let mut market_activity_array = ArrayTrait::new();
+            let market_activity = self.market_analytics.entry(market_id);
+            for i in 0..market_activity.len() {
+                let analytics = market_activity.at(i).read();
+                market_activity_array.append(analytics);
+            }
+            market_activity_array
+        }
+
 
         fn get_user_stake_details(
             ref self: ContractState, market_id: u256, user: ContractAddress,
