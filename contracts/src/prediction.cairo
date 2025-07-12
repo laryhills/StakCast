@@ -576,6 +576,19 @@ pub mod PredictionHub {
             self.end_reentrancy_guard();
         }
 
+        fn get_market_activity(
+            ref self: ContractState, market_id: u256,
+        ) -> Array<(ContractAddress, u256)> {
+            let mut market_activity_array = ArrayTrait::new();
+            let market_activity = self.market_analytics.entry(market_id);
+            for i in 0..market_activity.len() {
+                let analytics = market_activity.at(i).read();
+                market_activity_array.append(analytics);
+            }
+            market_activity_array
+        }
+
+
         fn get_user_stake_details(
             ref self: ContractState, market_id: u256, user: ContractAddress,
         ) -> UserStake {
