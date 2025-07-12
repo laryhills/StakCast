@@ -105,7 +105,6 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
     let description: ByteArray = "This is a pool to check if donald trump will be president";
     let choices: (felt252, felt252) = ('Yes', 'No');
     let category: felt252 = 'general';
-    let image_url: ByteArray = "https://example.com/donald-trump.jpg";
     let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
     let prediction_market_type: u8 = 0;
     let crypto_prediction: Option<(felt252, u128)> = Option::None;
@@ -119,7 +118,6 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
             description,
             choices,
             category,
-            image_url,
             end_time,
             prediction_market_type,
             crypto_prediction,
@@ -153,7 +151,6 @@ pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher
     let description: ByteArray = "Will Ethereum price be above $3000 by tomorrow?";
     let choices: (felt252, felt252) = ('Above $3000', 'Below $3000');
     let category: felt252 = 'crypto';
-    let image_url: ByteArray = "https://example.com/eth.png";
     let end_time: u64 = get_block_timestamp() + 86400;
     let prediction_market_type: u8 = 1;
     let crypto_prediction: Option<(felt252, u128)> = Option::Some(('ETH', 3000));
@@ -166,7 +163,6 @@ pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher
             description,
             choices,
             category,
-            image_url,
             end_time,
             prediction_market_type,
             crypto_prediction,
@@ -208,7 +204,6 @@ pub fn default_create_sports_prediction(prediction_hub: IPredictionHubDispatcher
     let description: ByteArray = "Will Team A win the Champions League Final?";
     let choices: (felt252, felt252) = ('Team A', 'Team B');
     let category: felt252 = 'sports';
-    let image_url: ByteArray = "https://example.com/champions-league.jpg";
     let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
     let prediction_market_type: u8 = 2;
     let crypto_prediction: Option<(felt252, u128)> = Option::None;
@@ -222,7 +217,6 @@ pub fn default_create_sports_prediction(prediction_hub: IPredictionHubDispatcher
             description,
             choices,
             category,
-            image_url,
             end_time,
             prediction_market_type,
             crypto_prediction,
@@ -241,7 +235,6 @@ pub fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
             "This is a pool to check if donald trump will be president",
             ('Yes', 'No'),
             'general',
-            "https://example.com/donald-trump.jpg",
             get_block_timestamp() + 86400,
             0,
             Option::None,

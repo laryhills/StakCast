@@ -49,7 +49,6 @@ fn test_create_multiple_prediction_markets() {
             "Description 2",
             ('True', 'False'),
             'category2',
-            "https://example.com/2.png",
             future_time + 3600,
             0, // Normal general prediction market
             None,
@@ -85,7 +84,7 @@ fn test_create_market_should_panic_if_contract_is_pasued() {
     };
 
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
-    admin_dispatcher.emergency_pause("Testing Contract Paused");
+    admin_dispatcher.emergency_pause();
     stop_cheat_caller_address(contract.contract_address);
 
     // try creating a new market
@@ -101,7 +100,7 @@ fn test_create_market_should_work_after_contract_unpasued() {
 
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
 
-    admin_dispatcher.emergency_pause("Testing Contract Paused");
+    admin_dispatcher.emergency_pause();
 
     admin_dispatcher.emergency_unpause();
 
@@ -161,7 +160,6 @@ fn test_create_market_should_panic_if_end_time_not_in_future() {
             "This should fail due to past end time",
             ('Yes', 'No'),
             'test',
-            "https://example.com/test.png",
             past_time,
             0, // Normal general prediction market
             None,
@@ -177,15 +175,7 @@ fn test_create_market_should_panic_if_end_time_is_too_short() {
     let small_time = get_block_timestamp() + 10;
     contract
         .create_predictions(
-            "Market 2",
-            "Description 2",
-            ('True', 'False'),
-            'category2',
-            "https://example.com/2.png",
-            small_time,
-            0,
-            None,
-            None,
+            "Market 2", "Description 2", ('True', 'False'), 'category2', small_time, 0, None, None,
         );
     stop_cheat_caller_address(contract.contract_address);
 }
@@ -198,15 +188,7 @@ fn test_create_market_should_panic_if_end_time_is_too_long() {
     let large_time = get_block_timestamp() + 1000000000;
     contract
         .create_predictions(
-            "Market 2",
-            "Description 2",
-            ('True', 'False'),
-            'category2',
-            "https://example.com/2.png",
-            large_time,
-            0,
-            None,
-            None,
+            "Market 2", "Description 2", ('True', 'False'), 'category2', large_time, 0, None, None,
         );
     stop_cheat_caller_address(contract.contract_address);
 }
@@ -243,7 +225,6 @@ fn test_create_market_create_multiple_market_types() {
             "General prediction description",
             ('Option A', 'Option B'),
             'general',
-            "https://example.com/general.png",
             future_time,
             0,
             None,
@@ -262,7 +243,6 @@ fn test_create_market_create_multiple_market_types() {
             "Crypto prediction description",
             ('Up', 'Down'),
             'crypto',
-            "https://example.com/crypto.png",
             future_time + 3600,
             1,
             Some(('BTC', 50000)),
@@ -281,7 +261,6 @@ fn test_create_market_create_multiple_market_types() {
             "Sports prediction description",
             ('Team A', 'Team B'),
             'sports',
-            "https://example.com/sports.png",
             future_time + 7200,
             2,
             None,
@@ -336,7 +315,6 @@ fn test_creat_market_multiple_moderators_can_create_markets() {
             "Market by moderator 1",
             ('Yes', 'No'),
             'mod1',
-            "https://example.com/mod1.png",
             future_time,
             0,
             None,
@@ -359,7 +337,6 @@ fn test_creat_market_multiple_moderators_can_create_markets() {
             "Market by moderator 2",
             ('True', 'False'),
             'mod2',
-            "https://example.com/mod2.png",
             future_time + 3600,
             0, // Normal general prediction market
             None,
