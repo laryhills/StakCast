@@ -44,6 +44,14 @@ pub fn PRAGMA_ORACLE_ADDR() -> ContractAddress {
     PRAGMA_ORACLE_CONST.try_into().unwrap()
 }
 
+pub fn PRECISION() -> u256 {
+    1000000000000000000
+}
+
+pub fn HALF_PRECISION() -> u256 {
+    500000000000000000
+}
+
 // declare a test token contract
 pub fn deploy_test_token() -> IERC20Dispatcher {
     let contract = declare("strktoken").unwrap().contract_class();
@@ -142,7 +150,7 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
     assert(market.title == title, 'Title mismatch');
     assert(market.is_open, 'Market should be open');
     assert(!market.is_resolved, 'Market not resolved');
-    assert(market.total_pool == 0, 'Initial pool 0');
+    assert(market.total_pool == PRECISION(), 'Initial pool 0');
 }
 
 // Default create for a crypto prediction market
@@ -189,7 +197,7 @@ pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher
     assert(market.title == title, 'Title mismatch');
     assert(market.is_open, 'Market should be open');
     assert(!market.is_resolved, 'Market not resolved');
-    assert(market.total_pool == 0, 'Initial pool 0');
+    assert(market.total_pool == PRECISION(), 'Initial pool 0');
     assert(market.prediction_market_type == 1, 'should be crypro mkt');
     assert(market.sports_prediction.is_none(), 'Sports should be none');
 
@@ -251,4 +259,9 @@ pub fn create_test_market(prediction_hub: IPredictionHubDispatcher) -> u256 {
         market_id = market_id_felt.into();
     }
     market_id
+}
+
+
+pub fn turn_number_to_precision_point(number: u256) -> u256 {
+    number * PRECISION()
 }
