@@ -112,7 +112,7 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
     let title: ByteArray = "Will Donald Trump Be President";
     let description: ByteArray = "This is a pool to check if donald trump will be president";
     let choices: (felt252, felt252) = ('Yes', 'No');
-    let category: u8 = 4;
+    let category: u8 = 0;
     let end_time: u64 = get_block_timestamp() + 86400; // 1 day from now
     let prediction_market_type: u8 = 0;
     let crypto_prediction: Option<(felt252, u128)> = Option::None;
@@ -140,7 +140,7 @@ pub fn default_create_predictions(prediction_hub: IPredictionHubDispatcher) {
         Option::None => panic!("No MarketCreated event emitted"),
     };
 
-    let all_normal_predictions = prediction_hub.get_all_predictions_by_market_type(0);
+    let all_normal_predictions = prediction_hub.get_all_predictions_by_market_category(0);
     assert(all_normal_predictions.len() == 1, 'should be increased by 1');
 
     let market = prediction_hub.get_prediction(market_id);
@@ -184,7 +184,7 @@ pub fn default_create_crypto_prediction(prediction_hub: IPredictionHubDispatcher
     };
 
     let list_of_genenral_predictions: Array<PredictionMarket> = prediction_hub
-        .get_all_predictions_by_market_type(1);
+        .get_all_predictions_by_market_category(2);
 
     assert(list_of_genenral_predictions.len() == 1, 'list not updated as expceted');
 
