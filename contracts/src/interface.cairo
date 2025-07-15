@@ -16,11 +16,10 @@ pub trait IPredictionHub<TContractState> {
         title: ByteArray,
         description: ByteArray,
         choices: (felt252, felt252),
-        category: felt252,
+        category: u8,
         end_time: u64,
         prediction_market_type: u8,
         crypto_prediction: Option<(felt252, u128)>,
-        sports_prediction: Option<(u64, bool)>,
     );
 
     // ================ Market Queries ================
@@ -29,7 +28,7 @@ pub trait IPredictionHub<TContractState> {
     fn get_prediction_count(self: @TContractState) -> u256;
 
     /// Retrieves a specific prediction market by ID
-    fn get_prediction(self: @TContractState, market_id: u256, market_type: u8) -> PredictionMarket;
+    fn get_prediction(self: @TContractState, market_id: u256) -> PredictionMarket;
 
     /// Returns an array of all active prediction markets
     fn get_all_predictions_by_market_type(
@@ -98,7 +97,7 @@ pub trait IPredictionHub<TContractState> {
     // ================ Market Resolution ================
 
     /// Resolves a general prediction market by setting the winning option
-    fn resolve_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
+    // fn resolve_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
 
     /// Manually resolves a crypto prediction market
     /// Override for the automatic resolution
@@ -126,11 +125,7 @@ pub trait IPredictionHub<TContractState> {
     fn calculate_share_prices(ref self: TContractState, market_id: u256) -> (u256, u256);
 
     fn buy_shares(
-        ref self: TContractState,
-        market_id: u256,
-        choice: Outcome,
-        amount: u256,
-        token: ContractAddress,
+        ref self: TContractState, market_id: u256, choice: u8, amount: u256, token: ContractAddress,
     );
 
     fn get_user_stake_details(
