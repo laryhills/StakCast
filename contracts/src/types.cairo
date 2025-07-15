@@ -3,22 +3,46 @@ pub struct PredictionMarket {
     pub title: ByteArray,
     pub market_id: u256,
     pub description: ByteArray,
-    pub choices: (Choice, Choice),
-    pub category: felt252,
+    pub choices: (Outcome, Outcome),
+    pub category: MarketCategory,
     pub is_resolved: bool,
     pub is_open: bool,
     pub end_time: u64,
     pub status: MarketStatus,
-    pub winning_choice: Option<Choice>,
+    pub winning_choice: Option<Outcome>,
     pub total_shares_option_one: u256,
     pub total_shares_option_two: u256,
     pub total_pool: u256,
-    pub prediction_market_type: u8, // 0 - normal predicion market, 1 - crypto prediction market, 2 - sports prediction, 3 - buisness market
     pub crypto_prediction: Option<
         (felt252, u128),
-    >, // the crypto asset (e.g., BTC, ETH) | target_value:  Target price value for the prediction
-    /// @dev depreciated
-    pub sports_prediction: Option<(u64, bool)>,
+    > // the crypto asset (e.g., BTC, ETH) | target_value:  Target price value for the prediction
+}
+
+#[derive(Copy, Drop, Serde, starknet::Store, PartialEq)]
+pub enum MarketCategory {
+    #[default]
+    Normal, // 0
+    Politics, // 1
+    Sports, // 2
+    Crypto, // 3
+    Business, // 4
+    Entertainment, // 5
+    Science, // 6
+    Other // 7
+}
+
+pub fn num_to_market_category(category_input: u8) -> MarketCategory {
+    match category_input {
+        0 => MarketCategory::Normal,
+        1 => MarketCategory::Politics,
+        2 => MarketCategory::Sports,
+        3 => MarketCategory::Crypto,
+        4 => MarketCategory::Business,
+        5 => MarketCategory::Entertainment,
+        6 => MarketCategory::Science,
+        7 => MarketCategory::Other,
+        _ => MarketCategory::Normal // Default case
+    }
 }
 
 
@@ -48,6 +72,7 @@ pub struct Choice {
 pub enum MarketStatus {
     #[default]
     Active,
+    Locked,
     Resolved: Outcome,
 }
 
@@ -61,6 +86,6 @@ pub struct UserStake {
 #[derive(Copy, Drop, Serde, PartialEq, starknet::Store, Debug)]
 pub enum Outcome {
     #[default]
-    Option1,
-    Option2,
+    Option1: felt252,
+    Option2: felt252,
 }
