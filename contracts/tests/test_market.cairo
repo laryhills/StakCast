@@ -202,8 +202,8 @@ fn test_create_market_create_multiple_market_types() {
     let mut spy = spy_events();
 
     let all_general = contract.get_all_predictions();
-    let all_crypto = contract.get_all_crypto_predictions();
-    let all_sports = contract.get_all_sports_predictions();
+    let all_crypto = contract.get_all_predictions_by_market_category(3);
+    let all_sports = contract.get_all_predictions_by_market_category(2);
 
     assert(all_general.len() == 0, 'Empty general array');
     assert(all_crypto.len() == 0, 'Empty crypto array');
@@ -234,7 +234,7 @@ fn test_create_market_create_multiple_market_types() {
             "Crypto Market",
             "Crypto prediction description",
             ('Up', 'Down'),
-            2,
+            3,
             future_time + 3600,
             1,
             Some(('BTC', 50000)),
@@ -251,7 +251,7 @@ fn test_create_market_create_multiple_market_types() {
             "Sports Market",
             "Sports prediction description",
             ('Team A', 'Team B'),
-            4,
+            2,
             future_time + 7200,
             2,
             None,
@@ -278,8 +278,8 @@ fn test_create_market_create_multiple_market_types() {
     assert(sports_market.title == "Sports Market", 'Sports market title mismatch');
 
     let all_general = contract.get_all_general_predictions();
-    let all_crypto = contract.get_all_crypto_predictions();
-    let all_sports = contract.get_all_sports_predictions();
+    let all_crypto = contract.get_all_predictions_by_market_category(3);
+    let all_sports = contract.get_all_predictions_by_market_category(2);
     assert(all_general.len() == 1, 'general market should be 1');
     assert(all_crypto.len() == 1, 'crypto market should be 1');
     assert(all_sports.len() == 1, 'sport market should be 1');
