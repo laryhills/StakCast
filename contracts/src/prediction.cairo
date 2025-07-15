@@ -17,7 +17,7 @@ use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_addre
 #[starknet::contract]
 pub mod PredictionHub {
     use starknet::storage::{MutableVecTrait, Vec};
-    use crate::types::MarketStats;
+    use crate::types::{MarketStats, felt_to_market_category};
     use super::{*, StoragePathEntry, StoragePointerWriteAccess};
 
     #[storage]
@@ -159,32 +159,16 @@ pub mod PredictionHub {
         }
 
         /// @notice Asserts that the market is open, not resolved, and has not ended
-        fn assert_market_open(self: @ContractState, market_id: u256, market_type: u8) {
-            let market = match market_type {
-                0 => self.predictions.entry(market_id).read(),
-                1 => self.crypto_predictions.entry(market_id).read(),
-                2 => self.sports_predictions.entry(market_id).read(),
-                _ => panic!("Invalid market type"),
-            };
-
+        fn assert_market_open(self: @ContractState, market_id: u256) {
+            let market = self.all_predictions.entry(market_id).read();
             assert(market.is_open, 'Market is closed');
             assert(!market.is_resolved, 'Market already resolved');
             assert(get_block_timestamp() < market.end_time, 'Market has ended');
         }
 
-        fn assert_market_exists(self: @ContractState, market_id: u256, market_type: u8) {
-            if market_type == 0 {
-                let market = self.predictions.entry(market_id).read();
-                assert(market.market_id == market_id, 'Market does not exist');
-            } else if market_type == 1 {
-                let market = self.crypto_predictions.entry(market_id).read();
-                assert(market.market_id == market_id, 'Market does not exist');
-            } else if market_type == 2 {
-                let market = self.sports_predictions.entry(market_id).read();
-                assert(market.market_id == market_id, 'Market does not exist');
-            } else {
-                panic!("Invalid market type");
-            }
+        fn assert_market_exists(self: @ContractState, market_id: u256) {
+            let market = self.all_predictions.entry(market_id).read();
+            assert(market.market_id == market_id, 'Market does not exist');
         }
 
         /// @notice Asserts that the provided choice is valid (1 or 2)
@@ -261,11 +245,10 @@ pub mod PredictionHub {
             title: ByteArray,
             description: ByteArray,
             choices: (felt252, felt252),
-            category: felt252,
+            category: u8,
             end_time: u64,
             prediction_market_type: u8,
             crypto_prediction: Option<(felt252, u128)>,
-            sports_prediction: Option<(u64, bool)>,
         ) {
             self.assert_not_paused();
             self.assert_market_creation_not_paused();
@@ -294,11 +277,8 @@ pub mod PredictionHub {
                 title,
                 market_id,
                 description,
-                choices: (
-                    Choice { label: choice_0_label, staked_amount: 0 },
-                    Choice { label: choice_1_label, staked_amount: 0 },
-                ),
-                category,
+                choices: (Outcome::Option1(choice_0_label), Outcome::Option2(choice_1_label)),
+                category: felt_to_market_category(category),
                 is_resolved: false,
                 is_open: true,
                 end_time,
@@ -307,14 +287,8 @@ pub mod PredictionHub {
                 total_shares_option_one: HALF,
                 total_shares_option_two: HALF,
                 total_pool: PRECISION,
-                prediction_market_type,
                 crypto_prediction: if prediction_market_type == 1 {
                     crypto_prediction
-                } else {
-                    Option::None
-                },
-                sports_prediction: if prediction_market_type == 2 {
-                    sports_prediction
                 } else {
                     Option::None
                 },
@@ -350,10 +324,8 @@ pub mod PredictionHub {
             self.prediction_count.read()
         }
 
-        fn get_prediction(
-            self: @ContractState, market_id: u256, market_type: u8,
-        ) -> PredictionMarket {
-            self.assert_market_exists(market_id, market_type);
+        fn get_prediction(self: @ContractState, market_id: u256) -> PredictionMarket {
+            self.assert_market_exists(market_id);
             self.all_predictions.entry(market_id).read()
         }
 
@@ -361,7 +333,7 @@ pub mod PredictionHub {
         fn get_all_predictions_by_market_type(
             self: @ContractState, market_type: u8,
         ) -> Array<PredictionMarket> {
-            assert(market_type <= 2, 'Invalid market type!');
+            assert(market_type <= 7, 'Invalid market type!');
 
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -502,23 +474,22 @@ pub mod PredictionHub {
         fn buy_shares(
             ref self: ContractState,
             market_id: u256,
-            choice: Outcome,
+            choice: u8,
             amount: u256,
             token: ContractAddress,
         ) {
             self.assert_not_paused();
             self.assert_betting_not_paused();
             self.assert_resolution_not_paused();
-            // self.assert_valid_choice(choice);
+            self.assert_valid_choice(choice);
             // self.assert_valid_amount(amount);
-
             let fixed_point_amount_format = amount * PRECISION;
-
-            self.assert_market_open(market_id, 0);
+            self.assert_market_open(market_id);
 
             self.start_reentrancy_guard();
 
             let (price_a, price_b) = self.calculate_share_prices(market_id);
+            let user_choice = self.choice_felt_to_outcome(market_id, choice);
 
             let mut market = self.all_predictions.entry(market_id).read();
             let mut choice_details: (u256, u256) = (0, 0);
@@ -541,7 +512,7 @@ pub mod PredictionHub {
 
             // Update market stats
 
-            match choice {
+            match user_choice {
                 Outcome::Option1 => {
                     let shares = self.divide(fixed_point_amount_format, price_a);
                     market.total_shares_option_one += shares;
@@ -748,47 +719,48 @@ pub mod PredictionHub {
 
         // ================ Market Resolution ================
 
-        fn resolve_prediction(ref self: ContractState, market_id: u256, winning_choice: u8) {
-            self.assert_not_paused();
-            self.assert_resolution_not_paused();
-            self.assert_only_moderator_or_admin();
-            self.assert_market_exists(market_id, 0);
-            self.assert_valid_choice(winning_choice);
-            self.start_reentrancy_guard();
+        // fn resolve_prediction(ref self: ContractState, market_id: u256, winning_choice: u8) {
+        //     self.assert_not_paused();
+        //     self.assert_resolution_not_paused();
+        //     self.assert_only_moderator_or_admin();
+        //     self.assert_market_exists(market_id, 0);
+        //     self.assert_valid_choice(winning_choice);
+        //     self.start_reentrancy_guard();
 
-            let mut market = self.predictions.entry(market_id).read();
-            assert(!market.is_resolved, 'Market already resolved');
+        //     let mut market = self.predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
 
-            let current_time = get_block_timestamp();
-            assert(current_time >= market.end_time, 'Market not yet ended');
+        //     let current_time = get_block_timestamp();
+        //     assert(current_time >= market.end_time, 'Market not yet ended');
 
-            let resolution_deadline = market.end_time + self.resolution_window.read();
-            assert(current_time <= resolution_deadline, 'Resolution window expired');
+        //     let resolution_deadline = market.end_time + self.resolution_window.read();
+        //     assert(current_time <= resolution_deadline, 'Resolution window expired');
 
-            market.is_resolved = true;
-            market.is_open = false;
+        //     market.is_resolved = true;
+        //     market.is_open = false;
 
-            let winning_choice_struct = if winning_choice == 0 {
-                let (choice_0, _choice_1) = market.choices;
-                choice_0
-            } else {
-                let (_choice_0, choice_1) = market.choices;
-                choice_1
-            };
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         let (choice_0, _choice_1) = market.choices;
+        //         choice_0
+        //     } else {
+        //         let (_choice_0, choice_1) = market.choices;
+        //         choice_1
+        //     };
 
-            // Verify choice label is valid ('Yes' or 'No')
-            assert(
-                winning_choice_struct.label == 'Yes' || winning_choice_struct.label == 'No',
-                'Invalid winning choice label',
-            );
+        //     // Verify choice label is valid ('Yes' or 'No')
+        //     assert(
+        //         winning_choice_struct.label == 'Yes' || winning_choice_struct.label == 'No',
+        //         'Invalid winning choice label',
+        //     );
 
-            market.winning_choice = Option::Some(winning_choice_struct);
-            self.predictions.entry(market_id).write(market);
+        //     market.winning_choice = Option::Some(winning_choice_struct);
+        //     self.predictions.entry(market_id).write(market);
 
-            self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
+        //     self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice
+        //     });
 
-            self.end_reentrancy_guard();
-        }
+        //     self.end_reentrancy_guard();
+        // }
 
         fn resolve_crypto_prediction_manually(
             ref self: ContractState, market_id: u256, winning_choice: u8,
@@ -796,7 +768,7 @@ pub mod PredictionHub {
             self.assert_not_paused();
             self.assert_resolution_not_paused();
             self.assert_only_moderator_or_admin();
-            self.assert_market_exists(market_id, 1);
+            self.assert_market_exists(market_id);
             self.assert_valid_choice(winning_choice);
             self.start_reentrancy_guard();
 
@@ -831,7 +803,7 @@ pub mod PredictionHub {
             self.assert_not_paused();
             self.assert_resolution_not_paused();
             self.assert_only_moderator_or_admin();
-            self.assert_market_exists(market_id, 2);
+            self.assert_market_exists(market_id);
             self.assert_valid_choice(winning_choice);
             self.start_reentrancy_guard();
 
@@ -864,7 +836,7 @@ pub mod PredictionHub {
             self.assert_not_paused();
             self.assert_resolution_not_paused();
             self.assert_only_moderator_or_admin();
-            self.assert_market_exists(market_id, 1);
+            self.assert_market_exists(market_id);
             self.start_reentrancy_guard();
 
             let mut market = self.crypto_predictions.entry(market_id).read();
@@ -941,7 +913,7 @@ pub mod PredictionHub {
 
         fn toggle_market_status(ref self: ContractState, market_id: u256, market_type: u8) {
             self.assert_only_moderator_or_admin();
-            self.assert_market_exists(market_id, market_type);
+            self.assert_market_exists(market_id);
 
             if market_type == 0 {
                 let mut market = self.predictions.entry(market_id).read();
@@ -1172,7 +1144,7 @@ pub mod PredictionHub {
 
         fn emergency_close_market(ref self: ContractState, market_id: u256, market_type: u8) {
             self.assert_only_admin();
-            self.assert_market_exists(market_id, market_type);
+            self.assert_market_exists(market_id);
 
             if market_type == 0 {
                 let mut market = self.predictions.entry(market_id).read();
@@ -1210,7 +1182,7 @@ pub mod PredictionHub {
             ref self: ContractState, market_id: u256, market_type: u8, winning_choice: u8,
         ) {
             self.assert_only_admin();
-            self.assert_market_exists(market_id, market_type);
+            self.assert_market_exists(market_id);
             assert(winning_choice <= 1, 'Invalid winning choice');
 
             if market_type == 0 {
@@ -1313,80 +1285,81 @@ pub mod PredictionHub {
 
     #[generate_trait]
     impl HelperImpl of HelperTrait {
-        fn _update_market_totals(
-            ref self: ContractState, market_id: u256, market_type: u8, choice_idx: u8, amount: u256,
-        ) {
-            if market_type == 0 {
-                let mut market = self.predictions.entry(market_id).read();
-                market.total_pool += amount;
+        // fn _update_market_totals(
+        //     ref self: ContractState, market_id: u256, market_type: u8, choice_idx: u8, amount:
+        //     u256,
+        // ) {
+        //     if market_type == 0 {
+        //         let mut market = self.predictions.entry(market_id).read();
+        //         market.total_pool += amount;
 
-                let (mut choice_0, mut choice_1) = market.choices;
-                if choice_idx == 0 {
-                    choice_0.staked_amount += amount;
-                } else {
-                    choice_1.staked_amount += amount;
-                }
-                market.choices = (choice_0, choice_1);
+        //         let (mut choice_0, mut choice_1) = market.choices;
+        //         if choice_idx == 0 {
+        //             choice_0.staked_amount += amount;
+        //         } else {
+        //             choice_1.staked_amount += amount;
+        //         }
+        //         market.choices = (choice_0, choice_1);
 
-                self.predictions.entry(market_id).write(market);
-            } else if market_type == 1 {
-                let mut market = self.crypto_predictions.entry(market_id).read();
-                market.total_pool += amount;
+        //         self.predictions.entry(market_id).write(market);
+        //     } else if market_type == 1 {
+        //         let mut market = self.crypto_predictions.entry(market_id).read();
+        //         market.total_pool += amount;
 
-                let (mut choice_0, mut choice_1) = market.choices;
-                if choice_idx == 0 {
-                    choice_0.staked_amount += amount;
-                } else {
-                    choice_1.staked_amount += amount;
-                }
-                market.choices = (choice_0, choice_1);
+        //         let (mut choice_0, mut choice_1) = market.choices;
+        //         if choice_idx == 0 {
+        //             choice_0.staked_amount += amount;
+        //         } else {
+        //             choice_1.staked_amount += amount;
+        //         }
+        //         market.choices = (choice_0, choice_1);
 
-                self.crypto_predictions.entry(market_id).write(market);
-            } else if market_type == 2 {
-                let mut market = self.sports_predictions.entry(market_id).read();
-                market.total_pool += amount;
+        //         self.crypto_predictions.entry(market_id).write(market);
+        //     } else if market_type == 2 {
+        //         let mut market = self.sports_predictions.entry(market_id).read();
+        //         market.total_pool += amount;
 
-                let (mut choice_0, mut choice_1) = market.choices;
-                if choice_idx == 0 {
-                    choice_0.staked_amount += amount;
-                } else {
-                    choice_1.staked_amount += amount;
-                }
-                market.choices = (choice_0, choice_1);
+        //         let (mut choice_0, mut choice_1) = market.choices;
+        //         if choice_idx == 0 {
+        //             choice_0.staked_amount += amount;
+        //         } else {
+        //             choice_1.staked_amount += amount;
+        //         }
+        //         market.choices = (choice_0, choice_1);
 
-                self.sports_predictions.entry(market_id).write(market);
-            }
-        }
+        //         self.sports_predictions.entry(market_id).write(market);
+        //     }
+        // }
 
-        fn _get_market_resolution_info(
-            self: @ContractState, market_id: u256, market_type: u8,
-        ) -> (bool, Choice, u256, u256) {
-            if market_type == 0 {
-                let market = self.predictions.entry(market_id).read();
-                if market.is_resolved {
-                    let winning_choice = market.winning_choice.unwrap();
-                    (true, winning_choice, market.total_pool, winning_choice.staked_amount)
-                } else {
-                    (false, Choice { label: 0, staked_amount: 0 }, 0, 0)
-                }
-            } else if market_type == 1 {
-                let market = self.crypto_predictions.entry(market_id).read();
-                if market.is_resolved {
-                    let winning_choice = market.winning_choice.unwrap();
-                    (true, winning_choice, market.total_pool, winning_choice.staked_amount)
-                } else {
-                    (false, Choice { label: 0, staked_amount: 0 }, 0, 0)
-                }
-            } else {
-                let market = self.sports_predictions.entry(market_id).read();
-                if market.is_resolved {
-                    let winning_choice = market.winning_choice.unwrap();
-                    (true, winning_choice, market.total_pool, winning_choice.staked_amount)
-                } else {
-                    (false, Choice { label: 0, staked_amount: 0 }, 0, 0)
-                }
-            }
-        }
+        // fn _get_market_resolution_info(
+        //     self: @ContractState, market_id: u256, market_type: u8,
+        // ) -> (bool, Choice, u256, u256) {
+        //     if market_type == 0 {
+        //         let market = self.predictions.entry(market_id).read();
+        //         if market.is_resolved {
+        //             let winning_choice = market.winning_choice.unwrap();
+        //             (true, winning_choice, market.total_pool, winning_choice.staked_amount)
+        //         } else {
+        //             (false, Choice { label: 0, staked_amount: 0 }, 0, 0)
+        //         }
+        //     } else if market_type == 1 {
+        //         let market = self.crypto_predictions.entry(market_id).read();
+        //         if market.is_resolved {
+        //             let winning_choice = market.winning_choice.unwrap();
+        //             (true, winning_choice, market.total_pool, winning_choice.staked_amount)
+        //         } else {
+        //             (false, Choice { label: 0, staked_amount: 0 }, 0, 0)
+        //         }
+        //     } else {
+        //         let market = self.sports_predictions.entry(market_id).read();
+        //         if market.is_resolved {
+        //             let winning_choice = market.winning_choice.unwrap();
+        //             (true, winning_choice, market.total_pool, winning_choice.staked_amount)
+        //         } else {
+        //             (false, Choice { label: 0, staked_amount: 0 }, 0, 0)
+        //         }
+        //     }
+        // }
 
         fn _generate_market_id(ref self: ContractState) -> u256 {
             let caller = get_caller_address();
@@ -1425,6 +1398,18 @@ pub mod PredictionHub {
             let token = IERC20Dispatcher { contract_address: token_address };
             let allowance = token.allowance(user, starknet::get_contract_address());
             assert(allowance >= amount, 'Insufficient token allowance');
+        }
+
+        fn choice_felt_to_outcome(self: @ContractState, market_id: u256, choice: u8) -> Outcome {
+            let market = self.all_predictions.entry(market_id).read();
+            assert(choice <= 1, 'Invalid Choice');
+
+            let (outcome1, outcome2) = market.choices;
+            match choice {
+                0 => outcome1,
+                1 => outcome2,
+                _ => panic!("invalid choice"),
+            }
         }
     }
 }
