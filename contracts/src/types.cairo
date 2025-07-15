@@ -31,7 +31,7 @@ pub enum MarketCategory {
     Other // 7
 }
 
-pub fn felt_to_market_category(category_input: u8) -> MarketCategory {
+pub fn num_to_market_category(category_input: u8) -> MarketCategory {
     match category_input {
         0 => MarketCategory::Normal,
         1 => MarketCategory::Politics,

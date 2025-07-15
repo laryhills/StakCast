@@ -31,8 +31,8 @@ pub trait IPredictionHub<TContractState> {
     fn get_prediction(self: @TContractState, market_id: u256) -> PredictionMarket;
 
     /// Returns an array of all active prediction markets
-    fn get_all_predictions_by_market_type(
-        self: @TContractState, market_type: u8,
+    fn get_all_predictions_by_market_category(
+        self: @TContractState, category: u8,
     ) -> Array<PredictionMarket>;
 
     fn get_market_activity(
@@ -46,10 +46,10 @@ pub trait IPredictionHub<TContractState> {
     fn get_all_general_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active crypto prediction markets
-    fn get_all_crypto_predictions(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_all_crypto_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active sports prediction markets
-    fn get_all_sports_predictions(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_all_sports_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     // get current market status of markets
     fn get_market_status(self: @TContractState, market_id: u256, market_type: u8) -> (bool, bool);

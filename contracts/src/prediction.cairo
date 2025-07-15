@@ -17,7 +17,7 @@ use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_addre
 #[starknet::contract]
 pub mod PredictionHub {
     use starknet::storage::{MutableVecTrait, Vec};
-    use crate::types::{MarketStats, felt_to_market_category};
+    use crate::types::{MarketStats, num_to_market_category};
     use super::{*, StoragePathEntry, StoragePointerWriteAccess};
 
     #[storage]
@@ -278,7 +278,7 @@ pub mod PredictionHub {
                 market_id,
                 description,
                 choices: (Outcome::Option1(choice_0_label), Outcome::Option2(choice_1_label)),
-                category: felt_to_market_category(category),
+                category: num_to_market_category(category),
                 is_resolved: false,
                 is_open: true,
                 end_time,
@@ -330,29 +330,23 @@ pub mod PredictionHub {
         }
 
 
-        fn get_all_predictions_by_market_type(
-            self: @ContractState, market_type: u8,
+        fn get_all_predictions_by_market_category(
+            self: @ContractState, category: u8,
         ) -> Array<PredictionMarket> {
-            assert(market_type <= 7, 'Invalid market type!');
-
+            assert(category <= 7, 'Invalid market type!');
             let mut predictions = ArrayTrait::new();
             let count = self.prediction_count.read();
             let mut i: u256 = 1;
 
             while i <= count {
                 let market_id = self.market_ids.entry(i).read();
-                if market_id != 0 {
-                    let market = match market_type {
-                        0 => self.predictions.entry(market_id).read(),
-                        1 => self.crypto_predictions.entry(market_id).read(),
-                        2 => self.sports_predictions.entry(market_id).read(),
-                        _ => panic!("Invalid market type!"),
-                    };
+                let market = self.all_predictions.entry(market_id).read();
+                let category = num_to_market_category(category);
 
-                    if market.market_id != 0 {
-                        predictions.append(market);
-                    }
+                if market_id != 0 && market.category == category {
+                    predictions.append(market);
                 }
+
                 i += 1;
             }
 
@@ -399,43 +393,43 @@ pub mod PredictionHub {
             predictions
         }
         /// @dev depriciated
-        fn get_all_crypto_predictions(self: @ContractState) -> Array<PredictionMarket> {
-            let mut predictions = ArrayTrait::new();
-            let count = self.prediction_count.read();
-            let mut i: u256 = 1;
+        // fn get_all_crypto_predictions(self: @ContractState) -> Array<PredictionMarket> {
+        //     let mut predictions = ArrayTrait::new();
+        //     let count = self.prediction_count.read();
+        //     let mut i: u256 = 1;
 
-            while i <= count {
-                let market_id = self.market_ids.entry(i).read();
-                if market_id != 0 {
-                    let market = self.crypto_predictions.entry(market_id).read();
-                    if market.market_id != 0 {
-                        predictions.append(market);
-                    }
-                }
-                i += 1;
-            }
+        //     while i <= count {
+        //         let market_id = self.market_ids.entry(i).read();
+        //         if market_id != 0 {
+        //             let market = self.crypto_predictions.entry(market_id).read();
+        //             if market.market_id != 0 {
+        //                 predictions.append(market);
+        //             }
+        //         }
+        //         i += 1;
+        //     }
 
-            predictions
-        }
+        //     predictions
+        // }
         /// @dev depriciated
-        fn get_all_sports_predictions(self: @ContractState) -> Array<PredictionMarket> {
-            let mut predictions = ArrayTrait::new();
-            let count = self.prediction_count.read();
-            let mut i: u256 = 1;
+        // fn get_all_sports_predictions(self: @ContractState) -> Array<PredictionMarket> {
+        //     let mut predictions = ArrayTrait::new();
+        //     let count = self.prediction_count.read();
+        //     let mut i: u256 = 1;
 
-            while i <= count {
-                let market_id = self.market_ids.entry(i).read();
-                if market_id != 0 {
-                    let market = self.sports_predictions.entry(market_id).read();
-                    if market.market_id != 0 {
-                        predictions.append(market);
-                    }
-                }
-                i += 1;
-            }
+        //     while i <= count {
+        //         let market_id = self.market_ids.entry(i).read();
+        //         if market_id != 0 {
+        //             let market = self.sports_predictions.entry(market_id).read();
+        //             if market.market_id != 0 {
+        //                 predictions.append(market);
+        //             }
+        //         }
+        //         i += 1;
+        //     }
 
-            predictions
-        }
+        //     predictions
+        // }
 
         fn get_market_status(
             self: @ContractState, market_id: u256, market_type: u8,
