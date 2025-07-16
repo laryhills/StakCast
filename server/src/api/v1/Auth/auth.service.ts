@@ -4,7 +4,6 @@ import AuthRepository from "./auth.repository";
 import { ApplicationError } from "../../../utils/errorHandler";
 import HttpStatusCodes from "../../../constants/HttpStatusCodes";
 import UserRepository from "../User/user.repository";
-import User from "../User/user.entity";
 import nodemailer from "nodemailer";
 
 @injectable()

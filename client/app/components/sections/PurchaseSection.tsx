@@ -282,8 +282,8 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
           <div className="relative">
             <input
               type="number"
-              value={unitsToStake}
-              onChange={(e) =>setUnitsToStake(parseInt(e.target.value))}
+              value={unitsToStake || 0}
+              onChange={(e) =>setUnitsToStake(parseInt(e.target.value)|| 0)}
               min={1}
               placeholder="Enter amount"
               className="w-full p-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white font-semibold"
@@ -299,7 +299,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
           <div className="relative">
             <input
               type="number"
-              value={inputValue}
+              value={inputValue || 0}
               disabled
               min={1}
               placeholder="Enter amount"
