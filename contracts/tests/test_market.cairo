@@ -208,13 +208,15 @@ fn test_create_market_create_multiple_market_types() {
     let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
-    let all_general = contract.get_all_predictions();
+    let all_general = contract.get_all_general_predictions();
+    let all_prediction = contract.get_all_predictions();
     let all_crypto = contract.get_all_crypto_predictions();
     let all_sports = contract.get_all_sports_predictions();
 
     assert(all_general.len() == 0, 'Empty general array');
     assert(all_crypto.len() == 0, 'Empty crypto array');
     assert(all_sports.len() == 0, 'Empty sports array');
+    assert(all_prediction.len() == 0, 'Empty maarket array');
 
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let future_time = get_block_timestamp() + 86400;
@@ -290,9 +292,11 @@ fn test_create_market_create_multiple_market_types() {
     let all_general = contract.get_all_general_predictions();
     let all_crypto = contract.get_all_crypto_predictions();
     let all_sports = contract.get_all_sports_predictions();
+    let all_prediction = contract.get_all_predictions();
     assert(all_general.len() == 1, 'general market should be 1');
     assert(all_crypto.len() == 1, 'crypto market should be 1');
     assert(all_sports.len() == 1, 'sport market should be 1');
+    assert(all_prediction.len() == 3, 'Empty market array');
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -357,7 +361,11 @@ fn test_creat_market_multiple_moderators_can_create_markets() {
 
     let market1 = contract.get_prediction(market1_id, 0);
     let market2 = contract.get_prediction(market2_id, 0);
+    let all_general_prediction = contract.get_all_predictions_by_market_type(0);
+    let all_predictions = contract.get_all_predictions();
 
+    assert(all_predictions.len() == 2, 'Empty market array');
+    assert(all_general_prediction.len() == 2, 'Empty general market array');
     assert(market1.title == "Moderator 1 Market", 'Market 1 title');
     assert(market2.title == "Moderator 2 Market", 'Market 2 title');
 }
