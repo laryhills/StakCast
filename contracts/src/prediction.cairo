@@ -16,7 +16,7 @@ use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_addre
 
 #[starknet::contract]
 pub mod PredictionHub {
-    use starknet::storage::{MutableVecTrait, Vec};
+    use starknet::storage::{MutableVecTrait, Vec, VecTrait};
     use crate::types::{MarketStats, num_to_market_category};
     use super::{*, StoragePathEntry, StoragePointerWriteAccess};
 
@@ -67,7 +67,8 @@ pub mod PredictionHub {
         // more market analytics
         market_analytics: Map<
             u256, Vec<(ContractAddress, u256)>,
-        > // market to a list of (user, amount) tuples
+        >, // market to a list of (user, amount) tuples
+        user_predictions: Map<ContractAddress, Vec<u256>> // user to a list of market ids
     }
 
     const PRECISION: u256 = 1000000000000000000; // 18 decimals now
@@ -537,8 +538,127 @@ pub mod PredictionHub {
                 .write((get_caller_address(), fixed_point_amount_format));
             // Update market state
             self.all_predictions.entry(market_id).write(market);
+
+            // update user predictions
+            self.user_predictions.entry(get_caller_address()).push(market_id);
             // End reentrancy guard
             self.end_reentrancy_guard();
+        }
+
+
+        fn get_all_open_markets(self: @ContractState) -> Array<PredictionMarket> {
+            let mut markets = ArrayTrait::new();
+            let count = self.prediction_count.read();
+            let mut i: u256 = 1;
+
+            while i <= count {
+                let market_id = self.market_ids.entry(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+
+                if market_id != 0 && market.status == MarketStatus::Active {
+                    markets.append(market);
+                }
+
+                i += 1;
+            }
+            markets
+        }
+        fn get_all_locked_markets(self: @ContractState) -> Array<PredictionMarket> {
+            let mut markets = ArrayTrait::new();
+            let count = self.prediction_count.read();
+            let mut i: u256 = 1;
+            while i <= count {
+                let market_id = self.market_ids.entry(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+
+                if market_id != 0 && market.status == MarketStatus::Locked {
+                    markets.append(market);
+                }
+
+                i += 1;
+            }
+            markets
+        }
+        fn get_all_resolved_markets(self: @ContractState) -> Array<PredictionMarket> {
+            let mut markets = ArrayTrait::new();
+            let count = self.prediction_count.read();
+            let mut i: u256 = 1;
+            while i <= count {
+                let market_id = self.market_ids.entry(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+
+                if market_id != 0_u256 && market.winning_choice == None {
+                    markets.append(market);
+                }
+
+                i += 1;
+            }
+            markets
+        }
+
+        fn get_all_closed_bets_for_user(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<PredictionMarket> {
+            let mut user_markets = ArrayTrait::new();
+            let user_market_ids = self.user_predictions.entry(user);
+            let user_market_ids_len = user_market_ids.len();
+            for i in 0..user_market_ids_len {
+                let market_id: u256 = user_market_ids.at(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+                if market.winning_choice.is_some() {
+                    user_markets.append(market);
+                }
+            }
+            user_markets
+        }
+
+        fn get_all_open_bets_for_user(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<PredictionMarket> {
+            let mut markets = ArrayTrait::new();
+            let mut user_markets = ArrayTrait::new();
+            let user_market_ids = self.user_predictions.entry(user);
+            let user_market_ids_len = user_market_ids.len();
+            for i in 0..user_market_ids_len {
+                let market_id: u256 = user_market_ids.at(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+                if market.status == MarketStatus::Active {
+                    user_markets.append(market);
+                }
+            }
+            markets
+        }
+        fn get_all_locked_bets_for_user(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<PredictionMarket> {
+            let mut markets = ArrayTrait::new();
+            let mut user_markets = ArrayTrait::new();
+            let user_market_ids = self.user_predictions.entry(user);
+            let user_market_ids_len = user_market_ids.len();
+            for i in 0..user_market_ids_len {
+                let market_id: u256 = user_market_ids.at(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+                if market.status == MarketStatus::Locked {
+                    user_markets.append(market);
+                }
+            }
+            markets
+        }
+
+        fn get_all_bets_for_user(
+            self: @ContractState, user: ContractAddress,
+        ) -> Array<PredictionMarket> {
+            let mut markets = ArrayTrait::new();
+            let mut user_markets = ArrayTrait::new();
+            let user_market_ids = self.user_predictions.entry(user);
+            let user_market_ids_len = user_market_ids.len();
+            for i in 0..user_market_ids_len {
+                let market_id: u256 = user_market_ids.at(i).read();
+                let market = self.all_predictions.entry(market_id).read();
+
+                user_markets.append(market);
+            }
+            markets
         }
 
         fn get_market_activity(
