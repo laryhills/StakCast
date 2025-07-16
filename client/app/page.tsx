@@ -10,6 +10,7 @@ import { useMarketData } from "./hooks/useMarket";
 import { Market } from "./types";
 import { useAppContext } from "./context/appContext";
 
+
 const Home = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -89,6 +90,7 @@ const Home = () => {
   return (
     <main className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 min-h-screen">
       <Header />
+   
       <div className="max-w-6xl mx-auto px-6 py-24">
         <div className="mb-12">
           <div>

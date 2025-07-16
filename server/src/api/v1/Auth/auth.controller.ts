@@ -56,7 +56,7 @@ export default class AuthController {
 		try {
 
 			const { currentPassword, newPassword } = req.body;
-			const userId = req.user.id;
+			const userId = req.user?.id as string;
 			await this.authService.changePassword(userId, currentPassword, newPassword);
 			res.json({ message: "Password changed successfully" });
 		} catch (error) {
