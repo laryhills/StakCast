@@ -112,12 +112,12 @@ const DashboardPage = () => {
           </div>
 
           <StatsCard
-            title="Active Markets"
+            title="Your Total Bets"
             value={predictions.length.toString()}
             icon={<Target className="w-5 h-5" />}
             trend="+7"
             trendUp={true}
-            description=" User Total Active markets"
+            description=" User Total Active Bets"
           />
           <StatsCard
             title="Win Rate"
