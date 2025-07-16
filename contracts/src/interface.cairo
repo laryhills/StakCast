@@ -100,13 +100,13 @@ pub trait IPredictionHub<TContractState> {
     fn get_all_resolved_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all resolved general prediction markets
-    fn get_resolved_general_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_resolved_general_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
 
-    /// Returns an array of all resolved sport prediction markets
-    fn get_resolved_sport_markets(self: @TContractState) -> Array<PredictionMarket>;
+    // /// Returns an array of all resolved sport prediction markets
+    // fn get_resolved_sport_markets(self: @TContractState) -> Array<PredictionMarket>;
 
-    /// Returns an array of all resolved crypto prediction markets
-    fn get_resolved_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
+    // /// Returns an array of all resolved crypto prediction markets
+    // fn get_resolved_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     fn is_prediction_market_open_for_betting(ref self: TContractState, market_id: u256) -> bool;
 
@@ -117,21 +117,19 @@ pub trait IPredictionHub<TContractState> {
 
     /// Manually resolves a crypto prediction market
     /// Override for the automatic resolution
-    fn resolve_crypto_prediction_manually(
-        ref self: TContractState, market_id: u256, winning_choice: u8,
-    );
+    fn resolve_prediction_market(ref self: TContractState, market_id: u256, winning_choice: u8);
 
-    /// Manually resolves a sports prediction market
-    /// Override for the automatic resolution
-    fn resolve_sports_prediction_manually(
-        ref self: TContractState, market_id: u256, winning_choice: u8,
-    );
+    // /// Manually resolves a sports prediction market
+    // /// Override for the automatic resolution
+    // fn resolve_sports_prediction_manually(
+    //     ref self: TContractState, market_id: u256, winning_choice: u8,
+    // );
 
-    /// Automatically resolves a crypto prediction using oracle price data
-    fn resolve_crypto_prediction(ref self: TContractState, market_id: u256);
+    // /// Automatically resolves a crypto prediction using oracle price data
+    // fn resolve_crypto_prediction(ref self: TContractState, market_id: u256);
 
-    /// Resolves a sports prediction automatically based on event outcome
-    fn resolve_sports_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
+    // /// Resolves a sports prediction automatically based on event outcome
+    // fn resolve_sports_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
 
     // ================ Winnings Management ================
 
