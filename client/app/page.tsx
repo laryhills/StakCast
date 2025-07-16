@@ -39,25 +39,34 @@ const Home = () => {
 
   const markets: Market[] = Array.isArray(allMarkets) ? allMarkets : [];
 
-  const filteredMarkets = markets.filter((market) => {
-    const query = searchQuery.toLowerCase();
-    if (!query) return true;
+  // Tab state: 'active' or 'all'
+  const [tab, setTab] = React.useState<'active' | 'all'>('active');
 
-    const nameMatch = market?.title?.toLowerCase().includes(query);
-    const optionsMatch = ["No", "Yes"].some((label) =>
-      label.toLowerCase().includes(query)
-    ); // Optional improvement
-
-    return nameMatch || optionsMatch;
-  });
-
-  // Function to check if market is closed
-  const isMarketClosed = (marketId: string | number) => {
-    return marketId?.toString() === "2" || marketId?.toString() === "1";
+  // Helper to determine if a market is closed
+  const isMarketClosed = (market: Market) => {
+    // Use is_open and is_resolved fields from Market type
+    return !market.is_open || market.is_resolved;
   };
 
+  // Filtered markets based on search and tab
+  const filteredMarkets = React.useMemo(() => {
+    let filtered = markets.filter((market) => {
+      const query = searchQuery.toLowerCase();
+      if (!query) return true;
+      const nameMatch = market?.title?.toLowerCase().includes(query);
+      const optionsMatch = ["No", "Yes"].some((label) =>
+        label.toLowerCase().includes(query)
+      );
+      return nameMatch || optionsMatch;
+    });
+    if (tab === 'active') {
+      filtered = filtered.filter((market) => !isMarketClosed(market));
+    }
+    return filtered;
+  }, [markets, searchQuery, tab]);
+
   const handleMarketClick = (market: Market) => {
-    if (!isMarketClosed(market?.market_id as number)) {
+    if (!isMarketClosed(market)) {
       router.push(`/market/${market?.market_id}`);
     }
   };
@@ -90,8 +99,32 @@ const Home = () => {
   return (
     <main className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 min-h-screen">
       <Header />
-   
-      <div className="max-w-6xl mx-auto px-6 py-24">
+      {/* Tab Bar (not fixed) */}
+      <div className="max-w-6xl mx-auto px-6 pt-24 flex justify-center">
+        <div className="w-72 flex rounded-xl overflow-hidden shadow mb-6 border border-green-200 dark:border-green-800 bg-white dark:bg-gray-900">
+            <div
+              className={`flex-1 text-center py-2 cursor-pointer transition-all font-semibold text-base
+                ${tab === 'active'
+                  ? 'bg-gradient-to-r from-green-400 to-green-600 text-white shadow-inner'
+                  : 'bg-white dark:bg-gray-900 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950'}
+              `}
+              onClick={() => setTab('active')}
+            >
+              Active Markets
+            </div>
+            <div
+              className={`flex-1 text-center py-2 cursor-pointer transition-all font-semibold text-base
+                ${tab === 'all'
+                  ? 'bg-gradient-to-r from-green-400 to-green-600 text-white shadow-inner'
+                  : 'bg-white dark:bg-gray-900 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950'}
+              `}
+              onClick={() => setTab('all')}
+            >
+              All Markets
+            </div>
+          </div>
+        </div>
+      <div className="max-w-6xl mx-auto px-6">
         <div className="mb-12">
           <div>
             {/* <h1 className="text-xl font-light text-gray-900 dark:text-white mb-2">
@@ -121,7 +154,7 @@ const Home = () => {
         ) : filteredMarkets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredMarkets.map((market, index) => {
-              const isClosed = isMarketClosed(market?.market_id as number);
+              const isClosed = isMarketClosed(market);
               const timestamp = market.end_time;
               const milliseconds = Number(timestamp) * 1000;
               const date = new Date(milliseconds);
