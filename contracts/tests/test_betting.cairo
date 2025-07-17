@@ -98,9 +98,8 @@ fn test_buy_when_contract_is_pause_should_panic() {
 
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
-
 }
 
 #[test]
@@ -118,9 +117,8 @@ fn test_buy_when_market_is_pause_should_panic() {
 
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 1, 10, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
-
 }
 
 #[test]
@@ -138,9 +136,8 @@ fn test_buy_when_resolution_is_pause_should_panic() {
 
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 1, 10, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
-
 }
 
 #[test]
@@ -152,15 +149,19 @@ fn test_buy_when_market_is_not_open_should_panic() {
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     let market_id = create_test_market(contract);
     stop_cheat_caller_address(contract.contract_address);
-    start_cheat_caller_address(admin_interface.contract_address,ADMIN_ADDR());
-    admin_interface.emergency_close_market( market_id, 0);
-    stop_cheat_caller_address(admin_interface.contract_address);
-
+    // start_cheat_caller_address(admin_interface.contract_address, ADMIN_ADDR());
+    // admin_interface.emergency_close_market(market_id, 0);
+    // stop_cheat_caller_address(admin_interface.contract_address);
+    start_cheat_block_timestamp(
+        contract.contract_address, get_block_timestamp() + 86400 + 3600,
+    ); // 1 day + 1 hour
+    start_cheat_caller_address(contract.contract_address, ADMIN_ADDR());
+    contract.resolve_prediction(market_id, 0);
+    stop_cheat_caller_address(contract.contract_address);
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
-
 }
 
 
