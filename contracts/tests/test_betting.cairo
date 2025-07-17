@@ -10,7 +10,7 @@ use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, HALF_PRECISION, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
     USER3_ADDR, create_test_market, default_create_crypto_prediction, default_create_predictions,
-    default_create_sports_prediction, setup_test_environment, turn_number_to_precision_point,
+    setup_test_environment, turn_number_to_precision_point,
 };
 
 // ================ General Prediction Market Tests ================
@@ -35,17 +35,17 @@ fn test_buy_share_success() {
 
     // user 1 buys 10 shares of option 1
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 
     // user 2 buys 20 shares of option 2
     start_cheat_caller_address(contract.contract_address, USER2_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 20, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, 20, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 
     // user 3 buys 40 shares of option 2
     start_cheat_caller_address(contract.contract_address, USER3_ADDR());
-    contract.buy_shares(market_id, Outcome::Option2, 40, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 1, 40, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 
     let market_shares_after = contract.calculate_share_prices(market_id);
@@ -72,7 +72,7 @@ fn test_buy_share_success() {
         bet_details_user_3.total_invested,
     );
 
-    let prediction_details_after_bet_placed = contract.get_prediction(market_id, 0);
+    let prediction_details_after_bet_placed = contract.get_prediction(market_id);
     println!(
         "Prediction details after bet placed: total share option 1 {} total share option 2: {}, total pool {}",
         prediction_details_after_bet_placed.total_shares_option_one,
@@ -180,7 +180,7 @@ fn test_get_market_activity() {
 
     // place bet to trigger market activity
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, Outcome::Option1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 
     market_activity = contract.get_market_activity(market_id);

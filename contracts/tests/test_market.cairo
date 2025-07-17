@@ -8,8 +8,7 @@ use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrai
 use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR, create_test_market,
-    default_create_crypto_prediction, default_create_predictions, default_create_sports_prediction,
-    setup_test_environment,
+    default_create_crypto_prediction, default_create_predictions, setup_test_environment,
 };
 
 // ================ General Prediction Market Tests ================
@@ -48,10 +47,9 @@ fn test_create_multiple_prediction_markets() {
             "Market 2",
             "Description 2",
             ('True', 'False'),
-            'category2',
+            0,
             future_time + 3600,
             0, // Normal general prediction market
-            None,
             None,
         );
 
@@ -66,8 +64,8 @@ fn test_create_multiple_prediction_markets() {
     assert(count == 2, 'Should have 2 markets');
 
     // Verify both markets exist and have correct IDs
-    let market1 = contract.get_prediction(market1_id, 0);
-    let market2 = contract.get_prediction(market2_id, 0);
+    let market1 = contract.get_prediction(market1_id);
+    let market2 = contract.get_prediction(market2_id);
 
     assert(market1.market_id == market1_id, 'Market 1 ID mismatch');
     assert(market2.market_id == market2_id, 'Market 2 ID mismatch');
@@ -159,10 +157,9 @@ fn test_create_market_should_panic_if_end_time_not_in_future() {
             "Invalid Time Market",
             "This should fail due to past end time",
             ('Yes', 'No'),
-            'test',
+            0,
             past_time,
             0, // Normal general prediction market
-            None,
             None,
         );
 }
@@ -174,9 +171,7 @@ fn test_create_market_should_panic_if_end_time_is_too_short() {
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     let small_time = get_block_timestamp() + 10;
     contract
-        .create_predictions(
-            "Market 2", "Description 2", ('True', 'False'), 'category2', small_time, 0, None, None,
-        );
+        .create_predictions("Market 2", "Description 2", ('True', 'False'), 1, small_time, 0, None);
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -187,9 +182,7 @@ fn test_create_market_should_panic_if_end_time_is_too_long() {
     start_cheat_caller_address(contract.contract_address, ADMIN_ADDR().into());
     let large_time = get_block_timestamp() + 1000000000;
     contract
-        .create_predictions(
-            "Market 2", "Description 2", ('True', 'False'), 'category2', large_time, 0, None, None,
-        );
+        .create_predictions("Market 2", "Description 2", ('True', 'False'), 0, large_time, 0, None);
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -208,10 +201,9 @@ fn test_create_market_create_multiple_market_types() {
     let (contract, _admin_contract, _token) = setup_test_environment();
     let mut spy = spy_events();
 
-    let all_general = contract.get_all_general_predictions();
-    let all_prediction = contract.get_all_predictions();
-    let all_crypto = contract.get_all_crypto_predictions();
-    let all_sports = contract.get_all_sports_predictions();
+    let all_general = contract.get_all_predictions();
+    let all_crypto = contract.get_all_predictions_by_market_category(3);
+    let all_sports = contract.get_all_predictions_by_market_category(2);
 
     assert(all_general.len() == 0, 'Empty general array');
     assert(all_crypto.len() == 0, 'Empty crypto array');
@@ -226,10 +218,9 @@ fn test_create_market_create_multiple_market_types() {
             "General Market",
             "General prediction description",
             ('Option A', 'Option B'),
-            'general',
+            0,
             future_time,
             0,
-            None,
             None,
         );
 
@@ -244,11 +235,10 @@ fn test_create_market_create_multiple_market_types() {
             "Crypto Market",
             "Crypto prediction description",
             ('Up', 'Down'),
-            'crypto',
+            3,
             future_time + 3600,
             1,
             Some(('BTC', 50000)),
-            None,
         );
 
     let mut crypto_market_id = 0;
@@ -262,11 +252,10 @@ fn test_create_market_create_multiple_market_types() {
             "Sports Market",
             "Sports prediction description",
             ('Team A', 'Team B'),
-            'sports',
+            2,
             future_time + 7200,
             2,
             None,
-            Some((555, true)),
         );
 
     let mut sports_market_id = 0;
@@ -278,9 +267,9 @@ fn test_create_market_create_multiple_market_types() {
     let count = contract.get_prediction_count();
     assert(count == 3, 'Should have 4 markets');
 
-    let general_market = contract.get_prediction(general_market_id, 0);
-    let crypto_market = contract.get_prediction(crypto_market_id, 1);
-    let sports_market = contract.get_prediction(sports_market_id, 2);
+    let general_market = contract.get_prediction(general_market_id);
+    let crypto_market = contract.get_prediction(crypto_market_id);
+    let sports_market = contract.get_prediction(sports_market_id);
 
     assert(general_market.market_id == general_market_id, 'General market ID mismatch');
     assert(crypto_market.market_id == crypto_market_id, 'Crypto market ID mismatch');
@@ -290,9 +279,8 @@ fn test_create_market_create_multiple_market_types() {
     assert(sports_market.title == "Sports Market", 'Sports market title mismatch');
 
     let all_general = contract.get_all_general_predictions();
-    let all_crypto = contract.get_all_crypto_predictions();
-    let all_sports = contract.get_all_sports_predictions();
-    let all_prediction = contract.get_all_predictions();
+    let all_crypto = contract.get_all_predictions_by_market_category(3);
+    let all_sports = contract.get_all_predictions_by_market_category(2);
     assert(all_general.len() == 1, 'general market should be 1');
     assert(all_crypto.len() == 1, 'crypto market should be 1');
     assert(all_sports.len() == 1, 'sport market should be 1');
@@ -315,14 +303,7 @@ fn test_creat_market_multiple_moderators_can_create_markets() {
     start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
     contract
         .create_predictions(
-            "Moderator 1 Market",
-            "Market by moderator 1",
-            ('Yes', 'No'),
-            'mod1',
-            future_time,
-            0,
-            None,
-            None,
+            "Moderator 1 Market", "Market by moderator 1", ('Yes', 'No'), 3, future_time, 0, None,
         );
 
     let mut market1_id = 0;
@@ -340,10 +321,9 @@ fn test_creat_market_multiple_moderators_can_create_markets() {
             "Moderator 2 Market",
             "Market by moderator 2",
             ('True', 'False'),
-            'mod2',
+            4,
             future_time + 3600,
             0, // Normal general prediction market
-            None,
             None,
         );
 
@@ -359,10 +339,8 @@ fn test_creat_market_multiple_moderators_can_create_markets() {
     let count = contract.get_prediction_count();
     assert(count == 2, '2 moderator markets');
 
-    let market1 = contract.get_prediction(market1_id, 0);
-    let market2 = contract.get_prediction(market2_id, 0);
-    let all_general_prediction = contract.get_all_predictions_by_market_type(0);
-    let all_predictions = contract.get_all_predictions();
+    let market1 = contract.get_prediction(market1_id);
+    let market2 = contract.get_prediction(market2_id);
 
     assert(all_predictions.len() == 2, 'Empty market array');
     assert(all_general_prediction.len() == 2, 'Empty general market array');
@@ -387,7 +365,7 @@ fn test_get_market_status() {
 #[should_panic(expected: ('Market does not exist',))]
 fn test_get_market_should_panic_if_non_existent_market() {
     let (contract, _admin_contract, _token) = setup_test_environment();
-    contract.get_prediction(999, 0);
+    contract.get_prediction(999);
 }
 
 
@@ -395,13 +373,13 @@ fn test_get_market_should_panic_if_non_existent_market() {
 #[should_panic(expected: ('Market does not exist',))]
 fn test_get_market_should_panic_if_non_existent_crypto_market() {
     let (contract, _admin_contract, _token) = setup_test_environment();
-    contract.get_prediction(999, 1);
+    contract.get_prediction(999);
 }
 
 #[test]
 #[should_panic(expected: ('Market does not exist',))]
 fn test_get_market_should_panic_if_non_existent_sports_market() {
     let (contract, _admin_contract, _token) = setup_test_environment();
-    contract.get_prediction(999, 2);
+    contract.get_prediction(999);
 }
 
