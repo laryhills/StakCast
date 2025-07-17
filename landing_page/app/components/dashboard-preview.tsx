@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
+
+// import { Button } from "./ui/button";
 
 export function DashboardPreview() {
   const previewRef = useRef<HTMLDivElement>(null);

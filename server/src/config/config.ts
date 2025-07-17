@@ -1,5 +1,12 @@
 import dotenv from "dotenv";
 dotenv.config();
+console.log('POSTGRES config:', {
+  port: process.env.POSTGRES_PORT,
+  host: process.env.POSTGRES_HOST,
+  username: process.env.POSTGRES_USERNAME,
+  password: process.env.POSTGRES_PASSWORD,
+  database: process.env.POSTGRES_DB_NAME,
+});
 const environment = process.env.NODE_ENV || "development";
 
 export const config = {
@@ -17,8 +24,15 @@ export const config = {
 	},
 
 	db: {
+
+		redis:{
+			port:process.env.REDIS_PORT || 6379,
+			host:process.env.REDIS_HOST || 'localhost',
+			password:process.env.REDIS_PASSWORD || undefined
+
+		},
 		postgres:{
-			port:process.env.POSTRES_PORT || 5432,
+			port:process.env.POSTGRES_PORT || 5432,
 			host:process.env.POSTGRES_HOST || 'localhost',
 			username:process.env.POSTGRES_USERNAME || 'root',
 			password:process.env.POSTGRES_PASSWORD || '',
