@@ -99,43 +99,13 @@ pub trait IPredictionHub<TContractState> {
     /// Returns an array of all resolved general prediction markets
     fn get_all_resolved_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
 
-    /// Returns an array of all resolved general prediction markets
-    // fn get_resolved_general_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
-
-    // /// Returns an array of all resolved sport prediction markets
-    // fn get_resolved_sport_markets(self: @TContractState) -> Array<PredictionMarket>;
-
-    // /// Returns an array of all resolved crypto prediction markets
-    // fn get_resolved_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
-
     fn is_prediction_market_open_for_betting(ref self: TContractState, market_id: u256) -> bool;
 
     // ================ Market Resolution ================
 
-    /// Resolves a general prediction market by setting the winning option
+    /// Resolves a prediction market by setting the winning option (replacement for
+    /// resolve_prediction)
     fn resolve_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
-
-    /// Manually resolves a crypto prediction market
-    /// Override for the automatic resolution
-    // fn resolve_crypto_prediction_manually(
-    //     ref self: TContractState, market_id: u256, winning_choice: u8,
-    // );
-
-    /// Manually resolves a sports prediction market
-    /// Override for the automatic resolution
-    // fn resolve_sports_prediction_manually(
-    //     ref self: TContractState, market_id: u256, winning_choice: u8,
-    // );
-
-    /// Automatically resolves a crypto prediction using oracle price data
-    //fn resolve_crypto_prediction(ref self: TContractState, market_id: u256);
-
-    /// Resolves a sports prediction automatically based on event outcome
-    //fn resolve_sports_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
-
-    // ================ Winnings Management ================
-
-    // ================ User Queries ================
 
     // place bet functions
     fn calculate_share_prices(ref self: TContractState, market_id: u256) -> (u256, u256);
@@ -149,9 +119,6 @@ pub trait IPredictionHub<TContractState> {
     ) -> UserStake;
 
     fn claim(ref self: TContractState, market_id: u256);
-
-
-    // ================ Administrative Functions ================
 
     /// Returns the contract admin address
     fn get_admin(self: @TContractState) -> ContractAddress;
@@ -170,12 +137,6 @@ pub trait IPredictionHub<TContractState> {
 
     /// Administrative function to reset all prediction markets
     fn remove_all_predictions(ref self: TContractState);
-
-    // ================ Upgrade Functions ================
-
     /// Upgrades the contract implementation (admin only)
     fn upgrade(ref self: TContractState, impl_hash: ClassHash);
-    // ================ Multi-Token Support Functions ================
-
-    /// Gets the contract address for a supported token
 }
