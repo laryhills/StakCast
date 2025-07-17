@@ -68,7 +68,8 @@ pub mod PredictionHub {
         market_analytics: Map<
             u256, Vec<(ContractAddress, u256)>,
         >, // market to a list of (user, amount) tuples
-        user_predictions: Map<ContractAddress, Vec<u256>> // user to a list of market ids
+        user_predictions: Map<ContractAddress, Vec<u256>>, // user to a list of market ids
+        claimed: Map<(u256, ContractAddress), bool>,
     }
 
     const PRECISION: u256 = 1000000000000000000; // 18 decimals now
@@ -198,6 +199,13 @@ pub mod PredictionHub {
             let allowance = token.allowance(user, starknet::get_contract_address());
             assert(allowance >= amount, 'Insufficient token allowance');
         }
+
+        fn assert_market_resolved(self: @ContractState, market_id: u256) {
+            let market = self.all_predictions.entry(market_id).read();
+            assert(market.is_resolved, 'Market is not resolved');
+            assert(market.winning_choice.is_some(), 'Market resolved');
+        }
+
 
         fn start_reentrancy_guard(ref self: ContractState) {
             assert(!self.reentrancy_guard.read(), 'Reentrant call');
@@ -545,6 +553,32 @@ pub mod PredictionHub {
             self.end_reentrancy_guard();
         }
 
+        fn claim(ref self: ContractState, market_id: u256) {
+            self.assert_not_paused();
+            self.assert_resolution_not_paused();
+            self.assert_market_exists(market_id);
+            self.assert_market_open(market_id);
+            self.assert_market_resolved(market_id);
+            // check if the user has claimed before
+            let user_addr: ContractAddress = get_caller_address();
+            assert(!self.claimed.entry((market_id, user_addr)).read(), 'Already claimed');
+            let market: PredictionMarket = self.all_predictions.entry(market_id).read();
+            let user_stake: UserStake = self.bet_details.entry((market_id, user_addr)).read();
+            self.claimed.entry((market_id, user_addr)).write(true);
+
+            let winning_choice: u8 = market.winning_choice.unwrap();
+            // let user_amount_on_option_a: u256 = user_stake.shares_a;
+        // let user_amount_on_option_b: u256 = user_stake.shares_b;
+
+            // if winning_option == 0 {
+        //     assert(user_amount_on_option_a > 0, 'No winning stake for user');
+        // } else if winning_option == 1 {
+        //     assert(user_amount_on_option_b > 0, 'No winning stake for user');
+        // } else {
+        //     panic!("Invalid winning option");
+        // }
+        // At this point, the user has a winning stake and can proceed to claim
+        }
 
         fn get_all_open_markets(self: @ContractState) -> Array<PredictionMarket> {
             let mut markets = ArrayTrait::new();
@@ -896,7 +930,7 @@ pub mod PredictionHub {
             let winning_choice_outcome: Outcome = self
                 .choice_num_to_outcome(market_id, winning_choice);
 
-            market.winning_choice = Option::Some(winning_choice_outcome);
+            market.winning_choice = Option::Some(winning_choice);
             market.status = MarketStatus::Resolved(winning_choice_outcome);
             self.all_predictions.entry(market_id).write(market);
 
@@ -1335,7 +1369,7 @@ pub mod PredictionHub {
                 } else {
                     choice_1
                 };
-                market.winning_choice = Option::Some(winning_choice_struct);
+                // market.winning_choice = Option::Some(winning_choice_struct);
                 market.is_resolved = true;
                 market.is_open = false;
 

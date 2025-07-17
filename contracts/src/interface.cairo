@@ -146,6 +146,8 @@ pub trait IPredictionHub<TContractState> {
         ref self: TContractState, market_id: u256, user: ContractAddress,
     ) -> UserStake;
 
+    fn claim(ref self: TContractState, market_id: u256);
+
 
     // ================ Administrative Functions ================
 
