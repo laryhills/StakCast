@@ -910,7 +910,9 @@ pub mod PredictionHub {
         //     self.end_reentrancy_guard();
         // }
 
-        fn resolve_prediction_market(ref self: ContractState, market_id: u256, winning_choice: u8) {
+        fn resolve_crypto_prediction_manually(
+            ref self: ContractState, market_id: u256, winning_choice: u8,
+        ) {
             self.assert_not_paused();
             self.assert_resolution_not_paused();
             self.assert_only_moderator_or_admin();
@@ -918,11 +920,14 @@ pub mod PredictionHub {
             self.assert_valid_choice(winning_choice);
             self.start_reentrancy_guard();
 
-            let mut market = self.crypto_predictions.entry(market_id).read();
+            let mut market = self.predictions.entry(market_id).read();
             assert(!market.is_resolved, 'Market already resolved');
 
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
+
+            let resolution_deadline = market.end_time + self.resolution_window.read();
+            assert(current_time <= resolution_deadline, 'Resolution window expired');
 
             market.is_resolved = true;
             market.is_open = false;
@@ -938,7 +943,43 @@ pub mod PredictionHub {
 
             self.end_reentrancy_guard();
         }
-        /// @dev depreciated
+
+        // fn resolve_crypto_prediction_manually(
+        //     ref self: ContractState, market_id: u256, winning_choice: u8,
+        // ) {
+        //     self.assert_not_paused();
+        //     self.assert_resolution_not_paused();
+        //     self.assert_only_moderator_or_admin();
+        //     self.assert_market_exists(market_id);
+        //     self.assert_valid_choice(winning_choice);
+        //     self.start_reentrancy_guard();
+
+        //     let mut market = self.crypto_predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
+
+        //     let current_time = get_block_timestamp();
+        //     assert(current_time >= market.end_time, 'Market not yet ended');
+
+        //     market.is_resolved = true;
+        //     market.is_open = false;
+
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         let (choice_0, _choice_1) = market.choices;
+        //         choice_0
+        //     } else {
+        //         let (_choice_0, choice_1) = market.choices;
+        //         choice_1
+        //     };
+
+            market.winning_choice = Option::Some(winning_choice_struct);
+            self.sports_predictions.entry(market_id).write(market);
+
+        //     self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice
+        //     });
+
+        //     self.end_reentrancy_guard();
+        // }
+
         // fn resolve_sports_prediction_manually(
         //     ref self: ContractState, market_id: u256, winning_choice: u8,
         // ) {
