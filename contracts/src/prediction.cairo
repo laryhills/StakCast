@@ -1324,59 +1324,58 @@ pub mod PredictionHub {
 
         fn emergency_resolve_market(
             ref self: ContractState, market_id: u256, market_type: u8, winning_choice: u8,
-        ) {
-            self.assert_only_admin();
-            self.assert_market_exists(market_id);
-            assert(winning_choice <= 1, 'Invalid winning choice');
+        ) {// self.assert_only_admin();
+        // self.assert_market_exists(market_id);
+        // assert(winning_choice <= 1, 'Invalid winning choice');
 
-            if market_type == 0 {
-                let mut market = self.predictions.entry(market_id).read();
-                assert(!market.is_resolved, 'Market already resolved');
+        // if market_type == 0 {
+        //     let mut market = self.predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
 
-                let (choice_0, choice_1) = market.choices;
-                let winning_choice_struct = if winning_choice == 0 {
-                    choice_0
-                } else {
-                    choice_1
-                };
-                market.winning_choice = Option::Some(winning_choice_struct);
-                market.is_resolved = true;
-                market.is_open = false;
+        //     let (choice_0, choice_1) = market.choices;
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         choice_0
+        //     } else {
+        //         choice_1
+        //     };
+        //     market.winning_choice = Option::Some(winning_choice_struct);
+        //     market.is_resolved = true;
+        //     market.is_open = false;
 
-                self.predictions.entry(market_id).write(market);
-            } else if market_type == 1 {
-                let mut market = self.crypto_predictions.entry(market_id).read();
-                assert(!market.is_resolved, 'Market already resolved');
+        //     self.predictions.entry(market_id).write(market);
+        // } else if market_type == 1 {
+        //     let mut market = self.crypto_predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
 
-                let (choice_0, choice_1) = market.choices;
-                let winning_choice_struct = if winning_choice == 0 {
-                    choice_0
-                } else {
-                    choice_1
-                };
-                market.winning_choice = Option::Some(winning_choice_struct);
-                market.is_resolved = true;
-                market.is_open = false;
+        //     let (choice_0, choice_1) = market.choices;
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         choice_0
+        //     } else {
+        //         choice_1
+        //     };
+        //     market.winning_choice = Option::Some(winning_choice_struct);
+        //     market.is_resolved = true;
+        //     market.is_open = false;
 
-                self.crypto_predictions.entry(market_id).write(market);
-            } else if market_type == 2 {
-                let mut market = self.sports_predictions.entry(market_id).read();
-                assert(!market.is_resolved, 'Market already resolved');
+        //     self.crypto_predictions.entry(market_id).write(market);
+        // } else if market_type == 2 {
+        //     let mut market = self.sports_predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
 
-                let (choice_0, choice_1) = market.choices;
-                let winning_choice_struct = if winning_choice == 0 {
-                    choice_0
-                } else {
-                    choice_1
-                };
-                // market.winning_choice = Option::Some(winning_choice_struct);
-                market.is_resolved = true;
-                market.is_open = false;
+        //     let (choice_0, choice_1) = market.choices;
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         choice_0
+        //     } else {
+        //         choice_1
+        //     };
+        //     // market.winning_choice = Option::Some(winning_choice_struct);
+        //     market.is_resolved = true;
+        //     market.is_open = false;
 
-                self.sports_predictions.entry(market_id).write(market);
-            } else {
-                panic!("Invalid market type");
-            }
+        //     self.sports_predictions.entry(market_id).write(market);
+        // } else {
+        //     panic!("Invalid market type");
+        // }
         }
 
         fn emergency_resolve_multiple_markets(
