@@ -1,11 +1,11 @@
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
-    start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
+    start_cheat_caller_address, stop_cheat_caller_address,
 };
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
-use stakcast::types::{Outcome, UserStake};
+use stakcast::types::{BetActivity, UserStake};
 use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, HALF_PRECISION, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
@@ -94,20 +94,55 @@ fn test_get_market_activity() {
     stop_cheat_caller_address(contract.contract_address);
 
     // assert that the initial market activity is 0
-    let mut market_activity: Array<(ContractAddress, u256)> = contract
-        .get_market_activity(market_id);
+    let mut market_activity: Array<BetActivity> = contract.get_market_activity(market_id);
     assert(market_activity.len() == 0, 'should not have anything');
 
     // place bet to trigger market activity
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
+    contract
+        .buy_shares(
+            market_id, 0, turn_number_to_precision_point(10), contract_address_const::<'0x2319'>(),
+        );
     stop_cheat_caller_address(contract.contract_address);
 
     market_activity = contract.get_market_activity(market_id);
 
     assert(market_activity.len() == 1, 'should not have 1 activity');
-    assert(
-        *market_activity.at(0) == (USER1_ADDR(), turn_number_to_precision_point(10)),
-        'didnt update as expected',
-    );
+    let bet = *market_activity.at(0);
+    assert(bet.choice == 0, 'choice should be 0');
+    assert(bet.amount == turn_number_to_precision_point(10), 'amount should be 10');
+}
+
+
+#[test]
+fn test_get_market_activity_multiple_bets() {
+    let (contract, _admin_interface, _token) = setup_test_environment();
+
+    // create a prediction
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    let market_id = create_test_market(contract);
+    stop_cheat_caller_address(contract.contract_address);
+
+    // place bet to trigger market activity
+    start_cheat_caller_address(contract.contract_address, USER1_ADDR());
+    contract
+        .buy_shares(
+            market_id, 0, turn_number_to_precision_point(10), contract_address_const::<'0x2319'>(),
+        );
+    stop_cheat_caller_address(contract.contract_address);
+
+    start_cheat_caller_address(contract.contract_address, USER2_ADDR());
+    contract.buy_shares(market_id, 1, 25, contract_address_const::<'0x7234'>());
+    stop_cheat_caller_address(contract.contract_address);
+
+    let market_activity = contract.get_market_activity(market_id);
+    assert(market_activity.len() == 2, 'should have 2 activities');
+
+    let bet1 = *market_activity.at(0);
+    let bet2 = *market_activity.at(1);
+
+    assert(bet1.choice == 0, 'choice should be 0');
+    assert(bet1.amount == turn_number_to_precision_point(10), 'amount should be 10');
+    assert(bet2.choice == 1, 'choice should be 1');
+    assert(bet2.amount == 25, 'amount should be 25');
 }

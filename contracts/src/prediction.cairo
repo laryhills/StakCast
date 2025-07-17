@@ -8,7 +8,7 @@ use stakcast::events::{
     ModeratorRemoved, WagerPlaced, WinningsCollected,
 };
 use stakcast::interface::IPredictionHub;
-use stakcast::types::{Choice, MarketStatus, Outcome, PredictionMarket, UserStake};
+use stakcast::types::{BetActivity, Choice, MarketStatus, Outcome, PredictionMarket, UserStake};
 use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
 use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
@@ -65,9 +65,7 @@ pub mod PredictionHub {
             (u256, ContractAddress), bool,
         >, // Tracks if user has traded on a market
         // more market analytics
-        market_analytics: Map<
-            u256, Vec<(ContractAddress, u256)>,
-        > // market to a list of (user, amount) tuples
+        market_analytics: Map<u256, Vec<BetActivity>> // market to a list of BetActivity structs
     }
 
     const PRECISION: u256 = 1000000000000000000; // 18 decimals now
@@ -426,7 +424,7 @@ pub mod PredictionHub {
         //             }
         //         }
         //         i += 1;
-        //     }
+        // }
 
         //     predictions
         // }
@@ -529,21 +527,19 @@ pub mod PredictionHub {
             market_stats.total_trades += 1;
             self.bet_details.entry((market_id, get_caller_address())).write(user_stake);
 
-            // update market analytics
+            // update market analytics for bet graph
             let mut analytics = self
                 .market_analytics
                 .entry(market_id)
                 .append()
-                .write((get_caller_address(), fixed_point_amount_format));
+                .write(BetActivity { choice, amount });
             // Update market state
             self.all_predictions.entry(market_id).write(market);
             // End reentrancy guard
             self.end_reentrancy_guard();
         }
 
-        fn get_market_activity(
-            ref self: ContractState, market_id: u256,
-        ) -> Array<(ContractAddress, u256)> {
+        fn get_market_activity(ref self: ContractState, market_id: u256) -> Array<BetActivity> {
             let mut market_activity_array = ArrayTrait::new();
             let market_activity = self.market_analytics.entry(market_id);
             for i in 0..market_activity.len() {
