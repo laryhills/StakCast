@@ -578,6 +578,17 @@ pub mod PredictionHub {
 
         }
 
+        fn get_market_activity(ref self: ContractState, market_id: u256) -> Array<BetActivity> {
+            let mut market_activity_array = ArrayTrait::new();
+            let market_activity = self.market_analytics.entry(market_id);
+            for i in 0..market_activity.len() {
+                let analytics = market_activity.at(i).read();
+                market_activity_array.append(analytics);
+            }
+            market_activity_array
+        }
+
+
         fn get_all_open_markets(self: @ContractState) -> Array<PredictionMarket> {
             let mut markets = ArrayTrait::new();
             let count = self.prediction_count.read();
@@ -691,18 +702,6 @@ pub mod PredictionHub {
                 user_markets.append(market);
             }
             markets
-        }
-
-        fn get_market_activity(
-            ref self: ContractState, market_id: u256,
-        ) -> Array<(ContractAddress, u256)> {
-            let mut market_activity_array = ArrayTrait::new();
-            let market_activity = self.market_analytics.entry(market_id);
-            for i in 0..market_activity.len() {
-                let analytics = market_activity.at(i).read();
-                market_activity_array.append(analytics);
-            }
-            market_activity_array
         }
 
 
@@ -928,7 +927,6 @@ pub mod PredictionHub {
 
         //     self.end_reentrancy_guard();
         // }
-
 
         // fn resolve_sports_prediction_manually(
         //     ref self: ContractState, market_id: u256, winning_choice: u8,
