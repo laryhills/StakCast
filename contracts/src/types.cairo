@@ -9,7 +9,7 @@ pub struct PredictionMarket {
     pub is_open: bool,
     pub end_time: u64,
     pub status: MarketStatus,
-    pub winning_choice: Option<Outcome>,
+    pub winning_choice: Option<u8>,
     pub total_shares_option_one: u256,
     pub total_shares_option_two: u256,
     pub total_pool: u256,
