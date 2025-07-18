@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 use starknet::class_hash::ClassHash;
-use crate::types::{BetActivity, Outcome, PredictionMarket, UserStake};
+use crate::types::{Outcome, PredictionMarket, UserStake};
 
 // ================ Contract Interface ================
 
@@ -35,7 +35,9 @@ pub trait IPredictionHub<TContractState> {
         self: @TContractState, category: u8,
     ) -> Array<PredictionMarket>;
 
-    fn get_market_activity(ref self: TContractState, market_id: u256) -> Array<BetActivity>;
+    fn get_market_activity(
+        ref self: TContractState, market_id: u256,
+    ) -> Array<(ContractAddress, u256)>;
 
     /// Returns an array of all active prediction markets
     fn get_all_predictions(self: @TContractState) -> Array<PredictionMarket>;

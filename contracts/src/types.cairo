@@ -89,10 +89,3 @@ pub enum Outcome {
     Option1: felt252,
     Option2: felt252,
 }
-
-/// Represents a single bet activity for the bet graph
-#[derive(Copy, Drop, Serde, starknet::Store, PartialEq)]
-pub struct BetActivity {
-    pub choice: u8, // 0 or 1 
-    pub amount: u256,
-}
