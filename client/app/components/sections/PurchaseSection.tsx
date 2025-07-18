@@ -33,14 +33,14 @@ const AVAILABLE_TOKENS: {
     value: "STRK",
     label: "Starknet Token",
     symbol: "STRK",
-    logo: "/logos/starknet-logo.svg", // Add your actual logo path
+    logo: "/logos/starknet-logo.svg",
     color: "from-purple-500 to-blue-500",
   },
   {
     value: "SK",
     label: "Stakcast Token",
     symbol: "SK",
-    logo: "/stakcast-logo-1.pnleg", // Add your actual logo path
+    logo: "/stakcast-logo-1.png",
     color: "from-green-500 to-emerald-500",
   },
 ];
@@ -52,7 +52,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
     pricePerUnit,
     handleOptionSelect,
     unitsToStake,
-   setUnitsToStake,
+    setUnitsToStake,
     optionPrice,
   } = useMarketContext();
   const connected = useIsConnected();
@@ -126,22 +126,21 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
             Choose Your Prediction
           </label>
-          {market?.choices &&
+          {market &&
             [0, 1].map((key) => {
-              const choice = market.choices[key as 0 | 1];
               const label = key === 1 ? "Yes" : "No";
               const isActive = selectedOption === label;
               const odds = 1;
-              
+
+              const poolAmount =
+                key === 1
+                  ? market.total_shares_option_one
+                  : market.total_shares_option_two;
               return (
                 <button
                   key={key}
                   onClick={() =>
-                    handleOptionSelect(
-                      label,
-                      odds,
-                      formatAmount(choice.staked_amount)
-                    )
+                    handleOptionSelect(label, odds, formatAmount(poolAmount))
                   }
                   className={`group w-full p-3 rounded-lg border-2 transition-all duration-200 ${
                     isActive
@@ -197,7 +196,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
                         Pool
                       </div>
                       <div className="font-semibold text-sm text-gray-700 dark:text-gray-300">
-                        {String(formatAmount(choice.staked_amount))}
+                        {String(formatAmount(poolAmount))}
                       </div>
                     </div>
                   </div>
@@ -283,7 +282,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
             <input
               type="number"
               value={unitsToStake || 0}
-              onChange={(e) =>setUnitsToStake(parseInt(e.target.value)|| 0)}
+              onChange={(e) => setUnitsToStake(parseInt(e.target.value) || 0)}
               min={1}
               placeholder="Enter amount"
               className="w-full p-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white font-semibold"
@@ -326,7 +325,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
               Total:
             </span>
             <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-             { `${inputValue}  ${selectedToken}`}
+              {`${inputValue}  ${selectedToken}`}
             </span>
           </div>
         </div>

@@ -23,7 +23,7 @@ const Page = () => {
 
   const { predictions: allMarkets, loading } = useMarketData();
   const [market, setMarket] = useState<Market | undefined>(undefined);
-
+console.log(market)
   useEffect(() => {
     if (!loading && Array.isArray(allMarkets)) {
       const fetchedMarket = allMarkets.find(
