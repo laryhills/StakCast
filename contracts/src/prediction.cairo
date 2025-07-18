@@ -472,12 +472,7 @@ pub mod PredictionHub {
         // }
         }
 
-        fn buy_shares(
-            ref self: ContractState,
-            market_id: u256,
-            choice: u8,
-            amount: u256,
-        ) {
+        fn buy_shares(ref self: ContractState, market_id: u256, choice: u8, amount: u256) {
             let caller = get_caller_address();
             let token_contract_address = self.protocol_token.read();
             self.assert_not_paused();
@@ -488,11 +483,8 @@ pub mod PredictionHub {
             self.assert_sufficient_token_balance_for_token(caller, amount, token_contract_address);
             self.assert_sufficient_allowance_for_token(caller, amount, token_contract_address);
             let token_dispatcher = IERC20Dispatcher { contract_address: token_contract_address };
-            let success = token_dispatcher.transfer_from(
-                caller,
-                starknet::get_contract_address(),
-                amount,
-            );
+            let success = token_dispatcher
+                .transfer_from(caller, starknet::get_contract_address(), amount);
             assert(success, 'Token transfer failed');
 
             let fixed_point_amount_format = amount * PRECISION;
@@ -504,16 +496,10 @@ pub mod PredictionHub {
             let user_choice = self.choice_num_to_outcome(market_id, choice);
 
             let mut market = self.all_predictions.entry(market_id).read();
-            let mut user_stake: UserStake = self
-                .bet_details
-                .entry((market_id, caller))
-                .read();
+            let mut user_stake: UserStake = self.bet_details.entry((market_id, caller)).read();
 
             // Check if user has traded on this market before
-            let user_traded = self
-                .user_traded_status
-                .entry((market_id, caller))
-                .read();
+            let user_traded = self.user_traded_status.entry((market_id, caller)).read();
             let mut market_stats = self.market_stats.entry(market_id).read();
 
             if !user_traded {
@@ -546,7 +532,7 @@ pub mod PredictionHub {
             self.bet_details.entry((market_id, caller)).write(user_stake);
 
             // update market analytics
-            self.market_analytics.entry(market_id).append().write(BetActivity { choice, amount });
+            self.market_analytics.entry(market_id).push(BetActivity { choice, amount });
             // Update market state
             self.all_predictions.entry(market_id).write(market);
             // End reentrancy guard
@@ -1242,13 +1228,11 @@ pub mod PredictionHub {
                 // Check all market types
                 let mut market_type: u8 = 0;
                 while market_type < 3_u8 {
-                    println!("resolved_markets------2-: {}", resolved_markets);
                     if market_type == 0 {
                         let market = self.predictions.entry(i).read();
                         if market.market_id != 0 {
                             if market.is_resolved {
                                 resolved_markets += 1;
-                                println!("resolved_markets-------: {}", resolved_markets);
                             } else if market.is_open {
                                 active_markets += 1;
                             }
@@ -1438,7 +1422,7 @@ pub mod PredictionHub {
 
             // 6. Calculate platform fee.
             let platform_fee_bps = self.platform_fee_percentage.read(); // e.g., 250 = 2.5%
-            let fee_amount = (market.total_pool * platform_fee_bps) / 10000_u256;
+            let _fee_amount = (market.total_pool * platform_fee_bps) / 10000_u256;
             let distributable_pool = market.total_pool;
 
             // 7. User's reward = (user_shares / total_winning_shares) * distributable_pool
