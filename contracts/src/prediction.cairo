@@ -8,7 +8,7 @@ use stakcast::events::{
     ModeratorRemoved, WagerPlaced, WinningsCollected,
 };
 use stakcast::interface::IPredictionHub;
-use stakcast::types::{Choice, MarketStatus, Outcome, PredictionMarket, UserStake};
+use stakcast::types::{BetActivity, Choice, MarketStatus, Outcome, PredictionMarket, UserStake};
 use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
 use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
@@ -65,11 +65,9 @@ pub mod PredictionHub {
             (u256, ContractAddress), bool,
         >, // Tracks if user has traded on a market
         // more market analytics
-        market_analytics: Map<
-            u256, Vec<(ContractAddress, u256)>,
-        >, // market to a list of (user, amount) tuples
         user_predictions: Map<ContractAddress, Vec<u256>>, // user to a list of market ids
         claimed: Map<(u256, ContractAddress), bool>,
+        market_analytics: Map<u256, Vec<BetActivity>> // market to a list of BetActivity structs
     }
 
     const PRECISION: u256 = 1000000000000000000; // 18 decimals now
@@ -543,7 +541,7 @@ pub mod PredictionHub {
                 .market_analytics
                 .entry(market_id)
                 .append()
-                .write((get_caller_address(), fixed_point_amount_format));
+                .write(BetActivity { choice, amount });
             // Update market state
             self.all_predictions.entry(market_id).write(market);
 
@@ -873,26 +871,167 @@ pub mod PredictionHub {
             self.assert_valid_choice(winning_choice);
             self.start_reentrancy_guard();
 
-            let mut market = self.crypto_predictions.entry(market_id).read();
+            let mut market = self.predictions.entry(market_id).read();
             assert(!market.is_resolved, 'Market already resolved');
 
             let current_time = get_block_timestamp();
             assert(current_time >= market.end_time, 'Market not yet ended');
 
+            let resolution_deadline = market.end_time + self.resolution_window.read();
+            assert(current_time <= resolution_deadline, 'Resolution window expired');
+
             market.is_resolved = true;
             market.is_open = false;
-
             let winning_choice_outcome: Outcome = self
                 .choice_num_to_outcome(market_id, winning_choice);
 
             market.winning_choice = Option::Some(winning_choice);
             market.status = MarketStatus::Resolved(winning_choice_outcome);
             self.all_predictions.entry(market_id).write(market);
-
             self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice });
 
             self.end_reentrancy_guard();
         }
+
+        // fn resolve_crypto_prediction_manually(
+        //     ref self: ContractState, market_id: u256, winning_choice: u8,
+        // ) {
+        //     self.assert_not_paused();
+        //     self.assert_resolution_not_paused();
+        //     self.assert_only_moderator_or_admin();
+        //     self.assert_market_exists(market_id);
+        //     self.assert_valid_choice(winning_choice);
+        //     self.start_reentrancy_guard();
+
+        //     let mut market = self.crypto_predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
+
+        //     let current_time = get_block_timestamp();
+        //     assert(current_time >= market.end_time, 'Market not yet ended');
+
+        //     market.is_resolved = true;
+        //     market.is_open = false;
+
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         let (choice_0, _choice_1) = market.choices;
+        //         choice_0
+        //     } else {
+        //         let (_choice_0, choice_1) = market.choices;
+        //         choice_1
+        //     };
+
+        //     market.winning_choice = Option::Some(winning_choice_struct);
+        //     self.crypto_predictions.entry(market_id).write(market);
+
+        //     self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice
+        //     });
+
+        //     self.end_reentrancy_guard();
+        // }
+
+
+        // fn resolve_sports_prediction_manually(
+        //     ref self: ContractState, market_id: u256, winning_choice: u8,
+        // ) {
+        //     self.assert_not_paused();
+        //     self.assert_resolution_not_paused();
+        //     self.assert_only_moderator_or_admin();
+        //     self.assert_market_exists(market_id);
+        //     self.assert_valid_choice(winning_choice);
+        //     self.start_reentrancy_guard();
+
+        //     let mut market = self.sports_predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
+
+        //     let current_time = get_block_timestamp();
+        //     assert(current_time >= market.end_time, 'Market not yet ended');
+
+        //     market.is_resolved = true;
+        //     market.is_open = false;
+
+        //     let winning_choice_struct = if winning_choice == 0 {
+        //         let (choice_0, _choice_1) = market.choices;
+        //         choice_0
+        //     } else {
+        //         let (_choice_0, choice_1) = market.choices;
+        //         choice_1
+        //     };
+
+        //     market.winning_choice = Option::Some(winning_choice_struct);
+        //     self.sports_predictions.entry(market_id).write(market);
+
+        //     self.emit(MarketResolved { market_id, resolver: get_caller_address(), winning_choice
+        //     });
+
+        //     self.end_reentrancy_guard();
+        // }
+
+        // fn resolve_crypto_prediction(ref self: ContractState, market_id: u256) {
+        //     self.assert_not_paused();
+        //     self.assert_resolution_not_paused();
+        //     self.assert_only_moderator_or_admin();
+        //     self.assert_market_exists(market_id);
+        //     self.start_reentrancy_guard();
+
+        //     let mut market = self.crypto_predictions.entry(market_id).read();
+        //     assert(!market.is_resolved, 'Market already resolved');
+
+        //     let current_time = get_block_timestamp();
+        //     assert(current_time >= market.end_time, 'Market not yet ended');
+        //     let (asset_key, target_value) = market.crypto_prediction.unwrap();
+        //     // Get price from Pragma Oracle
+        //     let oracle = IPragmaABIDispatcher { contract_address: self.pragma_oracle.read() };
+        //     let price_response = oracle.get_data_median(DataType::SpotEntry(asset_key));
+        //     let current_price = price_response.price;
+
+        //     // // Determine winning choice based on comparison
+        //     // let winning_choice = if comparison_type == 0 {
+        //     //     // Less than target
+        //     //     if current_price < target_value.into() {
+        //     //         0
+        //     //     } else {
+        //     //         1
+        //     //     }
+        //     // } else {
+        //     //     // Greater than target
+        //     //     if current_price > target_value.into() {
+        //     //         0
+        //     //     } else {
+        //     //         1
+        //     //     }
+        //     // };
+
+        //     market.is_resolved = true;
+        //     market.is_open = false;
+
+        //     // let winning_choice_struct = if winning_choice == 0 {
+        //     //     let (choice_0, _choice_1) = market.choices;
+        //     //     choice_0
+        //     // } else {
+        //     //     let (_choice_0, choice_1) = market.choices;
+        //     //     choice_1
+        //     // };
+
+        //     // market.winning_choice = Option::Some(winning_choice_struct);
+        //     self.crypto_predictions.entry(market_id).write(market);
+
+        //     // self.emit(MarketResolved { market_id, resolver: get_caller_address(),
+        //     winning_choice // });
+
+        //     self.end_reentrancy_guard();
+        // }
+
+        // fn resolve_sports_prediction(ref self: ContractState, market_id: u256, winning_choice:
+        // u8) {
+        //     // This would integrate with sports data API in production
+        //     self.resolve_sports_prediction_manually(market_id, winning_choice);
+        // }
+
+        // ================ Winnings Management ================
+
+        // ================ User Queries ================
+
+        // ================ Administrative Functions ================
 
         fn get_admin(self: @ContractState) -> ContractAddress {
             self.admin.read()
