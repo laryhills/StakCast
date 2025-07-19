@@ -297,7 +297,6 @@ fn test_get_user_market_ids() {
     println!("get_user_market_ids function works correctly!");
     println!("It returns the same count as get_all_bets_for_user!");
 }
-
 // #[test]
 // fn test_user_bet_functions_with_arrays() {
 //     let (contract, _admin_interface, _token) = setup_test_environment();
