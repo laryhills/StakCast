@@ -66,17 +66,18 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
   );
 
   const handlePurchase = () => {
-    if (!selectedOption || units <= 0 || !market) {
+    console.log(selectedOption, unitsToStake, market);
+    if (!selectedOption || +unitsToStake <= 0 || !market) {
       toast.error("Please select a choice and enter a valid number of units.");
       return;
     }
 
-    const market_id = +market.market_id.toString(16);
-    const choice_idx = selectedOption === "Yes" ? 0x1 : 0x0;
+    const market_id: number = market.market_id as number;
+    const choice_idx = selectedOption === "Yes" ? 1 : 0;
     const amount = (
       selectedToken === "STRK"
-        ? parseInt((units * pricePerUnit).toFixed(2))
-        : parseInt((units * pricePerUnit * 10).toFixed(2))
+        ? parseInt((unitsToStake * pricePerUnit).toFixed(2))
+        : parseInt((unitsToStake * pricePerUnit * 10).toFixed(2))
     ) as number;
     // const amount = (units * 10 ** 18) as number;
     const market_type = 0;
@@ -84,7 +85,7 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
     console.log(
       `Placing bet on "${selectedOption}" with market_id=${market_id}, choice_idx=${choice_idx}, amount=${amount}, market_type=${market_type}, token=${selectedToken}`
     );
-    placeBet(market_id, choice_idx, amount, market_type);
+    placeBet(market_id, choice_idx, amount);
   };
 
   const handleClick = () => {

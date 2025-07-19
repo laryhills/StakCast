@@ -15,7 +15,7 @@ interface UsePurchaseReturn {
     market_id: number | bigint,
     choice_idx: number,
     amount: bigint | number,
-    market_type: number
+  
   ) => Promise<void>;
   send: ReturnType<typeof useSendTransaction>["send"];
   loading: boolean;
