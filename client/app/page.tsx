@@ -10,6 +10,8 @@ import { useMarketData } from "./hooks/useMarket";
 import { Market } from "./types";
 import { useAppContext } from "./context/appContext";
 import {  normalizeWEI } from "./utils/utils";
+import Modal from "./components/ui/Modal";
+import PurchaseSection from "./components/sections/PurchaseSection";
 // import { useState } from "react";
 const Home = () => {
   const router = useRouter();
@@ -45,6 +47,9 @@ const Home = () => {
 
 
   const [tab, setTab] = React.useState<"active" | "all">("active");
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [selectedMarket, setSelectedMarket] = React.useState<Market | null>(null);
+  const [selectedOption, setSelectedOption] = React.useState<string | null>(null);
 
 
   const isMarketClosed = (market: Market) => {
@@ -73,6 +78,12 @@ const Home = () => {
     if (!isMarketClosed(market)) {
       router.push(`/market/${market?.market_id}`);
     }
+  };
+
+  const handleOptionSelect = (market: Market, optionLabel: string) => {
+    setSelectedMarket(market);
+    setSelectedOption(optionLabel);
+    setModalOpen(true);
   };
 
   if (error) {
@@ -208,6 +219,7 @@ const Home = () => {
                       onClick={() => handleMarketClick(market)}
                       isClosed={isClosed}
                       timeLeft={formatted}
+                      onOptionSelect={(optionLabel) => handleOptionSelect(market, optionLabel)}
                       onOption
                     />
                   </div>
@@ -233,6 +245,12 @@ const Home = () => {
           </div>
         )}
       </div>
+      {/* Modal for PurchaseSection */}
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+        {selectedMarket && (
+          <PurchaseSection market={selectedMarket} preselectedOption={selectedOption} />
+        )}
+      </Modal>
     </main>
   );
 };

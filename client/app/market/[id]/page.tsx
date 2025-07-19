@@ -127,7 +127,7 @@ const Page = () => {
           {/* Right Column */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 sticky top-8">
-              <PurchaseSection market={market} />
+              <PurchaseSection market={market}  />
             </div>
           </div>
         </div>

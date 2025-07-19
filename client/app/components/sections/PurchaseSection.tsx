@@ -19,6 +19,7 @@ import {
 
 interface PurchaseSectionProps {
   market?: Market;
+  preselectedOption?: string | null| undefined;
 }
 
 export type Token = "STRK" | "SK";
@@ -48,7 +49,7 @@ export type Token = "STRK" | "SK";
 //   },
 // ];
 
-const PurchaseSection = ({ market }: PurchaseSectionProps) => {
+const PurchaseSection = ({ market, preselectedOption }: PurchaseSectionProps) => {
   const { selectedOption, handleOptionSelect, unitsToStake, setUnitsToStake } =
     useMarketContext();
   const connected = useIsConnected();
@@ -59,6 +60,13 @@ const PurchaseSection = ({ market }: PurchaseSectionProps) => {
   React.useEffect(() => {
     setSelectedToken("STRK");
   }, [setSelectedToken]);
+
+  React.useEffect(() => {
+    if (preselectedOption && preselectedOption !== selectedOption) {
+      // Set odds and unitPrice to 1 for now, or you can compute real odds if needed
+      handleOptionSelect(preselectedOption, 1, "1");
+    }
+  }, [preselectedOption, selectedOption, handleOptionSelect]);
 
   // const selectedTokenData = AVAILABLE_TOKENS.find(
   //   (token) => token.value === selectedToken
