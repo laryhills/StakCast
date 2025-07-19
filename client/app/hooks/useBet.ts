@@ -65,6 +65,7 @@ export const useUserPredictions = () => {
       setError(null);
       try {
         // Fetch all user predictions
+        console.log(contract.get_all_bets_for_user(address));
         const [regular, crypto, sports, claimable] = await Promise.all([
           contract.get_user_predictions(address),
           contract.get_user_crypto_predictions(address),
@@ -72,7 +73,7 @@ export const useUserPredictions = () => {
           contract.get_user_claimable_amount(address),
         ]);
         setClaimableAmount(claimable?.toString() || "0");
-
+console.log([regular, crypto, sports, claimable],"ppp");
         const all: AugmentedMarket[] = [
           ...(regular || []).map((m:AugmentedMarket) => ({
             ...m,
