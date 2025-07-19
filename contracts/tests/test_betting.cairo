@@ -35,17 +35,21 @@ fn test_buy_share_success() {
 
     // user 1 buys 10 shares of option 1
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, turn_number_to_precision_point(10), contract_address_const::<'hi'>());
+    market_shares = contract.calculate_share_prices(market_id);
+    println!("Share prices for market after user 1 buys shares {}: {:?}", market_id, market_shares);
     stop_cheat_caller_address(contract.contract_address);
 
     // user 2 buys 20 shares of option 2
     start_cheat_caller_address(contract.contract_address, USER2_ADDR());
-    contract.buy_shares(market_id, 0, 20, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, turn_number_to_precision_point(20), contract_address_const::<'hi'>());
+    market_shares = contract.calculate_share_prices(market_id);
+    println!("Share prices for market after user 2 buys shares {}: {:?}", market_id, market_shares);
     stop_cheat_caller_address(contract.contract_address);
 
     // user 3 buys 40 shares of option 2
     start_cheat_caller_address(contract.contract_address, USER3_ADDR());
-    contract.buy_shares(market_id, 1, 40, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 1, turn_number_to_precision_point(40), contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 
     let market_shares_after = contract.calculate_share_prices(market_id);
@@ -98,7 +102,7 @@ fn test_buy_when_contract_is_pause_should_panic() {
 
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, turn_number_to_precision_point(10), contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -117,7 +121,7 @@ fn test_buy_when_market_is_pause_should_panic() {
 
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, 1, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 1, turn_number_to_precision_point(10), contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -160,7 +164,7 @@ fn test_buy_when_market_is_not_open_should_panic() {
     stop_cheat_caller_address(contract.contract_address);
     // user 1 try to buys 10 shares of option 1 should panic
     start_cheat_caller_address(contract.contract_address, USER1_ADDR());
-    contract.buy_shares(market_id, 0, 10, contract_address_const::<'hi'>());
+    contract.buy_shares(market_id, 0, turn_number_to_precision_point(10), contract_address_const::<'hi'>());
     stop_cheat_caller_address(contract.contract_address);
 }
 
@@ -212,7 +216,7 @@ fn test_get_market_activity_multiple_bets() {
     stop_cheat_caller_address(contract.contract_address);
 
     start_cheat_caller_address(contract.contract_address, USER2_ADDR());
-    contract.buy_shares(market_id, 1, 25, contract_address_const::<'0x7234'>());
+    contract.buy_shares(market_id, 1, turn_number_to_precision_point(25), contract_address_const::<'0x7234'>());
     stop_cheat_caller_address(contract.contract_address);
 
     let market_activity = contract.get_market_activity(market_id);
@@ -224,5 +228,5 @@ fn test_get_market_activity_multiple_bets() {
     assert(bet1.choice == 0, 'choice should be 0');
     assert(bet1.amount == turn_number_to_precision_point(10), 'amount should be 10');
     assert(bet2.choice == 1, 'choice should be 1');
-    assert(bet2.amount == 25, 'amount should be 25');
+    assert(bet2.amount == turn_number_to_precision_point(25), 'amount should be 25');
 }
