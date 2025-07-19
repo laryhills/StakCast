@@ -671,6 +671,7 @@ pub mod PredictionHub {
                 self.user_traded_status.entry((market_id, caller)).write(true);
 
                 // Add market_id to user's list of predictions
+                // add bet to user bet collection
                 self.user_predictions.entry(caller).push(market_id);
             }
 
@@ -929,12 +930,9 @@ pub mod PredictionHub {
             let user_market_ids = self.user_predictions.entry(user);
 
             let user_market_ids_len = user_market_ids.len();
-
             for i in 0..user_market_ids_len {
                 let market_id: u256 = user_market_ids.at(i).read();
-
                 let market = self.all_predictions.entry(market_id).read();
-
                 user_markets.append(market);
             }
 

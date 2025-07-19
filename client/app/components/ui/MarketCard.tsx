@@ -16,8 +16,7 @@ interface MarketCardProps {
   trending?: boolean;
   participants?: number;
   timeLeft?: string;
-
-
+  onOptionSelect?: (optionLabel: string) => void;
 }
 
 const MarketCard: React.FC<MarketCardProps> = ({
@@ -30,6 +29,7 @@ const MarketCard: React.FC<MarketCardProps> = ({
   trending = false,
   participants = 0,
   timeLeft = "",
+  onOptionSelect,
   ...props
 }) => {
   const totalStaked = options.reduce((sum, option) => {
@@ -126,7 +126,13 @@ const MarketCard: React.FC<MarketCardProps> = ({
             return (
               <div
                 key={index}
-                className={`p-3 rounded-lg ${bgColor} ${hoverColor} transition-colors duration-150`}
+                className={`p-3 rounded-lg ${bgColor} ${hoverColor} transition-colors duration-150 cursor-pointer`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOptionSelect) {
+                    onOptionSelect(option.name);
+                  }
+                }}
               >
                 <div className="text-xs text-gray-600 dark:text-gray-400 mb-1 truncate">
                   {option.name}
