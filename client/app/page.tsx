@@ -9,7 +9,7 @@ import Header from "./components/layout/Header";
 import { useMarketData } from "./hooks/useMarket";
 import { Market } from "./types";
 import { useAppContext } from "./context/appContext";
-
+import {  normalizeWEI } from "./utils/utils";
 
 const Home = () => {
   const router = useRouter();
@@ -40,7 +40,7 @@ const Home = () => {
   const markets: Market[] = Array.isArray(allMarkets) ? allMarkets : [];
 
   // Tab state: 'active' or 'all'
-  const [tab, setTab] = React.useState<'active' | 'all'>('active');
+  const [tab, setTab] = React.useState<"active" | "all">("active");
 
   // Helper to determine if a market is closed
   const isMarketClosed = (market: Market) => {
@@ -59,7 +59,7 @@ const Home = () => {
       );
       return nameMatch || optionsMatch;
     });
-    if (tab === 'active') {
+    if (tab === "active") {
       filtered = filtered.filter((market) => !isMarketClosed(market));
     }
     return filtered;
@@ -102,28 +102,32 @@ const Home = () => {
       {/* Tab Bar (not fixed) */}
       <div className="max-w-6xl mx-auto px-6 pt-24 flex justify-center">
         <div className="w-72 flex rounded-xl overflow-hidden shadow mb-6 border border-green-200 dark:border-green-800 bg-white dark:bg-gray-900">
-            <div
-              className={`flex-1 text-center py-2 cursor-pointer transition-all font-semibold text-base
-                ${tab === 'active'
-                  ? 'bg-gradient-to-r from-green-400 to-green-600 text-white shadow-inner'
-                  : 'bg-white dark:bg-gray-900 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950'}
+          <div
+            className={`flex-1 text-center py-2 cursor-pointer transition-all font-semibold text-base
+                ${
+                  tab === "active"
+                    ? "bg-gradient-to-r from-green-400 to-green-600 text-white shadow-inner"
+                    : "bg-white dark:bg-gray-900 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
+                }
               `}
-              onClick={() => setTab('active')}
-            >
-              Active Markets
-            </div>
-            <div
-              className={`flex-1 text-center py-2 cursor-pointer transition-all font-semibold text-base
-                ${tab === 'all'
-                  ? 'bg-gradient-to-r from-green-400 to-green-600 text-white shadow-inner'
-                  : 'bg-white dark:bg-gray-900 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950'}
+            onClick={() => setTab("active")}
+          >
+            Active Markets
+          </div>
+          <div
+            className={`flex-1 text-center py-2 cursor-pointer transition-all font-semibold text-base
+                ${
+                  tab === "all"
+                    ? "bg-gradient-to-r from-green-400 to-green-600 text-white shadow-inner"
+                    : "bg-white dark:bg-gray-900 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
+                }
               `}
-              onClick={() => setTab('all')}
-            >
-              All Markets
-            </div>
+            onClick={() => setTab("all")}
+          >
+            All Markets
           </div>
         </div>
+      </div>
       <div className="max-w-6xl mx-auto px-6">
         <div className="mb-12">
           <div>
@@ -186,17 +190,17 @@ const Home = () => {
                         {
                           label: "No",
                           staked_amount:
-                            market?.choices?.[0]?.staked_amount?.toString() ||
-                            "0",
+                            market?.total_shares_option_one.toString() || "0",
                         },
                         {
                           label: "Yes",
                           staked_amount:
-                            market?.choices?.[1]?.staked_amount?.toString() ||
-                            "0",
+                            market?.total_shares_option_two.toString() || "0",
                         },
                       ]}
-                      totalRevenue={market?.total_pool?.toString() || "$0"}
+                      totalRevenue={
+                        normalizeWEI(market?.total_pool.toString()) || "$0"
+                      }
                       onClick={() => handleMarketClick(market)}
                       isClosed={isClosed}
                       timeLeft={formatted}

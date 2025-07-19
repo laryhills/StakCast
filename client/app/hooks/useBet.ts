@@ -74,21 +74,21 @@ export const useUserPredictions = () => {
         setClaimableAmount(claimable?.toString() || "0");
 
         const all: AugmentedMarket[] = [
-          ...(regular || []).map((m) => ({
+          ...(regular || []).map((m:AugmentedMarket) => ({
             ...m,
             marketType: "regular" as const,
             market_id: Number(m.market_id),
             category: m.category.toString(),
             end_time: Number(m.end_time),
-            choices: m.choices as MarketChoices,
+            choices: m.choices as MarketChoices ,
 
             winning_choice: m.winning_choice?.Some
-              ? { Some: Number(m.winning_choice.Some.label) }
+              ? { Some: Number(m.winning_choice.Some) }
               : undefined,
             total_pool: Number(m.total_pool),
           })),
 
-          ...(crypto || []).map((m) => ({
+          ...(crypto || []).map((m:AugmentedMarket) => ({
             ...m,
             marketType: "crypto" as const,
             market_id: Number(m.market_id),
@@ -97,11 +97,11 @@ export const useUserPredictions = () => {
             choices: m.choices as MarketChoices,
 
             winning_choice: m.winning_choice?.Some
-              ? { Some: Number(m.winning_choice.Some.label) }
+              ? { Some: Number(m.winning_choice.Some) }
               : undefined,
             total_pool: Number(m.total_pool),
           })),
-          ...(sports || []).map((m) => ({
+          ...(sports || []).map((m:AugmentedMarket) => ({
             ...m,
             marketType: "sports" as const,
             market_id: Number(m.market_id),
@@ -109,7 +109,7 @@ export const useUserPredictions = () => {
             end_time: Number(m.end_time),
             choices: m.choices as MarketChoices,
             winning_choice: m.winning_choice?.Some
-              ? { Some: Number(m.winning_choice.Some.label) }
+              ? { Some: Number(m.winning_choice.Some) }
               : undefined,
             total_pool: Number(m.total_pool),
           })),

@@ -16,12 +16,14 @@ interface MarketCardProps {
   trending?: boolean;
   participants?: number;
   timeLeft?: string;
+
+
 }
 
 const MarketCard: React.FC<MarketCardProps> = ({
   name = "Untitled Market",
   options = [],
-  totalRevenue = "$0",
+  totalRevenue = "0",
   onClick,
   isClosed = false,
   category = "General",
@@ -33,7 +35,6 @@ const MarketCard: React.FC<MarketCardProps> = ({
   const totalStaked = options.reduce((sum, option) => {
     return sum + BigInt(option.staked_amount);
   }, BigInt(0));
-
   const optionsWithOdds = options.map((option) => {
     const stakedAmount = BigInt(option.staked_amount);
     const odds =
