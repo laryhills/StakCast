@@ -41,7 +41,7 @@ pub trait IPredictionHub<TContractState> {
     fn get_all_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active general prediction markets
-    fn get_all_general_predictions(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_all_general_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active crypto prediction markets
     // fn get_all_crypto_predictions(self: @TContractState) -> Array<PredictionMarket>;
@@ -50,7 +50,7 @@ pub trait IPredictionHub<TContractState> {
     // fn get_all_sports_predictions(self: @TContractState) -> Array<PredictionMarket>;
 
     // get current market status of markets
-    fn get_market_status(self: @TContractState, market_id: u256, market_type: u8) -> (bool, bool);
+    fn get_market_status(self: @TContractState, market_id: u256) -> (bool, bool);
 
     fn get_all_open_markets(self: @TContractState) -> Array<PredictionMarket>;
     fn get_all_locked_markets(self: @TContractState) -> Array<PredictionMarket>;
@@ -90,13 +90,13 @@ pub trait IPredictionHub<TContractState> {
     fn get_active_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active general prediction markets
-    fn get_active_general_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_active_general_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active sport prediction markets
-    fn get_active_sport_markets(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_active_sport_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all active crypto prediction markets
-    fn get_active_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
+    // fn get_active_crypto_markets(self: @TContractState) -> Array<PredictionMarket>;
 
     /// Returns an array of all resolved general prediction markets
     fn get_all_resolved_prediction_markets(self: @TContractState) -> Array<PredictionMarket>;
