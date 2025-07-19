@@ -12,3 +12,24 @@ export function formatAmount(
   const decimalStr = decimalPart.toString().padStart(precision, "0");
   return `${whole.toString()}.${decimalStr} STRK`;
 }
+
+export function normalizeWEI(
+  rawAmount: string | bigint,
+  decimals: number = 18
+): string {
+  const amount = typeof rawAmount === "bigint" ? rawAmount : BigInt(rawAmount);
+  const factor = BigInt(10) ** BigInt(decimals);
+
+  const whole = amount / factor;
+  const fraction = amount % factor;
+
+
+  const fractionStr = fraction.toString().padStart(decimals, "0");
+
+
+  const trimmedFraction = fractionStr.replace(/0+$/, "");
+
+  return trimmedFraction.length > 0
+    ? `${whole.toString()}.${trimmedFraction}`
+    : whole.toString();
+}
