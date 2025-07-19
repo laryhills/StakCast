@@ -662,21 +662,20 @@ pub mod PredictionHub {
             let mut user_stake: UserStake = self.bet_details.entry((market_id, caller)).read();
 
             // Check if user has traded on this market before
-
             let user_traded = self.user_traded_status.entry((market_id, caller)).read();
 
             let mut market_stats = self.market_stats.entry(market_id).read();
 
             if !user_traded {
                 market_stats.total_trades += 1;
-
                 self.user_traded_status.entry((market_id, caller)).write(true);
+
+                // Add market_id to user's list of predictions
                 // add bet to user bet collection
                 self.user_predictions.entry(caller).push(market_id);
             }
 
             // Update market stats
-
             match user_choice {
                 Outcome::Option1 => {
                     let shares = self.divide(fixed_point_amount_format, price_a);
@@ -712,15 +711,12 @@ pub mod PredictionHub {
             self.bet_details.entry((market_id, caller)).write(user_stake);
 
             // update market analytics
-
             self.market_analytics.entry(market_id).push(BetActivity { choice, amount });
 
             // Update market state
-
             self.all_predictions.entry(market_id).write(market);
 
             // End reentrancy guard
-
             self.end_reentrancy_guard();
         }
 
@@ -843,8 +839,10 @@ pub mod PredictionHub {
 
                 let market = self.all_predictions.entry(market_id).read();
 
-                if market_id != 0_u256 && market.winning_choice == None {
-                    markets.append(market);
+                // Check if market is resolved
+                match market.status {
+                    MarketStatus::Resolved(_) => { markets.append(market); },
+                    _ => {},
                 }
 
                 i += 1;
@@ -868,8 +866,10 @@ pub mod PredictionHub {
 
                 let market = self.all_predictions.entry(market_id).read();
 
-                if market.winning_choice.is_some() {
-                    user_markets.append(market);
+                // Check if market is resolved (closed)
+                match market.status {
+                    MarketStatus::Resolved(_) => { user_markets.append(market); },
+                    _ => {},
                 }
             }
 
@@ -880,8 +880,6 @@ pub mod PredictionHub {
         fn get_all_open_bets_for_user(
             self: @ContractState, user: ContractAddress,
         ) -> Array<PredictionMarket> {
-            let mut markets = ArrayTrait::new();
-
             let mut user_markets = ArrayTrait::new();
 
             let user_market_ids = self.user_predictions.entry(user);
@@ -898,14 +896,12 @@ pub mod PredictionHub {
                 }
             }
 
-            markets
+            user_markets
         }
 
         fn get_all_locked_bets_for_user(
             self: @ContractState, user: ContractAddress,
         ) -> Array<PredictionMarket> {
-            let mut markets = ArrayTrait::new();
-
             let mut user_markets = ArrayTrait::new();
 
             let user_market_ids = self.user_predictions.entry(user);
@@ -922,14 +918,13 @@ pub mod PredictionHub {
                 }
             }
 
-            markets
+            user_markets
         }
 
 
         fn get_all_bets_for_user(
             self: @ContractState, user: ContractAddress,
         ) -> Array<PredictionMarket> {
-
             let mut user_markets = ArrayTrait::new();
 
             let user_market_ids = self.user_predictions.entry(user);
@@ -940,7 +935,23 @@ pub mod PredictionHub {
                 let market = self.all_predictions.entry(market_id).read();
                 user_markets.append(market);
             }
+
             user_markets
+        }
+
+        fn get_user_market_ids(self: @ContractState, user: ContractAddress) -> Array<u256> {
+            let mut market_ids = ArrayTrait::new();
+
+            let user_market_ids = self.user_predictions.entry(user);
+
+            let user_market_ids_len = user_market_ids.len();
+
+            for i in 0..user_market_ids_len {
+                let market_id: u256 = user_market_ids.at(i).read();
+                market_ids.append(market_id);
+            }
+
+            market_ids
         }
 
 
