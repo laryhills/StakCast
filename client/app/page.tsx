@@ -10,12 +10,16 @@ import { useMarketData } from "./hooks/useMarket";
 import { Market } from "./types";
 import { useAppContext } from "./context/appContext";
 import {  normalizeWEI } from "./utils/utils";
-
+// import { useState } from "react";
 const Home = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentCategory = searchParams.get("category") || "All";
   const { searchQuery } = useAppContext();
+// const [selectedOption, setSelectedOption] = useState<{
+//   marketId: string;
+//   option: string;
+// } | null>(null);
 
   const getHookCategory = (urlCategory: string) => {
     switch (urlCategory.toLowerCase()) {
@@ -39,16 +43,16 @@ const Home = () => {
 
   const markets: Market[] = Array.isArray(allMarkets) ? allMarkets : [];
 
-  // Tab state: 'active' or 'all'
+
   const [tab, setTab] = React.useState<"active" | "all">("active");
 
-  // Helper to determine if a market is closed
+
   const isMarketClosed = (market: Market) => {
-    // Use is_open and is_resolved fields from Market type
+
     return !market.is_open || market.is_resolved;
   };
 
-  // Filtered markets based on search and tab
+
   const filteredMarkets = React.useMemo(() => {
     let filtered = markets.filter((market) => {
       const query = searchQuery.toLowerCase();
@@ -204,6 +208,7 @@ const Home = () => {
                       onClick={() => handleMarketClick(market)}
                       isClosed={isClosed}
                       timeLeft={formatted}
+                      onOption
                     />
                   </div>
                 </div>
