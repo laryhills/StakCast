@@ -671,6 +671,8 @@ pub mod PredictionHub {
                 market_stats.total_trades += 1;
 
                 self.user_traded_status.entry((market_id, caller)).write(true);
+                // add bet to user bet collection
+                self.user_predictions.entry(caller).push(market_id);
             }
 
             // Update market stats
@@ -927,23 +929,18 @@ pub mod PredictionHub {
         fn get_all_bets_for_user(
             self: @ContractState, user: ContractAddress,
         ) -> Array<PredictionMarket> {
-            let mut markets = ArrayTrait::new();
 
             let mut user_markets = ArrayTrait::new();
 
             let user_market_ids = self.user_predictions.entry(user);
 
             let user_market_ids_len = user_market_ids.len();
-
             for i in 0..user_market_ids_len {
                 let market_id: u256 = user_market_ids.at(i).read();
-
                 let market = self.all_predictions.entry(market_id).read();
-
                 user_markets.append(market);
             }
-
-            markets
+            user_markets
         }
 
 

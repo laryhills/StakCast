@@ -103,6 +103,8 @@ fn test_buy_share_success() {
     );
 
     println!("Share prices for market after is {}: {:?}", market_id, market_shares_after);
+    let user = contract.get_all_bets_for_user(USER2_ADDR());
+    assert!(user.len() == 1, "user stake  len should be 1")
 }
 
 #[test]
