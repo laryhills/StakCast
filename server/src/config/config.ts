@@ -25,10 +25,10 @@ export const config = {
 
 		},
 		postgres:{
-			port:process.env.POSTRES_PORT || 5432,
-			host:process.env.POSTGRES_HOST || 'localhost',
-			username:process.env.POSTGRES_USERNAME || 'root',
-			password:process.env.POSTGRES_PASSWORD || '',
+		port:process.env.POSTGRES_PORT || 5432,
+		host:process.env.POSTGRES_HOST || 'localhost',
+		username:process.env.POSTGRES_USERNAME || 'root',
+		password:process.env.POSTGRES_PASSWORD || '',
 			database:process.env.POSTGRES_DB_NAME || 'stakcast'
 		}
 		// mongo_uri: getMongoUri() || "mongodb://localhost:27017/testdb",
