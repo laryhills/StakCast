@@ -476,7 +476,7 @@ pub mod PredictionHub {
         }
 
 
-        fn calculate_share_prices(ref self: ContractState, market_id: u256) -> (u256, u256) {
+        fn calculate_share_prices(self: @ContractState, market_id: u256) -> (u256, u256) {
             let market = self.all_predictions.entry(market_id).read();
 
             let total_shares: u256 = market.total_shares_option_one
@@ -492,7 +492,6 @@ pub mod PredictionHub {
                 (price_a, price_b)
             }
         }
-
 
         fn buy_shares(ref self: ContractState, market_id: u256, choice: u8, amount: u256) {
             let caller = get_caller_address();
@@ -822,7 +821,7 @@ pub mod PredictionHub {
 
 
         fn get_user_stake_details(
-            ref self: ContractState, market_id: u256, user: ContractAddress,
+            self: @ContractState, market_id: u256, user: ContractAddress,
         ) -> UserStake {
             self.bet_details.entry((market_id, user)).read()
         }

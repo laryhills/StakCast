@@ -5,7 +5,7 @@ use snforge_std::{
 };
 use stakcast::admin_interface::{IAdditionalAdminDispatcher, IAdditionalAdminDispatcherTrait};
 use stakcast::interface::{IPredictionHubDispatcher, IPredictionHubDispatcherTrait};
-use stakcast::types::{BetActivity, UserStake};
+use stakcast::types::{BetActivity, PredictionMarket, UserStake};
 use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
 use crate::test_utils::{
     ADMIN_ADDR, FEE_RECIPIENT_ADDR, HALF_PRECISION, MODERATOR_ADDR, USER1_ADDR, USER2_ADDR,
@@ -29,8 +29,11 @@ fn test_buy_share_success() {
     println!("Market created with ID: {}", market_id);
     // get share prices
     let mut market_shares = contract.calculate_share_prices(market_id);
-    let (ppua, ppub) = market_shares;
-    assert(ppua == HALF_PRECISION() && ppub == HALF_PRECISION(), 'Share prices should be 500000');
+    let (price_per_unit_a, price_per_unit_b) = market_shares;
+    assert(
+        price_per_unit_a == HALF_PRECISION() && price_per_unit_b == HALF_PRECISION(),
+        'Share prices should be 500000',
+    );
     println!("Share prices for market {}: {:?}", market_id, market_shares);
 
     // user 1 buys 10 shares of option 1
@@ -103,8 +106,76 @@ fn test_buy_share_success() {
     );
 
     println!("Share prices for market after is {}: {:?}", market_id, market_shares_after);
-    let user = contract.get_all_bets_for_user(USER2_ADDR());
-    assert!(user.len() == 1, "user stake  len should be 1")
+    let user: Array<PredictionMarket> = contract.get_all_bets_for_user(USER2_ADDR());
+    assert!(user.len() == 1, "user stake  len should be 1");
+    let user_bet: @PredictionMarket = user.at(0);
+    assert!(user_bet.market_id == @market_id, "incorrect market id");
+    println!("user bet id: {}", user_bet.market_id);
+}
+
+#[test]
+fn test_get_all_bets_for_user() {
+    let (contract, _admin_interface, _token) = setup_test_environment();
+
+    // create a prediction
+    start_cheat_caller_address(contract.contract_address, MODERATOR_ADDR());
+    let market_id = create_test_market(contract);
+    stop_cheat_caller_address(contract.contract_address);
+
+    let count = contract.get_prediction_count();
+    assert(count == 1, 'Market count should be 1');
+    println!("Market created with ID: {}", market_id);
+    // get share prices
+    let mut market_shares = contract.calculate_share_prices(market_id);
+    let (ppua, price_per_unit_b) = market_shares;
+    assert(
+        ppua == HALF_PRECISION() && price_per_unit_b == HALF_PRECISION(),
+        'Share prices should be 500000',
+    );
+    println!("Share prices for market {}: {:?}", market_id, market_shares);
+
+    // user 1 buys 10 shares of option 1
+    let user1_amount = turn_number_to_precision_point(10);
+    let user2_amount = turn_number_to_precision_point(20);
+    let user3_amount = turn_number_to_precision_point(40);
+
+    let user1_balance_before = _token.balance_of(USER1_ADDR());
+    let contract_balance_before = _token.balance_of(contract.contract_address);
+    start_cheat_caller_address(contract.contract_address, USER1_ADDR());
+    contract.buy_shares(market_id, 0, user1_amount);
+    stop_cheat_caller_address(contract.contract_address);
+    let user1_balance_after = _token.balance_of(USER1_ADDR());
+    let contract_balance_after = _token.balance_of(contract.contract_address);
+    assert(user1_balance_after == user1_balance_before - user1_amount, 'u1 debit');
+    assert(contract_balance_after == contract_balance_before + user1_amount, 'u1 credit');
+
+    // get all bets for user 1 let user: Array<PredictionMarket> =
+    // contract.get_all_bets_for_user(USER2_ADDR());
+    let user_1: Array<PredictionMarket> = contract.get_all_bets_for_user(USER1_ADDR());
+    assert!(user_1.len() == 1, "user stake len should be 1");
+
+    // user 1 bets again on same pool
+    start_cheat_caller_address(contract.contract_address, USER1_ADDR());
+    contract.buy_shares(market_id, 1, turn_number_to_precision_point(5));
+    stop_cheat_caller_address(contract.contract_address);
+
+    let user_1_after: Array<PredictionMarket> = contract.get_all_bets_for_user(USER1_ADDR());
+    assert!(user_1_after.len() == 1, "user stake len should be 2");
+    let user_1_after_bet: @PredictionMarket = user_1_after.at(0);
+    assert!(user_1_after_bet.market_id == @market_id, "incorrect market id");
+    println!("user bet id: {}", user_1_after_bet.market_id);
+
+    // creating another market and the user betting on it
+    let market_id_2 = create_test_market(contract);
+    start_cheat_caller_address(contract.contract_address, USER1_ADDR());
+    contract.buy_shares(market_id_2, 0, turn_number_to_precision_point(10));
+    stop_cheat_caller_address(contract.contract_address);
+
+    let user_1_after_2: Array<PredictionMarket> = contract.get_all_bets_for_user(USER1_ADDR());
+    assert!(user_1_after_2.len() == 2, "user stake len should be 2");
+    let user_1_after_2_bet: @PredictionMarket = user_1_after_2.at(1);
+    assert!(user_1_after_2_bet.market_id == @market_id_2, "incorrect market id");
+    println!("totoal pool now is: {}", contract.get_prediction(market_id_2).total_pool);
 }
 
 #[test]
