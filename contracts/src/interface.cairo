@@ -110,12 +110,12 @@ pub trait IPredictionHub<TContractState> {
     fn resolve_prediction(ref self: TContractState, market_id: u256, winning_choice: u8);
 
     // place bet functions
-    fn calculate_share_prices(ref self: TContractState, market_id: u256) -> (u256, u256);
+    fn calculate_share_prices(self: @TContractState, market_id: u256) -> (u256, u256);
 
     fn buy_shares(ref self: TContractState, market_id: u256, choice: u8, amount: u256);
 
     fn get_user_stake_details(
-        ref self: TContractState, market_id: u256, user: ContractAddress,
+        self: @TContractState, market_id: u256, user: ContractAddress,
     ) -> UserStake;
 
     fn claim(ref self: TContractState, market_id: u256);

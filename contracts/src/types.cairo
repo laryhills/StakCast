@@ -76,7 +76,7 @@ pub enum MarketStatus {
     Resolved: Outcome,
 }
 
-#[derive(Drop, Serde, starknet::Store, Clone)]
+#[derive(Drop, Copy, Serde, starknet::Store, Clone)]
 pub struct UserStake {
     pub shares_a: u256, // Fixed-point shares
     pub shares_b: u256, // Fixed-point shares
