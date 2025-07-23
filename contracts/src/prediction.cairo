@@ -553,6 +553,7 @@ pub mod PredictionHub {
                     market.total_shares_option_one += shares;
 
                     user_stake.shares_a = user_stake.shares_a + shares;
+                    user_stake.total_amount_a = user_stake.total_amount_a + amount;
 
                     market_stats.traders_option_a += 1;
 
@@ -564,6 +565,7 @@ pub mod PredictionHub {
                     market.total_shares_option_two += shares;
 
                     user_stake.shares_b = user_stake.shares_b + shares;
+                    user_stake.total_amount_b = user_stake.total_amount_b + amount;
 
                     market_stats.traders_option_b += 1;
 
