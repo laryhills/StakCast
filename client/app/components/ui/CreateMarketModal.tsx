@@ -59,6 +59,10 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
       newErrors.choice2 = "Second choice is required";
     }
 
+    if (formData.choice1.trim() === formData.choice2.trim()) {
+      newErrors.choice2 = "Choices must be different";
+    }
+
     if (!formData.endDate) {
       newErrors.endDate = "End date is required";
     }
@@ -108,7 +112,6 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
 
     try {
       await createMarket(params);
-      console.log("here")
       // Reset form and close modal on success
       setFormData({
         title: "",

@@ -62,9 +62,12 @@ export const useCreateMarket = (): UseCreateMarketReturn => {
         const populated = await contract.populate("create_predictions", [
           title,
           description,
-          choices,
+          {
+            '0': choices[0],
+            '1': choices[1]
+          },
           category,
-          BigInt(endTime),
+          endTime,
           predictionMarketType,
           cryptoPrediction ? new CairoOption<CryptoPrediction>(CairoOptionVariant.Some, cryptoPrediction) : new CairoOption<CryptoPrediction>(CairoOptionVariant.None),
         ]);
