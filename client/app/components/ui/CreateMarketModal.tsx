@@ -17,6 +17,7 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    image_url: "",
     choice1: "",
     choice2: "",
     category: 0,
@@ -49,6 +50,10 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
 
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
+    }
+
+    if (!formData.image_url.trim()) {
+      newErrors.image_url = "Image URL is required";
     }
 
     if (!formData.choice1.trim()) {
@@ -102,6 +107,7 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
     const params: CreateMarketParams = {
       title: formData.title.trim(),
       description: formData.description.trim(),
+      image_url: formData.image_url.trim(),
       choices: [formData.choice1.trim(), formData.choice2.trim()],
       category: formData.category,
       endTime: endTimeUnix,
@@ -116,6 +122,7 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
       setFormData({
         title: "",
         description: "",
+        image_url: "",
         choice1: "",
         choice2: "",
         category: 0,
@@ -206,6 +213,20 @@ const CreateMarketModal: React.FC<CreateMarketModalProps> = ({ isOpen, onClose, 
             {errors.description && (
               <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.description}</p>
             )}
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+              Image URL
+            </label>
+            <input
+              type="text"
+              value={formData.image_url}
+              onChange={(e) => handleInputChange("image_url", e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter image URL..."
+            />
           </div>
 
           {/* Choices */}

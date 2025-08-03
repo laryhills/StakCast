@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 export interface CreateMarketParams {
   title: string;
   description: string;
+  image_url: string;
   choices: [string, string];
   category: number;
   endTime: number;
@@ -50,7 +51,7 @@ export const useCreateMarket = (): UseCreateMarketReturn => {
       }
 
       try {
-        const { title, description, choices, category, endTime, predictionMarketType, cryptoAsset, targetPrice } = params;
+        const { title, description, image_url, choices, category, endTime, predictionMarketType, cryptoAsset, targetPrice } = params;
 
         let cryptoPrediction: CryptoPrediction | null;
         if (predictionMarketType === 1 && cryptoAsset && targetPrice) {
@@ -62,6 +63,7 @@ export const useCreateMarket = (): UseCreateMarketReturn => {
         const populated = await contract.populate("create_predictions", [
           title,
           description,
+          image_url,
           {
             '0': choices[0],
             '1': choices[1]
